@@ -1,4 +1,4 @@
-# Free Mac Screen Recorder — Roadmap
+# Mac Screen Record — Roadmap
 
 **Target versions:** v0.4.0 – v0.8.0+  
 **Subsystems:** `RecorderUI`, `CaptureCore`, `DeviceKit`, `EncoderKit`, Build & Distribution

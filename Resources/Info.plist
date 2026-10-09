@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>FreeMacScreenRecorder</string>
+	<string>MacScreenRecord</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.freemacscreenrecorder.app</string>
+	<string>com.macscreenrecord.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Free Mac Screen Recorder</string>
+	<string>Mac Screen Record</string>
 	<key>CFBundleDisplayName</key>
-	<string>Free Mac Screen Recorder</string>
+	<string>Mac Screen Record</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -29,12 +29,12 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSScreenCaptureUsageDescription</key>
-	<string>Free Mac Screen Recorder needs to capture your screen to record video.</string>
+	<string>Mac Screen Record needs to capture your screen to record video.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Free Mac Screen Recorder uses the camera for webcam picture-in-picture overlays.</string>
+	<string>Mac Screen Record uses the camera for webcam picture-in-picture overlays.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Free Mac Screen Recorder uses the microphone to record audio alongside the screen.</string>
+	<string>Mac Screen Record uses the microphone to record audio alongside the screen.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Free Mac Screen Recorder may query other apps to list their windows for selective recording.</string>
+	<string>Mac Screen Record may query other apps to list their windows for selective recording.</string>
 </dict>
 </plist>

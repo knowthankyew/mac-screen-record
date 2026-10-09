@@ -24,7 +24,7 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         var mirrored: Bool = true
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "WebcamProcessor")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "WebcamProcessor")
     private let segmentationRequest: VNGeneratePersonSegmentationRequest
     private let lock = NSLock()
 

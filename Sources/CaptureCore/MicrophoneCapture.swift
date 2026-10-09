@@ -13,11 +13,11 @@ final class MicrophoneCapture: NSObject, AVCaptureAudioDataOutputSampleBufferDel
         case sessionFailed(String)
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "MicrophoneCapture")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "MicrophoneCapture")
     private let session = AVCaptureSession()
     private let deviceUniqueID: String
     private let onSample: (CMSampleBuffer) -> Void
-    private let queue = DispatchQueue(label: "com.freemacscreenrecorder.mic", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.macscreenrecord.mic", qos: .userInitiated)
 
     init(deviceUniqueID: String, onSample: @escaping (CMSampleBuffer) -> Void) throws {
         self.deviceUniqueID = deviceUniqueID

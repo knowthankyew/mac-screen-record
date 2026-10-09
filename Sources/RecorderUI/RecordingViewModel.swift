@@ -131,10 +131,10 @@ public final class RecordingViewModel: ObservableObject {
             || (active.webcamBackgroundMode != nil && active.webcamBackgroundMode != webcamBackgroundMode)
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "ViewModel")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "ViewModel")
     private let bundleID: String
 
-    public init(bundleID: String = "com.freemacscreenrecorder.app", settings: AppSettings? = nil) {
+    public init(bundleID: String = "com.macscreenrecord.app", settings: AppSettings? = nil) {
         self.bundleID = bundleID
         let settings = settings ?? AppSettings.shared
         self.settings = settings

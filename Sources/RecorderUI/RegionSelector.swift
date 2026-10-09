@@ -16,7 +16,7 @@ public struct RegionSelection: Sendable, Hashable {
 /// to a `RegionSelection` when the user finishes a drag (or `nil` on Escape).
 @MainActor
 public final class RegionSelector {
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "RegionSelector")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "RegionSelector")
     private var overlays: [RegionOverlayWindow] = []
     private var continuation: CheckedContinuation<RegionSelection?, Never>?
 

@@ -7,9 +7,9 @@
 # This is a one-time setup. Re-running it is a no-op if the identity exists.
 set -euo pipefail
 
-CERT_NAME="Free Mac Screen Recorder Local"
+CERT_NAME="Mac Screen Record Local"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
-P12_PASSWORD="fmsr-local"
+P12_PASSWORD="msr-local"
 
 echo "==> Checking for existing identity '$CERT_NAME'..."
 if security find-identity -v -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then

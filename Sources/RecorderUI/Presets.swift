@@ -145,8 +145,10 @@ public final class PresetsStore: ObservableObject {
     @Published public private(set) var defaultPresetID: UUID?
 
     private let defaults = UserDefaults.standard
-    private let key = "FreeMacScreenRecorder.presets.v1"
-    private let defaultKey = "FreeMacScreenRecorder.defaultPresetID.v1"
+    private let key = "MacScreenRecord.presets.v1"
+    private let legacyKey = "FreeMacScreenRecorder.presets.v1"
+    private let defaultKey = "MacScreenRecord.defaultPresetID.v1"
+    private let legacyDefaultKey = "FreeMacScreenRecorder.defaultPresetID.v1"
 
     public init() { load() }
 
@@ -164,11 +166,13 @@ public final class PresetsStore: ObservableObject {
     }
 
     public func load() {
-        guard let data = defaults.data(forKey: key),
+        let rawData = defaults.data(forKey: key) ?? defaults.data(forKey: legacyKey)
+        guard let data = rawData,
               let decoded = try? JSONDecoder().decode([Preset].self, from: data)
         else { return }
         presets = decoded
-        if let str = defaults.string(forKey: defaultKey), let uid = UUID(uuidString: str), presets.contains(where: { $0.id == uid }) {
+        let rawDefaultStr = defaults.string(forKey: defaultKey) ?? defaults.string(forKey: legacyDefaultKey)
+        if let str = rawDefaultStr, let uid = UUID(uuidString: str), presets.contains(where: { $0.id == uid }) {
             defaultPresetID = uid
         } else {
             defaultPresetID = nil

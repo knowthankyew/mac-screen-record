@@ -1,16 +1,17 @@
 // swift-tools-version: 5.9
-// Free Mac Screen Recorder — Swift Package
+// Mac Screen Record — Swift Package
 // Targets macOS 13+ (ScreenCaptureKit baseline). Builds natively on Apple Silicon and Intel x86_64.
+// Hard fork of Free Mac Screen Recorder by penguinpecker.
 
 import PackageDescription
 
 let package = Package(
-    name: "FreeMacScreenRecorder",
+    name: "MacScreenRecord",
     platforms: [
         .macOS(.v13)
     ],
     products: [
-        .executable(name: "FreeMacScreenRecorder", targets: ["FreeMacScreenRecorder"]),
+        .executable(name: "MacScreenRecord", targets: ["MacScreenRecord"]),
         .library(name: "CaptureCore", targets: ["CaptureCore"]),
         .library(name: "DeviceKit", targets: ["DeviceKit"]),
         .library(name: "EncoderKit", targets: ["EncoderKit"]),
@@ -18,9 +19,9 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "FreeMacScreenRecorder",
+            name: "MacScreenRecord",
             dependencies: ["CaptureCore", "DeviceKit", "EncoderKit", "RecorderUI"],
-            path: "Sources/FreeMacScreenRecorder"
+            path: "Sources/MacScreenRecord"
         ),
         .target(
             name: "CaptureCore",

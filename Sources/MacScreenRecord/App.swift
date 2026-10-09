@@ -3,12 +3,12 @@ import RecorderUI
 import SwiftUI
 
 @main
-struct FreeMacScreenRecorderApp: App {
+struct MacScreenRecordApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var vm = RecordingViewModel()
 
     var body: some Scene {
-        WindowGroup("Free Mac Screen Recorder") {
+        WindowGroup("Mac Screen Record") {
             MainView(vm: vm)
                 .onAppear {
                     appDelegate.attach(viewModel: vm)

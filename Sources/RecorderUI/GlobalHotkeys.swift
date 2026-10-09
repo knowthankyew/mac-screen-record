@@ -63,7 +63,7 @@ public final class GlobalHotkey {
 /// High-level toggle: ⌘⇧R starts recording, ⌘⇧S stops.
 @MainActor
 public final class GlobalHotkeyController {
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "Hotkeys")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "Hotkeys")
     private var startKey: GlobalHotkey?
     private var stopKey: GlobalHotkey?
 

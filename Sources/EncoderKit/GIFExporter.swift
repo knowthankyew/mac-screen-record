@@ -38,7 +38,7 @@ public enum GIFExporter {
         destination: URL,
         options: Options = Options()
     ) async throws {
-        let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "GIFExporter")
+        let log = Logger(subsystem: "com.macscreenrecord.app", category: "GIFExporter")
         let asset = AVURLAsset(url: source)
         guard let duration = try? await asset.load(.duration), duration.seconds > 0 else {
             throw ExportError.invalidSource

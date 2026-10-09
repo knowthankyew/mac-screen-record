@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 generate-sbom.py
-Generates a valid CycloneDX v1.5 JSON Software Bill of Materials (SBOM) for Free Mac Screen Recorder.
+Generates a valid CycloneDX v1.5 JSON Software Bill of Materials (SBOM) for Mac Screen Record.
 Documents application metadata, Swift package modules, and knowthankyew zero-egress properties.
 """
 
@@ -11,10 +11,10 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0"):
+def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0"):
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     serial_uuid = f"urn:uuid:{uuid.uuid4()}"
-    app_ref = f"pkg:generic/free-mac-screen-recorder@{version}?arch={arch}"
+    app_ref = f"pkg:generic/mac-screen-record@{version}?arch={arch}"
 
     sbom = {
         "$schema": "http://cyclonedx.org/schema/bom-1.5.json",
@@ -34,9 +34,9 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
             "component": {
                 "type": "application",
                 "bom-ref": app_ref,
-                "name": "Free Mac Screen Recorder",
+                "name": "Mac Screen Record",
                 "version": version,
-                "description": "Privacy-first, native macOS screen recorder built on ScreenCaptureKit and VideoToolbox with zero egress.",
+                "description": "Privacy-first, native macOS screen recorder built on ScreenCaptureKit and VideoToolbox with zero egress. Hard fork of free-mac-screen-recorder.",
                 "licenses": [
                     {
                         "license": {
@@ -71,7 +71,7 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
         "components": [
             {
                 "type": "library",
-                "bom-ref": f"pkg:swift/FreeMacScreenRecorder/CaptureCore@{version}",
+                "bom-ref": f"pkg:swift/MacScreenRecord/CaptureCore@{version}",
                 "name": "CaptureCore",
                 "version": version,
                 "scope": "required",
@@ -79,7 +79,7 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
             },
             {
                 "type": "library",
-                "bom-ref": f"pkg:swift/FreeMacScreenRecorder/DeviceKit@{version}",
+                "bom-ref": f"pkg:swift/MacScreenRecord/DeviceKit@{version}",
                 "name": "DeviceKit",
                 "version": version,
                 "scope": "required",
@@ -87,7 +87,7 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
             },
             {
                 "type": "library",
-                "bom-ref": f"pkg:swift/FreeMacScreenRecorder/EncoderKit@{version}",
+                "bom-ref": f"pkg:swift/MacScreenRecord/EncoderKit@{version}",
                 "name": "EncoderKit",
                 "version": version,
                 "scope": "required",
@@ -95,7 +95,7 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
             },
             {
                 "type": "library",
-                "bom-ref": f"pkg:swift/FreeMacScreenRecorder/RecorderUI@{version}",
+                "bom-ref": f"pkg:swift/MacScreenRecord/RecorderUI@{version}",
                 "name": "RecorderUI",
                 "version": version,
                 "scope": "required",
@@ -106,24 +106,24 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
             {
                 "ref": app_ref,
                 "dependsOn": [
-                    f"pkg:swift/FreeMacScreenRecorder/CaptureCore@{version}",
-                    f"pkg:swift/FreeMacScreenRecorder/DeviceKit@{version}",
-                    f"pkg:swift/FreeMacScreenRecorder/EncoderKit@{version}",
-                    f"pkg:swift/FreeMacScreenRecorder/RecorderUI@{version}"
+                    f"pkg:swift/MacScreenRecord/CaptureCore@{version}",
+                    f"pkg:swift/MacScreenRecord/DeviceKit@{version}",
+                    f"pkg:swift/MacScreenRecord/EncoderKit@{version}",
+                    f"pkg:swift/MacScreenRecord/RecorderUI@{version}"
                 ]
             },
             {
-                "ref": f"pkg:swift/FreeMacScreenRecorder/CaptureCore@{version}",
+                "ref": f"pkg:swift/MacScreenRecord/CaptureCore@{version}",
                 "dependsOn": [
-                    f"pkg:swift/FreeMacScreenRecorder/EncoderKit@{version}"
+                    f"pkg:swift/MacScreenRecord/EncoderKit@{version}"
                 ]
             },
             {
-                "ref": f"pkg:swift/FreeMacScreenRecorder/RecorderUI@{version}",
+                "ref": f"pkg:swift/MacScreenRecord/RecorderUI@{version}",
                 "dependsOn": [
-                    f"pkg:swift/FreeMacScreenRecorder/CaptureCore@{version}",
-                    f"pkg:swift/FreeMacScreenRecorder/DeviceKit@{version}",
-                    f"pkg:swift/FreeMacScreenRecorder/EncoderKit@{version}"
+                    f"pkg:swift/MacScreenRecord/CaptureCore@{version}",
+                    f"pkg:swift/MacScreenRecord/DeviceKit@{version}",
+                    f"pkg:swift/MacScreenRecord/EncoderKit@{version}"
                 ]
             }
         ]
@@ -137,5 +137,5 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.2.0")
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "dist/bom.json"
     arch = sys.argv[2] if len(sys.argv) > 2 else "arm64"
-    ver = sys.argv[3] if len(sys.argv) > 3 else "0.2.0"
+    ver = sys.argv[3] if len(sys.argv) > 3 else "0.3.0"
     generate_sbom(out, arch, ver)

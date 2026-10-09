@@ -14,7 +14,7 @@ public final class ClickHighlightController: ObservableObject {
     @Published public var color: NSColor = .systemBlue
     @Published public var rippleSize: CGFloat = 70
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "ClickHighlight")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "ClickHighlight")
     private var panels: [ClickHighlightPanel] = []
     private var globalMonitor: Any?
     private var localMonitor: Any?

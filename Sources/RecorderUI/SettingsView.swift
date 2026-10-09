@@ -59,10 +59,11 @@ public struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent("App", value: "Free Mac Screen Recorder")
-                LabeledContent("Project", value: "github.com/penguinpecker/free-mac-screen-recorder")
+                LabeledContent("App", value: "Mac Screen Record")
+                LabeledContent("Project", value: "github.com/knowthankyew/mac-screen-record")
+                LabeledContent("Heritage", value: "Hard fork of free-mac-screen-recorder (MIT)")
                 LabeledContent("Governance Standard", value: "knowthankyew Zero-Egress v1.0")
-                Text("MIT licensed. Built on ScreenCaptureKit, AVFoundation, and VideoToolbox. See NOTICE.md for supply chain and attribution disclosures.")
+                Text("MIT licensed. Hard fork of penguinpecker/free-mac-screen-recorder. Built on ScreenCaptureKit, AVFoundation, and VideoToolbox. See NOTICE.md for supply chain and attribution disclosures.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -6,9 +6,9 @@ set -euo pipefail
 
 CONFIG="${1:-release}"           # debug | release
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_NAME="Free Mac Screen Recorder"
-EXEC_NAME="FreeMacScreenRecorder"
-BUNDLE_ID="com.freemacscreenrecorder.app"
+APP_NAME="Mac Screen Record"
+EXEC_NAME="MacScreenRecord"
+BUNDLE_ID="com.macscreenrecord.app"
 DIST_DIR="$ROOT/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 
@@ -33,7 +33,7 @@ cp "$ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 if [ -f "$ROOT/Scripts/generate-sbom.py" ]; then
     echo "==> Generating CycloneDX SBOM..."
     mkdir -p "$DIST_DIR"
-    VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.2.0")"
+    VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
     python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
     cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
 fi
@@ -44,20 +44,21 @@ fi
 # PkgInfo (legacy but expected)
 printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
 
-CERT_NAME="Free Mac Screen Recorder Local"
+CERT_NAME="Mac Screen Record Local"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
-# `find-identity -p codesigning` requires explicit trust on self-signed certs,
-# but `codesign --sign` only needs the cert + private key in the keychain.
 # Detect via find-certificate to avoid forcing trust setup.
 if security find-certificate -c "$CERT_NAME" "$KEYCHAIN" >/dev/null 2>&1; then
     SIGN_IDENTITY="$CERT_NAME"
     echo "==> Code signing with stable identity '$CERT_NAME'..."
+elif security find-certificate -c "Free Mac Screen Recorder Local" "$KEYCHAIN" >/dev/null 2>&1; then
+    SIGN_IDENTITY="Free Mac Screen Recorder Local"
+    echo "==> Code signing with inherited identity 'Free Mac Screen Recorder Local'..."
 else
     SIGN_IDENTITY="-"
     echo "==> Ad-hoc signing (run Scripts/setup-stable-signing.sh for persistent TCC permissions)..."
 fi
 codesign --force --deep --sign "$SIGN_IDENTITY" \
-    --entitlements "$ROOT/Resources/FreeMacScreenRecorder.entitlements" \
+    --entitlements "$ROOT/Resources/MacScreenRecord.entitlements" \
     --options runtime \
     "$APP_DIR" || {
         echo "WARN: signing failed; bundle is unsigned." >&2

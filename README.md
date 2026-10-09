@@ -1,6 +1,6 @@
-# Free Mac Screen Recorder
+# Mac Screen Record
 
-> A free, open-source, **native macOS screen recorder** for Apple Silicon and Intel Macs —
+> An open-source, **native macOS screen recording & reality capture engine** for Apple Silicon and Intel Macs —
 > built on Apple's **ScreenCaptureKit**, **AVFoundation**, and
 > **VideoToolbox**. Record any display, window, app, or custom region with
 > system audio, microphone, webcam picture-in-picture, and click highlights.
@@ -11,9 +11,13 @@
 [![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-success)]()
 [![Intel](https://img.shields.io/badge/Intel-x86__64-success)]()
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange)](https://www.swift.org/)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/penguinpecker/free-mac-screen-recorder/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/knowthankyew/mac-screen-record/pulls)
 
-**Free Mac Screen Recorder** is a privacy-first, native screen recording app
+> [!NOTE]
+> **Hard Fork & Upstream Heritage Notice**:  
+> **Mac Screen Record** (`mac-screen-record`) is an independent continuation and hard fork of [`free-mac-screen-recorder`](https://github.com/penguinpecker/free-mac-screen-recorder) by [penguinpecker](https://github.com/penguinpecker). We maintain full gratitude and attribution to the original author under the terms of the [MIT License](LICENSE). This hard fork exists to ensure active ongoing maintenance, Intel & Apple Silicon architecture parity, Neural Engine facecam compositing, and adherence to the [knowthankyew](https://github.com/knowthankyew) Zero-Egress consumer privacy standard.
+
+**Mac Screen Record** is a privacy-first, native screen recording app
 for macOS — a free open-source alternative to Loom, CleanShot X, ScreenFlow,
 Camtasia, and the built-in QuickTime Player. Capture your **screen**, a
 **single window**, a **specific app**, or a **custom drag-selected region**.
@@ -173,8 +177,8 @@ vendor's current offering before switching.)
 ### Build from source (recommended)
 
 ```bash
-git clone https://github.com/penguinpecker/free-mac-screen-recorder.git
-cd free-mac-screen-recorder
+git clone https://github.com/knowthankyew/mac-screen-record.git
+cd mac-screen-record
 
 # 1. One-time setup: create a local self-signed certificate so macOS TCC
 #    preserves Screen Recording permissions across future rebuilds
@@ -184,7 +188,7 @@ cd free-mac-screen-recorder
 ./Scripts/build-app.sh release
 
 # 3. Launch
-open "dist/Free Mac Screen Recorder.app"
+open "dist/Mac Screen Record.app"
 ```
 
 The build script compiles for your host architecture (`arm64` on Apple Silicon or `x86_64` on Intel), generates an embedded CycloneDX SBOM, bundles `NOTICE.md`, and signs the `.app` bundle with your stable local certificate.
@@ -192,7 +196,7 @@ The build script compiles for your host architecture (`arm64` on Apple Silicon o
 ### Pre-built download
 
 Pre-built `.app` releases will land on the
-[Releases page](https://github.com/penguinpecker/free-mac-screen-recorder/releases)
+[Releases page](https://github.com/knowthankyew/mac-screen-record/releases)
 once notarization is set up. For now, building from source takes ~30 seconds.
 
 ---
@@ -231,11 +235,11 @@ app.
 After granting any of these in **System Settings → Privacy & Security**, macOS requires the app to restart to apply the updated TCC token.
 
 > [!TIP]
-> **Preserving Permissions Across Rebuilds:** macOS tracks ad-hoc signed apps by binary hash (`cdhash`), causing permissions to reset every rebuild. Running `./Scripts/setup-stable-signing.sh` creates a stable local certificate (`Free Mac Screen Recorder Local`) in your login keychain so permissions remain granted permanently across all future updates.
+> **Preserving Permissions Across Rebuilds:** macOS tracks ad-hoc signed apps by binary hash (`cdhash`), causing permissions to reset every rebuild. Running `./Scripts/setup-stable-signing.sh` creates a stable local certificate (`Mac Screen Record Local`) in your login keychain so permissions remain granted permanently across all future updates.
 >
 > If you previously ran an ad-hoc build and permissions seem stuck in System Settings, reset the stale TCC entry with:
 > ```bash
-> tccutil reset ScreenCapture com.freemacscreenrecorder.app
+> tccutil reset ScreenCapture com.macscreenrecord.app
 > ```
 
 ---
@@ -274,7 +278,7 @@ Monitoring permission.
 The codebase is split into four small Swift packages:
 
 ```
-FreeMacScreenRecorder (executable)
+MacScreenRecord (executable)
 └── RecorderUI       — SwiftUI views, app entry point, overlays, settings
     ├── CaptureCore  — ScreenCaptureKit wrapper (SCStream, filters, audio)
     ├── DeviceKit    — AVCaptureDevice enumeration with hot-swap detection
@@ -369,13 +373,13 @@ secure password input fields are active (`IsSecureEventInputEnabled()`).
 
 ### Where are recordings saved?
 
-Default: `~/Movies/Free Mac Screen Recorder/`. Change via *Free Mac Screen
-Recorder → Settings → Output*.
+Default: `~/Movies/Mac Screen Record/`. Change via *Mac Screen
+Record → Settings → Output*.
 
 ### How do I uninstall?
 
-Quit the app, drag `Free Mac Screen Recorder.app` to the Trash. Cached
-preferences live in `~/Library/Preferences/com.freemacscreenrecorder.app.plist`
+Quit the app, drag `Mac Screen Record.app` to the Trash. Cached
+preferences live in `~/Library/Preferences/com.macscreenrecord.app.plist`
 and saved presets live alongside.
 
 ---
@@ -458,6 +462,9 @@ appreciated but not required.
 
 This project would not exist without:
 
+- **penguinpecker and contributors** for creating the original
+  [free-mac-screen-recorder](https://github.com/penguinpecker/free-mac-screen-recorder),
+  providing the foundational project architecture upon which this hard fork was built.
 - Apple's framework engineers for shipping **ScreenCaptureKit**, the
   modern, hardware-accelerated, no-permission-headache replacement for
   `CGDisplayStream`.

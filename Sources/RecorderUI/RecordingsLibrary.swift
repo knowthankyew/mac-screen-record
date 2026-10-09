@@ -29,7 +29,7 @@ public final class RecordingsLibrary: ObservableObject {
     @Published public private(set) var files: [RecordingFile] = []
     @Published public private(set) var folder: URL
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "RecordingsLibrary")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "RecordingsLibrary")
 
     public init(folder: URL) {
         self.folder = folder

@@ -16,7 +16,7 @@ public final class KeystrokeOverlayController: ObservableObject {
     @Published public private(set) var isVisible: Bool = false
     @Published public var fadeAfterSeconds: TimeInterval = 1.5
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "Keystrokes")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "Keystrokes")
     private var window: KeystrokePanel?
     private var globalMonitor: Any?
     private var localMonitor: Any?

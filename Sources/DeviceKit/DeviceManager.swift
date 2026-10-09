@@ -13,7 +13,7 @@ public final class DeviceManager: ObservableObject {
     @Published public private(set) var cameras: [AVDevice] = []
     @Published public private(set) var microphones: [AVDevice] = []
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "DeviceManager")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "DeviceManager")
     private var observers: [NSObjectProtocol] = []
     private var pollTask: Task<Void, Never>?
 

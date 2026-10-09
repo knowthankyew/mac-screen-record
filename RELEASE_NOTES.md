@@ -1,6 +1,8 @@
-# Free Mac Screen Recorder Release Notes
+# Mac Screen Record Release Notes
 
-## Free Mac Screen Recorder 0.3.0
+> *Note: Mac Screen Record is a hard fork and continuation of Free Mac Screen Recorder by penguinpecker. All upstream releases (v0.1.0 – v0.3.0) and git commit history are preserved in full under the MIT License.*
+
+## Mac Screen Record 0.3.0
 
 **Release:** `v0.3.0` (Build `3`)  
 **Date:** October 1, 2026  

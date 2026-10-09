@@ -83,10 +83,10 @@ public final class WebcamOverlayController: ObservableObject {
         }
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "Webcam")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "Webcam")
     private let captureSession = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
-    private let videoQueue = DispatchQueue(label: "com.freemacscreenrecorder.webcam.video", qos: .userInteractive)
+    private let videoQueue = DispatchQueue(label: "com.macscreenrecord.webcam.video", qos: .userInteractive)
     private let videoProcessor = WebcamVideoProcessor()
 
     private var window: WebcamPanel?

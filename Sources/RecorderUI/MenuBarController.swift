@@ -6,7 +6,7 @@ import OSLog
 /// actions (start/stop, show window, toggle webcam, toggle clicks, quit).
 @MainActor
 public final class MenuBarController: NSObject {
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "MenuBar")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "MenuBar")
     private var statusItem: NSStatusItem?
     private weak var vm: RecordingViewModel?
     private var cancellables: Set<AnyCancellable> = []

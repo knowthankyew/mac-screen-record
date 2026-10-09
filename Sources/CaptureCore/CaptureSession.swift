@@ -34,7 +34,7 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         }
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "CaptureSession")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "CaptureSession")
 
     private let ourBundleID: String
     private var stream: SCStream?
@@ -42,8 +42,8 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     private var micCapture: MicrophoneCapture?
     public let levels: AudioLevelMonitor
 
-    private let videoQueue = DispatchQueue(label: "com.freemacscreenrecorder.capture.video", qos: .userInitiated)
-    private let audioQueue = DispatchQueue(label: "com.freemacscreenrecorder.capture.audio", qos: .userInitiated)
+    private let videoQueue = DispatchQueue(label: "com.macscreenrecord.capture.video", qos: .userInitiated)
+    private let audioQueue = DispatchQueue(label: "com.macscreenrecord.capture.audio", qos: .userInitiated)
 
     public private(set) var state: State = .idle
     public var onFailure: (@Sendable (String) -> Void)?

@@ -16,7 +16,7 @@ public final class VideoEncoder: @unchecked Sendable {
         case finishFailed(String)
     }
 
-    private let log = Logger(subsystem: "com.freemacscreenrecorder.app", category: "VideoEncoder")
+    private let log = Logger(subsystem: "com.macscreenrecord.app", category: "VideoEncoder")
     private let settings: RecordingSettings
 
     public var onError: (@Sendable (Error) -> Void)?
@@ -30,7 +30,7 @@ public final class VideoEncoder: @unchecked Sendable {
 
     private var sessionStarted = false
     private var sessionStartPTS: CMTime?
-    private let queue = DispatchQueue(label: "com.freemacscreenrecorder.encoder", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.macscreenrecord.encoder", qos: .userInitiated)
 
     // Pause / resume: track total paused duration so PTS can be rewritten and
     // the recording excises pause intervals rather than freezing on a frame.
