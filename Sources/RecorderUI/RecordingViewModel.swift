@@ -183,6 +183,15 @@ public final class RecordingViewModel: ObservableObject {
             // to applyStartupDefaultOverlays(), called when the view appears.
         }
 
+        // didSet observers do not fire during init; sync the overlay controller explicitly.
+        webcam.corner = webcamCorner
+        webcam.size = webcamSize
+        webcam.mirrored = webcamMirrored
+        webcam.backgroundMode = webcamBackgroundMode
+        webcam.blurStrength = webcamBlurStrength
+        webcam.backgroundPreset = webcamBackgroundPreset
+        webcam.showBorder = webcamShowBorder
+
         // Reload library if the user changes the output folder.
         self.settingsCancellable = settings.$outputFolder
             .dropFirst()
@@ -221,12 +230,17 @@ public final class RecordingViewModel: ObservableObject {
         hotkeys.install(
             start: { [weak self] in Task { @MainActor in
                 guard let self else { return }
-                if case .recording = self.status { return }
-                await self.startRecording()
+                switch self.status {
+                case .recording, .paused, .stopping: return
+                default: await self.startRecording()
+                }
             }},
             stop: { [weak self] in Task { @MainActor in
                 guard let self else { return }
-                if case .recording = self.status { await self.stopRecording() }
+                switch self.status {
+                case .recording, .paused: await self.stopRecording()
+                default: break
+                }
             }}
         )
     }

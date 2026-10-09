@@ -8,6 +8,7 @@ struct RecordingsListView: View {
     @State private var renamingID: URL?
     @State private var renameText: String = ""
     @State private var exportingID: URL?
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +30,7 @@ struct RecordingsListView: View {
                         .font(.system(size: 36))
                         .foregroundStyle(.secondary)
                     Text("No recordings yet").foregroundStyle(.secondary)
-                    Text("Files saved to ~/Movies/Mac Screen Record/")
+                    Text("Files saved to \((library.folder.path as NSString).abbreviatingWithTildeInPath)")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer()
@@ -43,7 +44,8 @@ struct RecordingsListView: View {
                             library: library,
                             renamingID: $renamingID,
                             renameText: $renameText,
-                            exportingID: $exportingID
+                            exportingID: $exportingID,
+                            errorMessage: $errorMessage
                         )
                     }
                 }
@@ -51,6 +53,14 @@ struct RecordingsListView: View {
             }
         }
         .frame(minWidth: 540, minHeight: 420)
+        .alert("Error", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .task { await library.reload() }
     }
 }
@@ -61,6 +71,7 @@ private struct RecordingRow: View {
     @Binding var renamingID: URL?
     @Binding var renameText: String
     @Binding var exportingID: URL?
+    @Binding var errorMessage: String?
 
     private var isRenaming: Bool { renamingID == file.url }
     private var isExporting: Bool { exportingID == file.url }
@@ -122,8 +133,7 @@ private struct RecordingRow: View {
         do {
             try library.rename(target, to: newName)
         } catch {
-            // surface as console for now; UI surfacing later
-            print("Rename failed: \(error.localizedDescription)")
+            errorMessage = "Rename failed: \(error.localizedDescription)"
         }
     }
 
@@ -133,7 +143,7 @@ private struct RecordingRow: View {
             do {
                 _ = try await library.exportGIF(file)
             } catch {
-                print("GIF export failed: \(error.localizedDescription)")
+                errorMessage = "GIF export failed: \(error.localizedDescription)"
             }
             exportingID = nil
         }

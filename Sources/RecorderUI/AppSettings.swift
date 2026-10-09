@@ -37,7 +37,7 @@ public final class AppSettings: ObservableObject {
         let d = UserDefaults.standard
         self.defaultCodec = OutputCodec(rawValue: d.string(forKey: Keys.codec) ?? "") ?? .h264
         let storedFPS = d.integer(forKey: Keys.fps)
-        self.defaultFPS = storedFPS == 0 ? 60 : storedFPS
+        self.defaultFPS = storedFPS == 0 ? 60 : min(max(storedFPS, 24), 120)
         // Provide explicit default so missing key isn't read as `false`.
         self.defaultShowsCursor = d.object(forKey: Keys.cursor) as? Bool ?? true
         self.defaultCaptureSystemAudio = d.object(forKey: Keys.systemAudio) as? Bool ?? true

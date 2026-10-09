@@ -317,7 +317,7 @@ public struct MainView: View {
                     Text(c.displayName).tag(c)
                 }
             }
-            Text("Saved to ~/Movies/Mac Screen Record/")
+            Text("Saved to \((vm.settings.outputFolder.path as NSString).abbreviatingWithTildeInPath)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
