@@ -1,0 +1,733 @@
+Most recent local review with findings: 34 stored findings
+Review directory: /Users/cl0rkster/Github/mac-screen-record
+Base branch: main
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/EncoderKit/VideoEncoder.swift:50-68
+
+  The pause gap comes from sample timestamps, not from the clock, so pauses
+  are not always removed.
+
+  pause() and resume() both read lastSeenPTS. CaptureSession drops
+  idle frames before append. If the screen is static and no audio track is
+  active, no samples arrive during the pause. In that case lastSeenPTS
+  does not move, gap is zero, and the pause stays in the output as a
+  frozen frame. The value at pause can also be old if the screen was static
+  before the pause. ScreenCaptureKit and AVCaptureSession both timestamp
+  samples with the host time clock. Read
+  CMClockGetTime(CMClockGetHostTimeClock()) at pause and at resume, and
+  compute the gap from those two values.
+
+
+  🐛 Proposed fix
+
+       public func pause() {
+  +        let now = CMClockGetTime(CMClockGetHostTimeClock())
+           queue.sync {
+               guard !paused else { return }
+               paused = true
+  -            pauseStartPTS = lastSeenPTS
+  +            pauseStartPTS = now
+           }
+       }
+  
+       public func resume() {
+  +        let now = CMClockGetTime(CMClockGetHostTimeClock())
+           queue.sync {
+               guard paused, let start = pauseStartPTS else { paused = false; return }
+  -            let gap = CMTimeSubtract(lastSeenPTS, start)
+  +            let gap = CMTimeSubtract(now, start)
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Performance & Scalability]
+  → Sources/RecorderUI/WebcamOverlay.swift:117
+
+  startRunning() and stopRunning() block the main actor.
+
+  AVCaptureSession.startRunning() and stopRunning() are synchronous.
+  Camera startup can take hundreds of milliseconds, so the UI freezes when
+  the user toggles the webcam. Run both calls on a dedicated serial session
+  queue.
+
+
+  ♻️ Proposed refactor
+
+  +    private let sessionQueue = DispatchQueue(label: "com.macscreenrecord.webcam.session")
+   ...
+  -        captureSession.startRunning()
+  +        let session = captureSession
+  +        sessionQueue.async { session.startRunning() }
+   ...
+  -        captureSession.stopRunning()
+  +        let session = captureSession
+  +        sessionQueue.async { session.stopRunning() }
+
+  Also applies to: 125-125
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Scripts/build-app.sh:63-68
+
+  Fail the build when code signing fails.
+
+  When codesign fails, the script prints a warning and continues. The
+  script still produces a bundle with no signature or with a broken
+  signature. This bundle loses its TCC permissions and fails under hardened
+  runtime. The path instruction requires "stable codesigning". A silent
+  fallback breaks that requirement. If the user explicitly supplied
+  SIGN_IDENTITY, the script should exit with an error.
+
+
+  Proposed fix
+
+       "$APP_DIR" || {
+  -        echo "WARN: signing failed; bundle is unsigned." >&2
+  +        echo "ERROR: codesign failed with identity '$SIGN_IDENTITY'." >&2
+  +        exit 1
+       }
+
+  As per path instructions, "Audit shell and python build scripts for
+  reproducible compilation, stable codesigning".
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/RecorderUI/RecordingViewModel.swift:173-181
+
+  Startup-preset webcam settings never reach WebcamOverlayController,
+  because didSet does not run in init.
+
+  Swift does not call property observers when a class sets its own stored
+  properties inside its initializer. self.webcamCorner, self.webcamSize,
+  and self.webcamBackgroundMode therefore update the view model, and the
+  UI pickers show them. The webcam controller keeps its own defaults:
+  .bottomRight, .medium, and .none. Example: the startup preset
+  selects .blur. The UI shows "Blur", but the webcam overlay, and
+  therefore the recording, shows the unblurred background. Push these values
+  to the controller explicitly.
+
+
+  🐛 Proposed fix
+
+               if let mode = defaultP.webcamBackgroundMode {
+                   self.webcamBackgroundMode = mode
+               }
+           }
+  +
+  +        // didSet observers do not fire during init; sync the overlay controller explicitly.
+  +        webcam.corner = webcamCorner
+  +        webcam.size = webcamSize
+  +        webcam.mirrored = webcamMirrored
+  +        webcam.backgroundMode = webcamBackgroundMode
+  +        webcam.blurStrength = webcamBlurStrength
+  +        webcam.backgroundPreset = webcamBackgroundPreset
+  +        webcam.showBorder = webcamShowBorder
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → Scripts/generate-sbom.py:15-16
+
+  Make the SBOM output reproducible.
+
+  The script uses a random uuid4 serial number and the current wall-clock
+  time. Two builds of the same source therefore produce different bom.json
+  files. The bundle embeds bom.json, so the bundle contents also differ
+  between builds. To fix this, honor SOURCE_DATE_EPOCH and derive the
+  serial number with uuid5 from the version and architecture.
+
+
+  Proposed fix
+
+  -    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+  -    serial_uuid = f"urn:uuid:{uuid.uuid4()}"
+  +    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+  +    ts = datetime.fromtimestamp(int(epoch), timezone.utc) if epoch else datetime.now(timezone.utc)
+  +    now_iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+  +    serial_uuid = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, f'mac-screen-record/{version}/{arch}')}"
+
+  As per path instructions, "Audit shell and python build scripts for
+  reproducible compilation".
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/EncoderKit/VideoEncoder.swift:215-235
+
+  Preserve per-sample audio timing when retiming after a pause.
+
+  For a multi-sample audio buffer, CMSampleBufferGetDuration(sampleBuffer)
+  is the duration of the entire buffer. Passing it as the single timing
+  entry duration can assign the full buffer duration to each audio sample
+  and produce incorrect timing after resume. Read the existing timing array
+  with CMSampleBufferGetSampleTimingInfoArray, preserve each duration,
+  shift each valid presentation timestamp by totalPausedDuration, and pass
+  the updated array to CMSampleBufferCreateCopyWithNewTiming.
+
+
+  Suggested fix
+
+  -            let timing = CMSampleTimingInfo(
+  -                duration: CMSampleBufferGetDuration(sampleBuffer),
+  -                presentationTimeStamp: adjustedPTS,
+  -                decodeTimeStamp: .invalid
+  -            )
+  +            var timingCount: CMItemCount = 0
+  +            var status = CMSampleBufferGetSampleTimingInfoArray(
+  +                sampleBuffer,
+  +                entryCount: 0,
+  +                arrayToFill: nil,
+  +                entriesNeededOut: &timingCount
+  +            )
+  +            guard status == noErr, timingCount > 0 else { return }
+  +
+  +            var timings = [CMSampleTimingInfo](
+  +                repeating: CMSampleTimingInfo(
+  +                    duration: .invalid,
+  +                    presentationTimeStamp: .invalid,
+  +                    decodeTimeStamp: .invalid
+  +                ),
+  +                count: timingCount
+  +            )
+  +            status = timings.withUnsafeMutableBufferPointer { timingBuffer in
+  +                CMSampleBufferGetSampleTimingInfoArray(
+  +                    sampleBuffer,
+  +                    entryCount: timingCount,
+  +                    arrayToFill: timingBuffer.baseAddress,
+  +                    entriesNeededOut: &timingCount
+  +                )
+  +            }
+  +            guard status == noErr else { return }
+  +
+  +            for index in timings.indices
+  +                where timings[index].presentationTimeStamp.isValid {
+  +                timings[index].presentationTimeStamp = CMTimeSubtract(
+  +                    timings[index].presentationTimeStamp,
+  +                    self.totalPausedDuration
+  +                )
+  +            }
+               var rewritten: CMSampleBuffer?
+  -            let status = CMSampleBufferCreateCopyWithNewTiming(
+  +            status = CMSampleBufferCreateCopyWithNewTiming(
+                   allocator: kCFAllocatorDefault,
+                   sampleBuffer: sampleBuffer,
+  -                sampleTimingEntryCount: 1,
+  -                sampleTimingArray: [timing],
+  +                sampleTimingEntryCount: timings.count,
+  +                sampleTimingArray: timings,
+                   sampleBufferOut: &rewritten
+               )
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingsLibrary.swift:162-166
+
+  Treat an unchanged name as a successful no-op. When the user saves the
+  current filename, dest == file.url, but moveItem still runs. The
+  rename reports a file-move error instead of succeeding. Return before the
+  move when the URLs match.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Scripts/build-app.sh:51-54
+
+  Check for a code-signing identity, not only a certificate.
+
+  security find-certificate succeeds even when the certificate has no
+  private key. That state can remain after a partial import. In that state
+  the script selects CERT_NAME instead of ad-hoc signing, and codesign
+  then fails. setup-stable-signing.sh uses the correct check: `security
+  find-identity -v -p codesigning. However, -v` filters out untrusted
+  self-signed identities. Use `security find-identity -p codesigning
+  "$KEYCHAIN" | grep -q "$CERT_NAME"` here.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Scripts/setup-stable-signing.sh:15
+
+  The idempotency check skips identities that are present but untrusted.
+
+  find-identity -v lists only valid, trusted identities. Assume that
+  add-trusted-cert failed on line 78 during an earlier run. On every later
+  run, the script deletes the certificate on line 21 and generates a new
+  one. Each run then leaves the old private key orphaned in the keychain.
+  Remove -v from the check. The verification step on line 88 already shows
+  that codesign does not require trust.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → README.md:401-405
+
+  Align the roadmap links with the roadmap headings. ROADMAP.md has no
+  Phase 6 or Phase 10 heading. Its Phase 7–9 headings also differ from the
+  linked fragment identifiers. These links do not take readers to the listed
+  plans. Update the phase numbers and fragments to match ROADMAP.md.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → Sources/RecorderUI/RecordingsLibrary.swift:155-159
+
+  Restrict the new name to one filename component. rename trims whitespace
+  but accepts path separators and parent components. A name such as
+  ../other can move a recording outside its selected library folder, where
+  the next reload no longer lists it. Reject path-bearing names before
+  constructing dest. As per path instructions, “All recorded media,
+  exports, and temporary artifacts must write strictly to local file URLs
+  (~/Movies/Mac Screen Record/ or temporary sandbox directories).”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → Sources/CaptureCore/CaptureSession.swift:104-107
+
+  When the microphone fails, the started encoder is dropped without
+  cancelling the AVAssetWriter.
+
+  At this point encoder.start() has already called startWriting() and
+  created the output file. Setting self.encoder = nil releases the writer
+  while it is still writing. A corrupt, unfinalized file stays in the output
+  folder, and RecordingViewModel.lastRecordingURL points to it. The
+  stream-start failure path at Lines 123-127 has the same problem. Add a
+  cancel() method to VideoEncoder that calls writer.cancelWriting(),
+  which removes the partial file. Call it before you drop the encoder.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Stability & Availability]
+  → Sources/CaptureCore/CaptureSession.swift:79-85
+
+  Data race: state is written from encoder and ScreenCaptureKit threads
+  without synchronization.
+
+  encoder.onError runs on the encoder's private queue, because
+  reportFailureIfNeeded is called from inside queue.async in
+  VideoEncoder.append. stream(_:didStopWithError:) runs on a
+  ScreenCaptureKit delegate queue. Both handlers write self.state.
+  stop(), pause(), resume(), and start() read and write state from
+  the main actor in RecordingViewModel. State contains a String
+  payload. Unsynchronized concurrent writes to state are undefined
+  behavior and can corrupt memory. They can also cause stop() to see the
+  wrong wasFailed value.
+
+  Choose one owner for state. Either:
+  - Run both callbacks on the main actor before they touch state or
+  onFailure, or
+  - Protect state with a lock.
+
+
+  🔒️ Proposed fix (hop to the main actor)
+
+           encoder.onError = { [weak self] error in
+  -            guard let self else { return }
+               let msg = error.localizedDescription
+  -            self.log.error("Encoder reported error: \(msg, privacy: .public)")
+  -            self.state = .failed(msg)
+  -            self.onFailure?(msg)
+  +            DispatchQueue.main.async { [weak self] in
+  +                guard let self else { return }
+  +                self.log.error("Encoder reported error: \(msg, privacy: .public)")
+  +                self.state = .failed(msg)
+  +                self.onFailure?(msg)
+  +            }
+           }
+
+       public func stream(_ stream: SCStream, didStopWithError error: Error) {
+           let msg = error.localizedDescription
+  -        log.error("Stream stopped with error: \(msg, privacy: .public)")
+  -        state = .failed(msg)
+  -        onFailure?(msg)
+  +        DispatchQueue.main.async { [weak self] in
+  +            guard let self else { return }
+  +            self.log.error("Stream stopped with error: \(msg, privacy: .public)")
+  +            self.state = .failed(msg)
+  +            self.onFailure?(msg)
+  +        }
+       }
+
+  Also applies to: 224-227
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → RELEASE_NOTES.md:109
+
+  Use the current bundle path in the release instructions. The build
+  instructions specify dist/Mac Screen Record.app, but this launch command
+  uses dist/Free Mac Screen Recorder.app. The metadata commands on Lines
+  115 and 118 use the same stale path. Update all three commands so the
+  documented launch and version checks target the built app. As per path
+  instructions, “Verify application naming consistently reflects ‘Mac Screen
+  Record’ across bundle identifiers, menu items, window titles, and default
+  output directory paths.”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → Sources/EncoderKit/GIFExporter.swift:88-91
+
+  Fail the export when frame extraction fails. This catch skips a frame but
+  retains its declared frame count and continues to finalization. If
+  finalization succeeds, the caller receives an incomplete animation without
+  an error. Propagate the extraction error and remove the incomplete
+  temporary output. The image destination’s count specifies the number of
+  images to include. (developer.apple.com) As per path instructions, “Audit
+  ... GIF generation memory bounds” and “Handle disk space exhaustion or
+  write errors cleanly.”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → Scripts/setup-stable-signing.sh:2-3
+
+  Update the stale product name in the header comment.
+
+  The header comment still says "Free Mac Screen Recorder". The script
+  creates the "Mac Screen Record Local" identity.
+
+  -# so every rebuild of Free Mac Screen Recorder produces a signature with the
+  +# so every rebuild of Mac Screen Record produces a signature with the
+
+  As per path instructions, "Verify application naming consistently reflects
+  'Mac Screen Record'".
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/AppSettings.swift:39-40
+
+  Clamp the persisted FPS value.
+
+  SettingsView limits FPS to 24...120. init accepts any non-zero stored
+  integer, including negative values or values above 120. Clamp the value
+  when you load it.
+
+
+
+
+
+  Proposed fix
+
+  -        self.defaultFPS = storedFPS == 0 ? 60 : storedFPS
+  +        self.defaultFPS = storedFPS == 0 ? 60 : min(max(storedFPS, 24), 120)
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/RecorderUI/GlobalHotkeys.swift:74-80
+
+  A global ⌘⇧S hotkey takes "Save As…" / "Duplicate" away from every other
+  app.
+
+  RegisterEventHotKey intercepts the key combination system-wide, before
+  other applications receive their menu key equivalents. While Mac Screen
+  Record runs, ⌘⇧S in Pages, Xcode, Preview, and similar apps stops the
+  recording or does nothing, instead of saving. Choose a combination that
+  does not conflict, for example ⌃⌥⌘R / ⌃⌥⌘S. Alternatively, make the
+  hotkeys user-configurable.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/RecorderUI/KeystrokeOverlay.swift:193-206
+
+  After the first fade-out, the keystroke chip stays invisible.
+
+  fadeOut() adds an opacity animation with fillMode = .forwards and
+  isRemovedOnCompletion = false. The animation therefore stays on the
+  layer and holds the presentation opacity at 0. setText sets the model
+  opacity = 1, but the retained "fade" animation overrides that value.
+  Every later keystroke is rendered invisibly. Remove the animation in
+  setText, and set the model value in fadeOut.
+
+
+  🐛 Proposed fix
+
+       func setText(_ s: String) {
+           label.stringValue = s
+  +        contentView?.layer?.removeAnimation(forKey: "fade")
+           contentView?.layer?.opacity = 1
+       }
+  
+       func fadeOut() {
+  +        guard let layer = contentView?.layer else { return }
+           let anim = CABasicAnimation(keyPath: "opacity")
+  -        anim.fromValue = 1
+  +        anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
+           anim.toValue = 0
+           anim.duration = 0.25
+  -        anim.fillMode = .forwards
+  -        anim.isRemovedOnCompletion = false
+  -        contentView?.layer?.add(anim, forKey: "fade")
+  +        layer.opacity = 0
+  +        layer.add(anim, forKey: "fade")
+       }
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Performance & Scalability]
+  → Sources/DeviceKit/DeviceManager.swift:37-42
+
+  The 2.5-second poll republishes the device arrays and writes a log line
+  every time.
+
+  refresh() assigns cameras and microphones on every tick, even when
+  nothing has changed. Each assignment fires objectWillChange. Each tick
+  also emits an info log line, which is about 1,440 lines per hour. Assign
+  and log only when the device list has changed.
+
+
+  ♻️ Proposed refactor
+
+  -        cameras = cameraSession.devices.map { AVDevice($0, kind: .camera) }
+  -        microphones = micSession.devices.map { AVDevice($0, kind: .microphone) }
+  -
+  -        log.info("Devices: \(self.cameras.count) cameras, \(self.microphones.count) microphones")
+  +        let newCams = cameraSession.devices.map { AVDevice($0, kind: .camera) }
+  +        let newMics = micSession.devices.map { AVDevice($0, kind: .microphone) }
+  +        guard newCams.map(\.id) != cameras.map(\.id) || newMics.map(\.id) != microphones.map(\.id) else { return }
+  +        cameras = newCams
+  +        microphones = newMics
+  +        log.info("Devices: \(self.cameras.count) cameras, \(self.microphones.count) microphones")
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → README.md:437-438
+
+  Remove the external update-check proposal. Checking the latest GitHub
+  release tag from the app would require network egress. That conflicts with
+  the stated zero-egress product requirement. Replace this proposed
+  contribution with a local-only workflow. As per path instructions,
+  “Prohibit outbound telemetry, crash reporting, or external update checks.”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/MainView.swift:320
+
+  The output label is hardcoded, but the output folder is now configurable.
+
+  RecordingViewModel now reads settings.outputFolder and follows changes
+  to it. This label always shows ~/Movies/Mac Screen Record/. If a user
+  relocates the folder, the label shows the wrong location. Show
+  vm.settings.outputFolder instead.
+
+
+  🐛 Proposed fix
+
+  -            Text("Saved to ~/Movies/Mac Screen Record/")
+  +            Text("Saved to \((vm.settings.outputFolder.path as NSString).abbreviatingWithTildeInPath)")
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → Sources/RecorderUI/RecordingsLibrary.swift:133-135
+
+  Match sidecar filenames exactly. For clip.mov, this prefix check also
+  matches an independent file such as clip-part2.mov. Deleting clip.mov
+  then trashes that file too; moveToTrash: false removes it permanently.
+  Match the precise artifact filenames and extensions produced by capture
+  instead of every name with a matching prefix.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → README.md:63-65
+
+  Remove the clean-room claim. This text calls the project a clean-room
+  implementation. Line 18 and the acknowledgments describe a hard fork built
+  on upstream work. Describe the project as a fork instead.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/RecorderUI/GlobalHotkeys.swift:45-59
+
+  Each hotkey handler accepts every kEventHotKeyPressed event and does not
+  check the hotkey ID.
+
+  Both GlobalHotkey instances install a handler on
+  GetApplicationEventTarget() for the same event kind. The callback never
+  reads kEventParamDirectObject to compare the pressed EventHotKeyID,
+  and it always returns noErr. Carbon calls the most recently installed
+  handler first, and noErr stops propagation. The stop handler is
+  installed last. As a result, ⌘⇧R and ⌘⇧S both run the stop action, and the
+  start hotkey never works. Store the hotKeyID, compare it in the
+  callback, and return eventNotHandledErr when the IDs do not match.
+
+
+  🐛 Proposed fix
+
+  -        let callback: EventHandlerUPP = { _, _, ptr -> OSStatus in
+  -            guard let ptr else { return noErr }
+  +        self.hotKeyID = hotKeyID
+  +        let callback: EventHandlerUPP = { _, event, ptr -> OSStatus in
+  +            guard let ptr, let event else { return OSStatus(eventNotHandledErr) }
+               let me = Unmanaged<GlobalHotkey>.fromOpaque(ptr).takeUnretainedValue()
+  +            var pressed = EventHotKeyID()
+  +            let err = GetEventParameter(event, EventParamName(kEventParamDirectObject),
+  +                                        EventParamType(typeEventHotKeyID), nil,
+  +                                        MemoryLayout<EventHotKeyID>.size, nil, &pressed)
+  +            guard err == noErr, pressed.signature == me.hotKeyID.signature,
+  +                  pressed.id == me.hotKeyID.id else { return OSStatus(eventNotHandledErr) }
+               DispatchQueue.main.async { me.handler() }
+               return noErr
+           }
+
+  Add private var hotKeyID = EventHotKeyID() to the class.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Maintainability & Code Quality]
+  → README.md:456-457
+
+  State the MIT notice requirement accurately. LICENSE requires copies or
+  substantial portions to retain its copyright and permission notices.
+  “Attribution is appreciated but not required” tells distributors the
+  opposite. State the notice-retention requirement here. As per path
+  instructions, “Ensure upstream attribution to original creator
+  penguinpecker is faithfully preserved across LICENSE, NOTICE.md, and
+  README.md under MIT terms.”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingsListView.swift:125-126
+
+  Present recording-action errors to the user. Both new actions send
+  failures only to the console, so the view appears to complete the action.
+  - Sources/RecorderUI/RecordingsListView.swift#L125-L126: retain the
+  rename state or show an alert when library.rename throws.
+  - Sources/RecorderUI/RecordingsListView.swift#L135-L136: show an alert
+  when GIF export throws instead of only clearing the progress indicator.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingsLibrary.swift:178-180
+
+  Include completed GIFs in library reloads. exportGIF writes a .gif
+  sibling and calls reload(), but reload() filters candidates to mp4,
+  mov, and m4v. The exported GIF never appears in the recording list.
+  Include GIFs in the candidate list, and handle their metadata without
+  assuming a video duration.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → Sources/RecorderUI/MenuBarController.swift:16-22
+
+  Remove the existing status item before you create a new one.
+
+  install creates a new NSStatusItem on every call. If install runs
+  again, the old item stays in the menu bar. Call
+  NSStatusBar.system.removeStatusItem on the existing item, or return
+  early.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → Sources/RecorderUI/RecordingViewModel.swift:220-231
+
+  While a recording is paused, ⌘⇧R starts a second recording and leaves the
+  paused one with no way to stop it.
+
+  The start handler returns early only for .recording. If the status is
+  .paused, the handler calls startRecording(). session.start() then
+  throws "already running", and status becomes .error. The
+  CaptureSession stays .paused, the stream keeps running, and the file
+  is not finalized. toggleRecording() now calls startRecording() again,
+  so the user cannot stop that session. The stop handler also ignores
+  .paused. Restrict start to non-active states, and allow stop in
+  .paused.
+
+
+  🐛 Proposed fix
+
+               start: { [weak self] in Task { @MainActor in
+                   guard let self else { return }
+  -                if case .recording = self.status { return }
+  -                await self.startRecording()
+  +                switch self.status {
+  +                case .recording, .paused, .stopping: return
+  +                default: await self.startRecording()
+  +                }
+               }},
+               stop: { [weak self] in Task { @MainActor in
+                   guard let self else { return }
+  -                if case .recording = self.status { await self.stopRecording() }
+  +                switch self.status {
+  +                case .recording, .paused: await self.stopRecording()
+  +                default: break
+  +                }
+               }}
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → Sources/EncoderKit/GIFExporter.swift:57-59
+
+  Preserve an existing GIF until its replacement succeeds. A second export
+  to the same destination deletes the earlier GIF before frame extraction
+  begins. If extraction or finalization fails, the earlier GIF is lost.
+  Write to a distinct temporary file, then replace the destination only
+  after successful finalization. ImageIO also documents that destination
+  creation overwrites data at its URL. (developer.apple.com) As per path
+  instructions, “Handle disk space exhaustion or write errors cleanly.”
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingsLibrary.swift:150
+
+  Keep the recording listed when deletion fails. The primary-file catch logs
+  an error, but this line removes its entry regardless. If Trash is
+  unavailable or removal is denied, the recording remains on disk and
+  disappears from the current library view. Remove the entry only after the
+  primary-file operation succeeds, or return the error to the caller.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/MenuBarController.swift:69-75
+
+  Treat the paused state as an active recording in the toggle label.
+
+  isRecording is false during .paused. The menu therefore shows "Start
+  Recording" while a paused recording is active. Include .paused in this
+  check.
+
+
+
+
+
+  Proposed fix
+
+  -            if case .recording = vm?.status { return true }
+  -            return false
+  +            switch vm?.status {
+  +            case .recording, .paused: return true
+  +            default: return false
+  +            }
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → README.md:218-219
+
+  Use the current application name and output directory. The quick start
+  sends users to ~/Movies/Free Mac Screen Recorder/ and the former
+  Settings menu. The FAQ specifies ~/Movies/Mac Screen Record/ and the
+  current menu name. Update both quick-start references so users can find
+  their recordings. As per path instructions, “Verify application naming
+  consistently reflects ‘Mac Screen Record’ across bundle identifiers, menu
+  items, window titles, and default output directory paths.”
+
