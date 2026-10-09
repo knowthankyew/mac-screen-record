@@ -12,7 +12,7 @@ import ScreenCaptureKit
 /// Reference: Apple's "Capturing screen content in macOS" sample code
 /// (https://developer.apple.com/documentation/screencapturekit/capturing-screen-content-in-macos)
 /// and WWDC22 session 10156 "Meet ScreenCaptureKit".
-public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
+public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
 
     public enum State: Sendable, Equatable {
         case idle, starting, recording, paused, stopping, finished, failed(String)
@@ -77,11 +77,13 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         // Encoder starts first so we have a place to send frames.
         let encoder = VideoEncoder(settings: settings)
         encoder.onError = { [weak self] error in
-            guard let self else { return }
             let msg = error.localizedDescription
-            self.log.error("Encoder reported error: \(msg, privacy: .public)")
-            self.state = .failed(msg)
-            self.onFailure?(msg)
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.log.error("Encoder reported error: \(msg, privacy: .public)")
+                self.state = .failed(msg)
+                self.onFailure?(msg)
+            }
         }
         do {
             try encoder.start()
@@ -102,6 +104,7 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
                 try mic.start()
                 self.micCapture = mic
             } catch {
+                self.encoder?.cancel()
                 self.encoder = nil
                 state = .failed(error.localizedDescription)
                 throw CaptureError.microphoneFailed(error.localizedDescription)
@@ -121,6 +124,7 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
             log.info("Capture started")
         } catch {
             state = .failed(error.localizedDescription)
+            self.encoder?.cancel()
             self.encoder = nil
             self.stream = nil
             self.micCapture?.stop()
@@ -222,9 +226,12 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 
     public func stream(_ stream: SCStream, didStopWithError error: Error) {
         let msg = error.localizedDescription
-        log.error("Stream stopped with error: \(msg, privacy: .public)")
-        state = .failed(msg)
-        onFailure?(msg)
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.log.error("Stream stopped with error: \(msg, privacy: .public)")
+            self.state = .failed(msg)
+            self.onFailure?(msg)
+        }
     }
 
     // MARK: - Helpers

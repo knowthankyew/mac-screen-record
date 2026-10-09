@@ -48,19 +48,21 @@ public final class VideoEncoder: @unchecked Sendable {
     }
 
     public func pause() {
+        let now = CMClockGetTime(CMClockGetHostTimeClock())
         queue.sync {
             guard !paused else { return }
             paused = true
-            pauseStartPTS = lastSeenPTS
+            pauseStartPTS = now
         }
     }
 
     public func resume() {
+        let now = CMClockGetTime(CMClockGetHostTimeClock())
         queue.sync {
             guard paused, let start = pauseStartPTS else { paused = false; return }
             // Add the gap between when we paused and "now" to the offset so the
             // next frame appears immediately after the last appended one.
-            let gap = CMTimeSubtract(lastSeenPTS, start)
+            let gap = CMTimeSubtract(now, start)
             totalPausedDuration = CMTimeAdd(totalPausedDuration, gap)
             paused = false
             pauseStartPTS = nil
@@ -214,22 +216,69 @@ public final class VideoEncoder: @unchecked Sendable {
             // on a single frame.
             let buffer: CMSampleBuffer
             if self.totalPausedDuration > .zero {
-                let adjustedPTS = CMTimeSubtract(originalPTS, self.totalPausedDuration)
-                let timing = CMSampleTimingInfo(
-                    duration: CMSampleBufferGetDuration(sampleBuffer),
-                    presentationTimeStamp: adjustedPTS,
-                    decodeTimeStamp: .invalid
+                var timingCount: CMItemCount = 0
+                var status = CMSampleBufferGetSampleTimingInfoArray(
+                    sampleBuffer,
+                    entryCount: 0,
+                    arrayToFill: nil,
+                    entriesNeededOut: &timingCount
                 )
-                var rewritten: CMSampleBuffer?
-                let status = CMSampleBufferCreateCopyWithNewTiming(
-                    allocator: kCFAllocatorDefault,
-                    sampleBuffer: sampleBuffer,
-                    sampleTimingEntryCount: 1,
-                    sampleTimingArray: [timing],
-                    sampleBufferOut: &rewritten
-                )
-                guard status == noErr, let rewritten else { return }
-                buffer = rewritten
+                if status == noErr, timingCount > 0 {
+                    var timings = [CMSampleTimingInfo](
+                        repeating: CMSampleTimingInfo(
+                            duration: .invalid,
+                            presentationTimeStamp: .invalid,
+                            decodeTimeStamp: .invalid
+                        ),
+                        count: timingCount
+                    )
+                    status = timings.withUnsafeMutableBufferPointer { timingBuffer in
+                        CMSampleBufferGetSampleTimingInfoArray(
+                            sampleBuffer,
+                            entryCount: timingCount,
+                            arrayToFill: timingBuffer.baseAddress,
+                            entriesNeededOut: &timingCount
+                        )
+                    }
+                    if status == noErr {
+                        for index in timings.indices
+                            where timings[index].presentationTimeStamp.isValid {
+                            timings[index].presentationTimeStamp = CMTimeSubtract(
+                                timings[index].presentationTimeStamp,
+                                self.totalPausedDuration
+                            )
+                        }
+                        var rewritten: CMSampleBuffer?
+                        status = CMSampleBufferCreateCopyWithNewTiming(
+                            allocator: kCFAllocatorDefault,
+                            sampleBuffer: sampleBuffer,
+                            sampleTimingEntryCount: timings.count,
+                            sampleTimingArray: timings,
+                            sampleBufferOut: &rewritten
+                        )
+                        guard status == noErr, let rewritten else { return }
+                        buffer = rewritten
+                    } else {
+                        return
+                    }
+                } else {
+                    let adjustedPTS = CMTimeSubtract(originalPTS, self.totalPausedDuration)
+                    let timing = CMSampleTimingInfo(
+                        duration: CMSampleBufferGetDuration(sampleBuffer),
+                        presentationTimeStamp: adjustedPTS,
+                        decodeTimeStamp: .invalid
+                    )
+                    var rewritten: CMSampleBuffer?
+                    let copyStatus = CMSampleBufferCreateCopyWithNewTiming(
+                        allocator: kCFAllocatorDefault,
+                        sampleBuffer: sampleBuffer,
+                        sampleTimingEntryCount: 1,
+                        sampleTimingArray: [timing],
+                        sampleBufferOut: &rewritten
+                    )
+                    guard copyStatus == noErr, let rewritten else { return }
+                    buffer = rewritten
+                }
             } else {
                 buffer = sampleBuffer
             }
@@ -255,6 +304,20 @@ public final class VideoEncoder: @unchecked Sendable {
 
         log.error("Encoder encountered fatal error: \(error.localizedDescription, privacy: .public)")
         onError?(error)
+    }
+
+    public func cancel() {
+        queue.sync {
+            guard let writer = self.writer else { return }
+            if writer.status == .writing {
+                writer.cancelWriting()
+            }
+            try? FileManager.default.removeItem(at: writer.outputURL)
+            self.writer = nil
+            self.videoInput = nil
+            self.micInput = nil
+            self.systemAudioInput = nil
+        }
     }
 
     public func finish() async throws -> URL {
