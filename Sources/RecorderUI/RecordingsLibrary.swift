@@ -55,8 +55,8 @@ public final class RecordingsLibrary: ObservableObject {
             files = []
             return
         }
-        let videoExts: Set<String> = ["mp4", "mov", "m4v"]
-        let candidates = items.filter { videoExts.contains($0.pathExtension.lowercased()) }
+        let supportedExts: Set<String> = ["mp4", "mov", "m4v", "gif"]
+        let candidates = items.filter { supportedExts.contains($0.pathExtension.lowercased()) }
 
         // Lightweight metadata first so the list renders immediately.
         let initial = candidates.map { url -> RecordingFile in
@@ -76,6 +76,9 @@ public final class RecordingsLibrary: ObservableObject {
         await withTaskGroup(of: (URL, Double?).self) { group in
             for f in initial {
                 group.addTask {
+                    if f.url.pathExtension.lowercased() == "gif" {
+                        return (f.url, nil)
+                    }
                     let asset = AVURLAsset(url: f.url)
                     let dur = try? await asset.load(.duration)
                     return (f.url, dur.map { CMTimeGetSeconds($0) })
@@ -109,6 +112,7 @@ public final class RecordingsLibrary: ObservableObject {
     /// Deletes the primary recording file and any matching sidecars or partial fragments.
     public func deleteArtifacts(at url: URL, moveToTrash: Bool = true) {
         let fm = FileManager.default
+        var primaryDeleted = false
         if fm.fileExists(atPath: url.path) {
             do {
                 if moveToTrash {
@@ -118,9 +122,12 @@ public final class RecordingsLibrary: ObservableObject {
                     try fm.removeItem(at: url)
                     log.info("Permanently deleted recording: \(url.lastPathComponent, privacy: .public)")
                 }
+                primaryDeleted = true
             } catch {
                 log.error("Failed to delete recording at \(url.path): \(error.localizedDescription, privacy: .public)")
             }
+        } else {
+            primaryDeleted = true
         }
 
         // Clean up only known partial fragment and temporary sidecars with exact baseName matching
@@ -130,8 +137,9 @@ public final class RecordingsLibrary: ObservableObject {
         if let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
             for item in contents where item != url {
                 let itemName = item.lastPathComponent
+                let itemBase = item.deletingPathExtension().lastPathComponent
                 let isAssociatedArtifact = knownArtifactSuffixes.contains { suffix in
-                    itemName.hasPrefix(baseName + suffix)
+                    itemBase == (baseName + suffix) || itemName == (baseName + suffix)
                 }
                 guard isAssociatedArtifact else { continue }
                 do {
@@ -147,15 +155,27 @@ public final class RecordingsLibrary: ObservableObject {
             }
         }
 
-        files.removeAll { $0.url == url }
+        if primaryDeleted {
+            files.removeAll { $0.url == url }
+        }
     }
 
     /// Rename a recording on disk (preserves extension) and refresh the entry.
     public func rename(_ file: RecordingFile, to newBaseName: String) throws {
         let trimmed = newBaseName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty,
+              !trimmed.contains("/"),
+              !trimmed.contains("\\"),
+              trimmed != ".",
+              trimmed != ".." else { return }
+
         let ext = file.url.pathExtension
         let parent = file.url.deletingLastPathComponent()
+        let targetName = ext.isEmpty ? trimmed : "\(trimmed).\(ext)"
+        if targetName == file.url.lastPathComponent {
+            return
+        }
+
         var dest = parent.appendingPathComponent(trimmed).appendingPathExtension(ext)
         // If a name collision exists, append a numeric suffix.
         var counter = 2

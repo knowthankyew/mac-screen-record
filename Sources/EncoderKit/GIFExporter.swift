@@ -54,11 +54,14 @@ public enum GIFExporter {
         generator.requestedTimeToleranceAfter = .zero
         generator.maximumSize = CGSize(width: options.maxWidth, height: 0)
 
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
+        let tempDest = destination.deletingLastPathComponent()
+            .appendingPathComponent(".\(UUID().uuidString).tmp.gif")
+        defer {
+            try? FileManager.default.removeItem(at: tempDest)
         }
+
         guard let dest = CGImageDestinationCreateWithURL(
-            destination as CFURL,
+            tempDest as CFURL,
             UTType.gif.identifier as CFString,
             frameCount,
             nil
@@ -86,14 +89,21 @@ public enum GIFExporter {
                 let cg = try await generator.image(at: t).image
                 CGImageDestinationAddImage(dest, cg, frameProps as CFDictionary)
             } catch {
-                // Skip individual frame failures; surface only at finalize.
-                log.warning("Frame \(i, privacy: .public) failed: \(error.localizedDescription, privacy: .public)")
+                log.error("Frame \(i, privacy: .public) extraction failed: \(error.localizedDescription, privacy: .public)")
+                throw error
             }
         }
 
         guard CGImageDestinationFinalize(dest) else {
             throw ExportError.finalizeFailed
         }
+
+        if FileManager.default.fileExists(atPath: destination.path) {
+            _ = try FileManager.default.replaceItemAt(destination, withItemAt: tempDest)
+        } else {
+            try FileManager.default.moveItem(at: tempDest, to: destination)
+        }
+
         log.info("GIF written: \(destination.path, privacy: .public) (\(frameCount, privacy: .public) frames)")
     }
 }
