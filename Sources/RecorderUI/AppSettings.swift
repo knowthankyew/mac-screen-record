@@ -51,13 +51,29 @@ public final class AppSettings: ObservableObject {
             // If stored path points to legacy default and no files are there, migrate to new default
             if storedURL.path == legacyFallback.path && !FileManager.default.fileExists(atPath: storedURL.path) {
                 self.outputFolder = fallback
-            } else {
+            } else if Self.isLocalNonUbiquitous(storedURL) {
                 self.outputFolder = storedURL
+            } else {
+                self.outputFolder = fallback
             }
         } else {
             self.outputFolder = fallback
         }
         try? FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+    }
+
+    public static func isLocalNonUbiquitous(_ url: URL) -> Bool {
+        let checkURL = FileManager.default.fileExists(atPath: url.path) ? url : url.deletingLastPathComponent()
+        guard let values = try? checkURL.resourceValues(forKeys: [.volumeIsLocalKey, .isUbiquitousItemKey]) else {
+            return false
+        }
+        let isLocal = values.volumeIsLocal ?? false
+        let isUbiquitous = values.isUbiquitousItem ?? false
+        let path = url.path
+        if path.contains("/Library/Mobile Documents/") || path.contains("/Library/CloudStorage/") {
+            return false
+        }
+        return isLocal && !isUbiquitous
     }
 
     public func pickOutputFolder() {
@@ -67,10 +83,14 @@ public final class AppSettings: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.directoryURL = outputFolder
-        panel.message = "Choose where Mac Screen Record saves records"
+        panel.message = "Choose where Mac Screen Record saves records (local drive required)"
         panel.prompt = "Choose"
         if panel.runModal() == .OK, let url = panel.url {
-            outputFolder = url
+            if Self.isLocalNonUbiquitous(url) {
+                outputFolder = url
+            } else {
+                NSSound.beep()
+            }
         }
     }
 }

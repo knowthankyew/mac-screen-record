@@ -1,0 +1,384 @@
+Notice: Detected antigravity environment. Use `coderabbit review --agent` for structured agent-friendly output.
+╔═══════════════════════════════════════════╗
+║                                           ║
+║   New update available! 0.8.2 -> 0.9.0    ║
+║          Run: coderabbit update           ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+
+Connecting to CodeRabbit... 1s elapsed
+Preparing review... 4s elapsed
+────────────────────────────────────────
+CodeRabbit Review
+
+Diff      : tracked changes
+Compare   : main → main
+Directory : mac-screen-record
+────────────────────────────────────────
+
+(\(\
+(• .•)  My code review levels are over 9000!
+
+Summarizing changes... 5s elapsed
+Summarizing changes... 1m 01s elapsed - still working
+Writing review comments... 1m 13s elapsed - still working
+Writing review comments... 2m 01s elapsed - still working
+Writing review comments... 3m 01s elapsed - still working
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:24Scripts/generate-sbom.py:24]8;;
+
+  Do not reuse one serial number for every build of a version.
+
+  Two builds with the same version and arch receive the same
+  serialNumber and BOM version 1, even if their contents differ. A
+  consumer cannot distinguish those BOM identities. Give each generated BOM
+  a distinct identity, or omit the optional serial number if the build must
+  produce identical SBOM bytes from identical inputs. CycloneDX calls for a
+  unique serial number per generated BOM. (cyclonedx.org)
+
+  As per path instructions, Scripts/ requires “reproducible compilation”
+  and “CycloneDX SBOM generation.”
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Security & Privacy] | 🛡️ Analyzed with Security Review
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:63Scripts/setup-stable-signing.sh:63-66]8;;
+
+  Security: Security Misconfiguration (CWE-732)
+  Reachability: External · Exploitability: Moderate
+
+  Restrict access to the imported signing key.
+
+  After this script runs, -A lets any application in the user's unlocked
+  login session use the imported private key without an access prompt. An
+  untrusted local application can use that key to sign code with the local
+  identity. Remove -A and grant signing access only to the required tool.
+  The login keychain and deletion of the temporary PKCS#12 file do not
+  restrict access to the imported key. Apple identifies -A as
+  unrestricted, insecure access. (github.com)
+
+  As per path instructions, Scripts/ requires “stable codesigning”; keep
+  that identity restricted to the signing workflow.
+
+Writing review comments... 4m 08s elapsed - still working - 2 findings so far
+
+────────────────────────────────────────────────────────────────────────
+  major [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:52Scripts/setup-stable-signing.sh:52-57]8;;
+
+  Use an openssl implementation that supports pkcs12 -legacy.
+
+  When PATH resolves openssl to LibreSSL, this command rejects
+  -legacy. The PKCS#12 export then fails before the signing identity can
+  be imported. Resolve openssl explicitly to OpenSSL 3, or use options
+  supported by the selected implementation while preserving the required
+  PKCS#12 compatibility. Validate command -v openssl, openssl version,
+  and openssl pkcs12 -help on supported Macs.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:143README.md:143]8;;
+
+  Refresh or remove the competitor prices.
+
+  Line 143 lists CleanShot X at $29, ScreenFlow at $169, and Camtasia at
+  $300. The vendors’ current pages list CleanShot X at $35, ScreenFlow at
+  $199, and Camtasia annual plans starting at $39. Update the amounts and
+  billing models, or remove the prices to avoid misleading readers.
+  (cleanshot.com)
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MenuBarController.swift:26Sources/RecorderUI/MenuBarController.swift:26]8;;
+
+  Rebuild the menu when it opens, not only when status changes.
+
+  The menu is rebuilt only on vm.$status emissions. The webcam and
+  click-highlight titles read vm.webcamEnabled and
+  vm.clickHighlightsEnabled. Those values often change while status
+  stays the same, for example from the main window toggles. The menu then
+  shows the wrong action label, such as "Show Webcam Overlay" while the
+  overlay is visible.
+
+  Set the controller as the menu's NSMenuDelegate and rebuild the items in
+  menuNeedsUpdate(_:).
+
+
+
+
+
+  Also applies to: 55-55
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/VideoEncoder.swift:50Sources/EncoderKit/VideoEncoder.swift:50-70]8;;
+
+  Drop paused samples by timestamp, not by arrival time.
+
+  pause() and resume() change paused when the encoder queue reaches
+  them. SCK and AVCaptureSession deliver samples with latency, and
+  queueDepth = 6 adds more. Two cases break the timeline:
+
+  - Samples captured during the pause but delivered after resume(). The
+  encoder appends them with PTS - totalPausedDuration. That result is
+  earlier than the last appended sample, around pauseStartPTS.
+  - Samples with PTS > pauseStartPTS that were queued before pause()
+  ran. The encoder appends them unadjusted. Then they overlap the first
+  frames after resume.
+
+  Both cases append non-monotonic timestamps to videoInput and the audio
+  inputs. With AVVideoAllowFrameReorderingKey: false, the append fails and
+  the writer can enter .failed. That fires onError and starts the
+  salvage path after an ordinary pause and resume.
+
+  Store the resume host time. Drop any sample whose originalPTS falls in
+  [pauseStart, resumeTime). As a second guard, track the last appended PTS
+  for each input and drop samples that are not later. lastSeenPTS is
+  written but never read, so you can remove it.
+
+
+  🐛 Sketch
+
+  -    private var lastSeenPTS: CMTime = .zero
+  +    private var pauseWindows: [(start: CMTime, end: CMTime)] = []
+  +    private var lastAppendedPTS: [SampleKind: CMTime] = [:]
+  @@ resume()
+  -            totalPausedDuration = CMTimeAdd(totalPausedDuration, gap)
+  +            totalPausedDuration = CMTimeAdd(totalPausedDuration, gap)
+  +            pauseWindows.append((start, now))
+  @@ append
+  -            self.lastSeenPTS = originalPTS
+  -            if self.paused { return }
+  +            if self.paused, let s = self.pauseStartPTS, originalPTS >= s { return }
+  +            if self.pauseWindows.contains(where: { originalPTS >= $0.start && originalPTS < $0.end }) { return }
+  +            // Use only the offset from pause windows that end before originalPTS.
+
+  Before input.append(buffer), drop the sample if its adjusted PTS is not
+  greater than lastAppendedPTS[kind]. After a successful append, update
+  lastAppendedPTS[kind].
+
+
+  As per path instructions: "Prevent buffer drops, audio/video
+  desynchronization, or deadlock between video and audio append queues."
+
+
+
+
+
+
+  Also applies to: 181-188
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:116Sources/RecorderUI/Presets.swift:116-138]8;;
+
+  Make the enum fallback tolerant so one bad value cannot wipe all presets.
+
+  decodeIfPresent(WebcamCorner.self, …) throws DataCorrupted when the
+  stored string is not a known case. One example is a downgrade after a new
+  WebcamBackgroundMode case was added. The throw happens before the
+  raw-string fallback runs. It aborts the decode of the whole [Preset]
+  array. load() swallows the error with try?, falls back to the legacy
+  key or to an empty list, and the next persist() overwrites the current
+  key. All presets are lost.
+
+  Use try? on the typed decode so the fallback works as the comment says.
+
+
+  🐛 Proposed fix
+
+  -        if let corner = try container.decodeIfPresent(WebcamCorner.self, forKey: .webcamCorner) {
+  +        if let corner = try? container.decodeIfPresent(WebcamCorner.self, forKey: .webcamCorner) {
+               self.webcamCorner = corner
+  -        } else if let raw = try container.decodeIfPresent(String.self, forKey: .webcamCornerRaw), let corner = WebcamCorner(rawValue: raw) {
+  +        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamCornerRaw), let corner = WebcamCorner(rawValue: raw) {
+
+  Apply the same change to webcamSize and webcamBackgroundMode.
+
+
+
+
+
+
+  Also applies to: 172-179
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:547Sources/RecorderUI/RecordingViewModel.swift:547-549]8;;
+
+  Shift startedAt on resume so the timer leaves out paused time.
+
+  On resume, status returns to .recording(startedAt: started).
+  RecordingTimerView and statusLine then count the paused interval. The
+  encoder removes that interval from the file, so the timer no longer
+  matches the file length.
+
+
+  🐛 Proposed fix
+
+  -        case .paused(let started, _):
+  +        case .paused(let started, let pausedAt):
+               session.resume()
+  -            status = .recording(startedAt: started)
+  +            status = .recording(startedAt: started.addingTimeInterval(Date().timeIntervalSince(pausedAt)))
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Security & Privacy] | 🛡️ Analyzed with Security Review
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/AppSettings.swift:63Sources/RecorderUI/AppSettings.swift:63-75]8;;
+
+  Security: Security Misconfiguration (CWE-200)
+  Reachability: External · Exploitability: Difficult
+
+  Reject output folders on network or cloud-synced volumes.
+
+  pickOutputFolder() accepts any directory from NSOpenPanel. A user can
+  pick a mounted SMB/AFP/NFS share or an iCloud Drive folder. VideoEncoder
+  then streams each recording to that URL, which sends media off the Mac.
+  The stored path read at Lines 48-56 has the same gap. SettingsView still
+  tells the user "No video ... ever leaves this Mac", so the UI claim is
+  false in that case.
+
+  Check volumeIsLocal and isUbiquitousItem before you accept a URL. If
+  either check fails, fall back to the default folder.
+
+
+  🔒️ Proposed guard
+
+  +    private static func isLocalNonUbiquitous(_ url: URL) -> Bool {
+  +        guard let v = try? url.resourceValues(forKeys: [.volumeIsLocalKey, .isUbiquitousItemKey]) else { return false }
+  +        return (v.volumeIsLocal ?? false) && !(v.isUbiquitousItem ?? false)
+  +    }
+  +
+       public func pickOutputFolder() {
+  @@
+  -        if panel.runModal() == .OK, let url = panel.url {
+  +        if panel.runModal() == .OK, let url = panel.url, Self.isLocalNonUbiquitous(url) {
+               outputFolder = url
+           }
+
+  Apply the same check to storedURL in init().
+
+
+  As per path instructions: "All recorded media, exports, and temporary
+  artifacts must write strictly to local file URLs (`~/Movies/Mac Screen
+  Record/` or temporary sandbox directories)."
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:248Sources/RecorderUI/RecordingViewModel.swift:248-265]8;;
+
+  Do not overwrite an active recording status with webcam errors.
+
+  toggleWebcam() sets status = .error(...) when it finds no camera or
+  webcam.show throws. These triggers can run while status is
+  .recording or .paused: the header Facecam button, the menu bar item,
+  apply(_:), and triggerFacecamToggleAction(). After the overwrite:
+
+  - CaptureSession keeps recording.
+  - The control bar shows "Start Recording".
+  - The stop hotkey and handleRecordingFailure ignore the .error state.
+  - toggleRecording calls startRecording, and session.start throws.
+
+  The user has no path to stop or salvage the recording.
+
+  Report overlay errors through a separate published property. As a minimum,
+  keep status unchanged while a recording is active.
+
+
+  🐛 Proposed fix
+
+  +    @Published public var overlayError: String?
+  +
+       public func toggleWebcam() async {
+  @@
+           guard let id = selectedWebcamDeviceID ?? devices.cameras.first?.id else {
+  -            status = .error("No camera available.")
+  +            overlayError = "No camera available."
+               return
+           }
+  @@
+           } catch {
+  -            status = .error("Couldn't start webcam: \(error.localizedDescription)")
+  +            overlayError = "Couldn't start webcam: \(error.localizedDescription)"
+           }
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:150Sources/CaptureCore/CaptureSession.swift:150-158]8;;
+
+  Return the session to a state that start accepts after stop or failure.
+
+  start requires case .idle = state (Line 65). No code path sets .idle
+  again:
+
+  - A successful stop() leaves .finished.
+  - A salvaged stop leaves .failed("Partial recording saved").
+  - A failed finish leaves .failed(...).
+  - Encoder, microphone, and stream start failures leave .failed(...).
+
+  RecordingViewModel holds a single CaptureSession instance. Every later
+  startRecording() therefore throws "CaptureSession is already running"
+  until the app relaunches. That blocks the main workflow after the first
+  recording or any failure.
+
+  Accept the terminal states in start, or reset to .idle once stop or
+  failure cleanup has completed.
+
+
+  🐛 Proposed fix (in start)
+
+  -        guard case .idle = state else {
+  -            throw CaptureError.streamFailed("CaptureSession is already running")
+  -        }
+  +        switch state {
+  +        case .idle, .finished, .failed: break
+  +        default: throw CaptureError.streamFailed("CaptureSession is already running")
+  +        }
+
+  Also applies to: 172-183
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/ROADMAP.md:44ROADMAP.md:44]8;;
+
+  Reconcile the shipped-version history.
+
+  ROADMAP.md marks v0.3.1–v0.3.5 as shipped, but RELEASE_NOTES.md
+  documents only v0.3.0. Add release-note entries for the shipped
+  versions, or change the roadmap range to match the documented releases.
+
+
+────────────────────────────────────────
+Review complete
+Review completed
+12 findings ✔
+
+Major    7
+Minor    5
+
+43 files reviewed:
+  - .coderabbit.yaml
+  - .gitignore
+  - LICENSE
+  - NOTICE.md
+  - Package.swift
+  - README.md
+  - RELEASE_NOTES.md
+  - ROADMAP.md
+  - Resources/Info.plist
+  - Resources/MacScreenRecord.entitlements
+  ... and 33 more files
+────────────────────────────────────────
+
+Print all AI prompts: coderabbit review --show-prompts

@@ -62,7 +62,10 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
         settings: RecordingSettings,
         exceptingWindowIDs: [CGWindowID] = []
     ) async throws {
-        guard case .idle = state else {
+        switch state {
+        case .idle, .finished, .failed:
+            break
+        default:
             throw CaptureError.streamFailed("CaptureSession is already running")
         }
         state = .starting
@@ -147,12 +150,9 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
 
     @discardableResult
     public func stop() async throws -> URL {
-        let wasFailed: Bool
         switch state {
-        case .recording, .paused:
-            wasFailed = false
-        case .failed:
-            wasFailed = true
+        case .recording, .paused, .failed:
+            break
         default:
             throw CaptureError.streamFailed("Not recording")
         }
@@ -173,12 +173,12 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
             let url = try await encoder.finish()
             self.encoder = nil
             self.stream = nil
-            state = wasFailed ? .failed("Partial recording saved") : .finished
+            state = .idle
             return url
         } catch {
             self.encoder = nil
             self.stream = nil
-            state = .failed(error.localizedDescription)
+            state = .idle
             throw error
         }
     }

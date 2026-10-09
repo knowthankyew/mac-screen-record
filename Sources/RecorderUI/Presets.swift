@@ -113,25 +113,25 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.keystrokesEnabled = try container.decodeIfPresent(Bool.self, forKey: .keystrokesEnabled) ?? false
 
         // Typed enums with fallback to legacy raw strings
-        if let corner = try container.decodeIfPresent(WebcamCorner.self, forKey: .webcamCorner) {
+        if let corner = try? container.decodeIfPresent(WebcamCorner.self, forKey: .webcamCorner) {
             self.webcamCorner = corner
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .webcamCornerRaw), let corner = WebcamCorner(rawValue: raw) {
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamCornerRaw), let corner = WebcamCorner(rawValue: raw) {
             self.webcamCorner = corner
         } else {
             self.webcamCorner = nil
         }
 
-        if let size = try container.decodeIfPresent(WebcamSize.self, forKey: .webcamSize) {
+        if let size = try? container.decodeIfPresent(WebcamSize.self, forKey: .webcamSize) {
             self.webcamSize = size
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .webcamSizeRaw), let size = WebcamSize(rawValue: raw) {
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamSizeRaw), let size = WebcamSize(rawValue: raw) {
             self.webcamSize = size
         } else {
             self.webcamSize = nil
         }
 
-        if let mode = try container.decodeIfPresent(WebcamBackgroundMode.self, forKey: .webcamBackgroundMode) {
+        if let mode = try? container.decodeIfPresent(WebcamBackgroundMode.self, forKey: .webcamBackgroundMode) {
             self.webcamBackgroundMode = mode
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .webcamBackgroundModeRaw), let mode = WebcamBackgroundMode(rawValue: raw) {
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamBackgroundModeRaw), let mode = WebcamBackgroundMode(rawValue: raw) {
             self.webcamBackgroundMode = mode
         } else {
             self.webcamBackgroundMode = nil

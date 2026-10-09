@@ -5,7 +5,7 @@ import OSLog
 /// A menu-bar status item that shows recording state and exposes quick
 /// actions (start/stop, show window, toggle webcam, toggle clicks, quit).
 @MainActor
-public final class MenuBarController: NSObject {
+public final class MenuBarController: NSObject, NSMenuDelegate {
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "MenuBar")
     private var statusItem: NSStatusItem?
     private weak var vm: RecordingViewModel?
@@ -55,10 +55,21 @@ public final class MenuBarController: NSObject {
         item.menu = buildMenu()
     }
 
-    // MARK: - Menu
+    // MARK: - Menu & NSMenuDelegate
+
+    public func menuNeedsUpdate(_ menu: NSMenu) {
+        populateMenu(menu)
+    }
 
     private func buildMenu() -> NSMenu {
         let menu = NSMenu()
+        menu.delegate = self
+        populateMenu(menu)
+        return menu
+    }
+
+    private func populateMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
 
         if case .error(let msg) = vm?.status {
             let errorItem = NSMenuItem(
@@ -117,7 +128,6 @@ public final class MenuBarController: NSObject {
 
         let quit = NSMenuItem(title: "Quit Mac Screen Record", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
-        return menu
     }
 
     // MARK: - Actions

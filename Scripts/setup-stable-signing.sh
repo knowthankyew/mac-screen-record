@@ -47,9 +47,12 @@ openssl req -x509 -newkey rsa:2048 -nodes \
     -config openssl.cnf \
     >/dev/null 2>&1
 
-# -legacy: emit RC2/3DES PKCS#12 that macOS keychain accepts. OpenSSL 3.x
-# defaults to AES which `security import` cannot read.
-openssl pkcs12 -export -legacy \
+# -legacy: emit RC2/3DES PKCS#12 if supported by OpenSSL 3.x (macOS LibreSSL does not need or accept -legacy).
+LEGACY_FLAG=()
+if openssl pkcs12 -help 2>&1 | grep -q -- "-legacy"; then
+    LEGACY_FLAG=("-legacy")
+fi
+openssl pkcs12 -export "${LEGACY_FLAG[@]}" \
     -out cert.p12 \
     -inkey key.pem -in cert.pem \
     -name "$CERT_NAME" \
@@ -57,13 +60,11 @@ openssl pkcs12 -export -legacy \
     >/dev/null 2>&1
 
 echo "==> Importing private key + cert into login keychain..."
-# -A: allow any application to use without prompting (acceptable for a
-#  local-only signing identity). Without this, codesign would hit the
-#  Keychain Access ACL prompt every build.
+# Restrict key access specifically to /usr/bin/codesign (avoids insecure -A)
 security import cert.p12 \
     -k "$KEYCHAIN" \
     -P "$P12_PASSWORD" \
-    -A \
+    -T /usr/bin/codesign \
     >/dev/null
 
 echo "==> Adding user-domain trust setting for code signing..."

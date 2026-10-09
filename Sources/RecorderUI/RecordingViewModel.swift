@@ -55,6 +55,7 @@ public final class RecordingViewModel: ObservableObject {
 
     @Published public private(set) var status: Status = .idle
     @Published public private(set) var lastRecordingURL: URL?
+    @Published public var overlayError: String? = nil
 
     private var outputFolder: URL
     public let devices: DeviceManager
@@ -252,7 +253,11 @@ public final class RecordingViewModel: ObservableObject {
             return
         }
         guard let id = selectedWebcamDeviceID ?? devices.cameras.first?.id else {
-            status = .error("No camera available.")
+            let msg = "No camera available."
+            self.overlayError = msg
+            if case .recording = status {} else if case .paused = status {} else {
+                status = .error(msg)
+            }
             return
         }
         do {
@@ -260,7 +265,11 @@ public final class RecordingViewModel: ObservableObject {
             selectedWebcamDeviceID = id
             webcamEnabled = true
         } catch {
-            status = .error("Couldn't start webcam: \(error.localizedDescription)")
+            let msg = "Couldn't start webcam: \(error.localizedDescription)"
+            self.overlayError = msg
+            if case .recording = status {} else if case .paused = status {} else {
+                status = .error(msg)
+            }
         }
     }
 
@@ -544,9 +553,10 @@ public final class RecordingViewModel: ObservableObject {
         case .recording(let started):
             session.pause()
             status = .paused(startedAt: started, pausedAt: Date())
-        case .paused(let started, _):
+        case .paused(let started, let pausedAt):
             session.resume()
-            status = .recording(startedAt: started)
+            let pauseDuration = Date().timeIntervalSince(pausedAt)
+            status = .recording(startedAt: started.addingTimeInterval(pauseDuration))
         default:
             break
         }

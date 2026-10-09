@@ -140,7 +140,7 @@ and is **fully open-source under MIT**, this is for you.
 
 |                              | Mac Screen Record        | QuickTime | Loom | CleanShot X | ScreenFlow | Camtasia |
 |------------------------------|:------------------------:|:---------:|:----:|:-----------:|:----------:|:--------:|
-| Free                         | ✅ MIT                   | ✅        | ⚠️ Limited free tier | ❌ \$29 one-off | ❌ \$169 | ❌ \$300 |
+| Free                         | ✅ MIT                   | ✅        | ⚠️ Limited free tier | ❌ Paid     | ❌ Paid    | ❌ Paid   |
 | Open source                  | ✅                       | ❌        | ❌   | ❌          | ❌         | ❌       |
 | No watermark                 | ✅                       | ✅        | ⚠️ Free tier limits  | ✅          | ✅         | ✅       |
 | System audio (mic + speakers)| ✅                       | ⚠️ Mic only on stock | ✅ | ✅ | ✅ | ✅ |

@@ -37,7 +37,8 @@ public final class VideoEncoder: @unchecked Sendable {
     private var paused = false
     private var pauseStartPTS: CMTime?
     private var totalPausedDuration: CMTime = .zero
-    private var lastSeenPTS: CMTime = .zero
+    private var pauseWindows: [(start: CMTime, end: CMTime)] = []
+    private var lastAppendedPTS: [SampleKind: CMTime] = [:]
 
     public init(settings: RecordingSettings) {
         self.settings = settings
@@ -64,6 +65,7 @@ public final class VideoEncoder: @unchecked Sendable {
             // next frame appears immediately after the last appended one.
             let gap = CMTimeSubtract(now, start)
             totalPausedDuration = CMTimeAdd(totalPausedDuration, gap)
+            pauseWindows.append((start: start, end: now))
             paused = false
             pauseStartPTS = nil
         }
@@ -161,7 +163,7 @@ public final class VideoEncoder: @unchecked Sendable {
         log.info("Encoder started: \(url.path, privacy: .public)")
     }
 
-    public enum SampleKind: Sendable {
+    public enum SampleKind: Hashable, Sendable {
         case video
         case microphone
         case systemAudio
@@ -181,11 +183,13 @@ public final class VideoEncoder: @unchecked Sendable {
             let originalPTS = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
             guard originalPTS.isValid else { return }
 
-            // Track the most-recent PTS we've seen even when paused so we can
-            // measure the gap correctly on resume.
-            self.lastSeenPTS = originalPTS
-
-            if self.paused { return }
+            // Drop samples captured while paused or during a completed pause window
+            if self.paused, let start = self.pauseStartPTS, originalPTS >= start {
+                return
+            }
+            if self.pauseWindows.contains(where: { originalPTS >= $0.start && originalPTS < $0.end }) {
+                return
+            }
 
             // Start the session at the timestamp of the first video frame —
             // this is what ScreenCaptureKit recommends to keep video/audio
@@ -211,11 +215,18 @@ public final class VideoEncoder: @unchecked Sendable {
             }
             guard let input, input.isReadyForMoreMediaData else { return }
 
-            // Rewrite PTS to subtract any time the user spent paused so the
-            // pause interval is excised from the output rather than freezing
-            // on a single frame.
+            // Calculate pause offset applicable to this sample
+            let offset: CMTime = {
+                if self.pauseWindows.isEmpty { return self.totalPausedDuration }
+                return self.pauseWindows
+                    .filter { $0.end <= originalPTS }
+                    .reduce(CMTime.zero) { CMTimeAdd($0, CMTimeSubtract($1.end, $1.start)) }
+            }()
+
+            // Rewrite PTS to subtract any time spent paused before this sample
             let buffer: CMSampleBuffer
-            if self.totalPausedDuration > .zero {
+            var finalPTS = originalPTS
+            if offset > .zero {
                 var timingCount: CMItemCount = 0
                 var status = CMSampleBufferGetSampleTimingInfoArray(
                     sampleBuffer,
@@ -245,8 +256,11 @@ public final class VideoEncoder: @unchecked Sendable {
                             where timings[index].presentationTimeStamp.isValid {
                             timings[index].presentationTimeStamp = CMTimeSubtract(
                                 timings[index].presentationTimeStamp,
-                                self.totalPausedDuration
+                                offset
                             )
+                        }
+                        if let firstValid = timings.first(where: { $0.presentationTimeStamp.isValid }) {
+                            finalPTS = firstValid.presentationTimeStamp
                         }
                         var rewritten: CMSampleBuffer?
                         status = CMSampleBufferCreateCopyWithNewTiming(
@@ -262,7 +276,8 @@ public final class VideoEncoder: @unchecked Sendable {
                         return
                     }
                 } else {
-                    let adjustedPTS = CMTimeSubtract(originalPTS, self.totalPausedDuration)
+                    let adjustedPTS = CMTimeSubtract(originalPTS, offset)
+                    finalPTS = adjustedPTS
                     let timing = CMSampleTimingInfo(
                         duration: CMSampleBufferGetDuration(sampleBuffer),
                         presentationTimeStamp: adjustedPTS,
@@ -283,12 +298,17 @@ public final class VideoEncoder: @unchecked Sendable {
                 buffer = sampleBuffer
             }
 
+            // Enforce strictly monotonic presentation timestamps per input track
+            if let lastPTS = self.lastAppendedPTS[kind], finalPTS <= lastPTS {
+                return
+            }
+
             let success = input.append(buffer)
-            if !success || writer.status == .failed {
+            if success {
+                self.lastAppendedPTS[kind] = finalPTS
+            } else if writer.status == .failed {
                 self.log.error("Failed to append buffer of kind \(String(describing: kind)): writer status \(writer.status.rawValue)")
-                if writer.status == .failed {
-                    self.reportFailureIfNeeded(writer.error ?? EncoderError.finishFailed("Asset writer failed during append"))
-                }
+                self.reportFailureIfNeeded(writer.error ?? EncoderError.finishFailed("Asset writer failed during append"))
             }
         }
     }

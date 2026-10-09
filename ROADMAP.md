@@ -30,7 +30,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 
 ---
 
-## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.3.5)
+## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.3.0)
 
 - ✅ **Core Hardware Capture & Encoding (v0.1.0)**:
   - Display, single-window, specific application, and drag-to-select region capture via ScreenCaptureKit.
@@ -41,7 +41,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Reusable capture presets with automated startup default loading and migration fallback.
   - Native Intel (`x86_64`) and Apple Silicon (`arm64`) architecture parity.
   - Stable self-signed local identity harness preserving macOS TCC permissions across builds.
-- ✅ **Neural Engine Presenter PiP & Security Guards (v0.3.0 - v0.3.5)**:
+- ✅ **Neural Engine Presenter PiP & Security Guards (v0.3.0)**:
   - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
   - Zero-egress background blur and virtual backdrops.
   - Keystroke overlay with active password masking via `IsSecureEventInputEnabled()`.
