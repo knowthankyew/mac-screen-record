@@ -87,6 +87,7 @@ public final class WebcamOverlayController: ObservableObject {
     private let captureSession = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
     private let videoQueue = DispatchQueue(label: "com.macscreenrecord.webcam.video", qos: .userInteractive)
+    private let sessionQueue = DispatchQueue(label: "com.macscreenrecord.webcam.session", qos: .userInitiated)
     private let videoProcessor = WebcamVideoProcessor()
 
     private var window: WebcamPanel?
@@ -114,7 +115,8 @@ public final class WebcamOverlayController: ObservableObject {
             self.window = panel
         }
         currentDeviceID = deviceID
-        captureSession.startRunning()
+        let session = captureSession
+        sessionQueue.async { session.startRunning() }
         reposition()
         window?.orderFront(nil)
         isVisible = true
@@ -122,7 +124,8 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     public func hide() {
-        captureSession.stopRunning()
+        let session = captureSession
+        sessionQueue.async { session.stopRunning() }
         window?.orderOut(nil)
         isVisible = false
     }

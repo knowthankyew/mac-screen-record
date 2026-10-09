@@ -59,8 +59,12 @@ public final class DeviceManager: ObservableObject {
             position: .unspecified
         )
 
-        cameras = cameraSession.devices.map { AVDevice($0, kind: .camera) }
-        microphones = micSession.devices.map { AVDevice($0, kind: .microphone) }
+        let newCams = cameraSession.devices.map { AVDevice($0, kind: .camera) }
+        let newMics = micSession.devices.map { AVDevice($0, kind: .microphone) }
+        guard newCams.map(\.id) != cameras.map(\.id) || newMics.map(\.id) != microphones.map(\.id) else { return }
+
+        cameras = newCams
+        microphones = newMics
 
         log.info("Devices: \(self.cameras.count) cameras, \(self.microphones.count) microphones")
     }
