@@ -1,0 +1,88 @@
+# CodeRabbit Configuration for Mac Screen Record
+# Targeted Scope: Full Repository Deep Audit & Zero-Egress Invariants
+
+language: "en-US"
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  sequence_diagrams: true
+  auto_review:
+    enabled: true
+    drafts: true
+
+  # Filter out build artifacts, dist bundles, media outputs, and SBOM JSON
+  path_filters:
+    - "!**/*.mp4"
+    - "!**/*.mov"
+    - "!**/*.gif"
+    - "!**/*.zip"
+    - "!**/*.app/**"
+    - "!dist/**"
+    - "!.build/**"
+    - "!build/**"
+    - "!DerivedData/**"
+    - "!bom.json"
+
+  path_instructions:
+    - path: "**/*"
+      instructions: |
+        You are performing an exhaustive architectural, security, and concurrency audit for "Mac Screen Record", a native macOS screen recording application (forked from Free Mac Screen Recorder) running under strict zero-egress, local-only, air-gapped invariants.
+
+        Evaluate all code against these non-negotiable invariants:
+
+        1. ZERO-EGRESS & NETWORK PROHIBITION (CRITICAL):
+           - In all application and library code (`Sources/**`), strictly prohibit any network communication.
+           - Prohibit imports of `Network`, `CFNetwork`, `WebKit`, `URLSession`, and BSD sockets (`sys/socket.h`).
+           - All recorded media, exports, and temporary artifacts must write strictly to local file URLs (`~/Movies/Mac Screen Record/` or temporary sandbox directories).
+           - Prohibit outbound telemetry, crash reporting, or external update checks.
+
+        2. TCC PRIVACY & SENSITIVE INPUT SANITIZATION:
+           - In `KeystrokeOverlay.swift` (and any event tap monitoring), actively verify `IsSecureEventInputEnabled()` before capturing, processing, or rendering keystrokes. Keystroke overlays must immediately suppress capture when password or secure input fields are active to prevent credential harvesting on screen recording frames.
+           - Ensure screen recording and microphone permissions (`CGPreflightScreenCaptureAccess`, `AVCaptureDevice.authorizationStatus`) handle denials gracefully without fatal assertions or unhandled crashes.
+
+        3. SCREENCAPTUREKIT & MEDIA STREAM LIFECYCLE:
+           - In `CaptureSession.swift`, audit the `SCStream` and `SCStreamOutput` lifecycle. Ensure streams are cleanly stopped, handlers detached, and intermediate sample buffers released.
+           - Ensure `CMSampleBuffer` retain/release cycles do not leak memory during sustained high-framerate (60fps 4K) capture.
+           - Verify that user cancellations or recording failures salvage partially written files without leaving corrupted locks or dangling descriptors.
+
+        4. ENCODING & EXPORT INTEGRITY:
+           - In `VideoEncoder.swift` and `GIFExporter.swift`, audit `AVAssetWriter` input draining (`isReadyForMoreMediaData`), queue synchronization, and finishWriting completion handlers.
+           - Prevent buffer drops, audio/video desynchronization, or deadlock between video and audio append queues.
+           - Handle disk space exhaustion or write errors cleanly.
+
+        5. WEBCAM, VISION & METAL RENDERING PIPELINE:
+           - In `WebcamVideoProcessor.swift`, `WebcamMetalView.swift`, and `WebcamEffects.swift`, audit Metal texture recycling, `CIContext` reuse, and Vision background removal (`VNGeneratePersonSegmentationRequest`).
+           - Ensure GPU command buffers are committed cleanly without thread contention or memory exhaustion on Apple Silicon unified memory.
+
+        6. SWIFT CONCURRENCY & THREAD SAFETY:
+           - Audit actor isolation (`@MainActor`) across `RecordingViewModel`, `CaptureSession`, `DeviceManager`, and `MenuBarController`.
+           - Ensure UI updates are strictly dispatched to the main thread, and audio/video frame processing is safely isolated on dedicated background queues without deadlocks.
+
+        7. ACCREDITATION & HARD FORK INTEGRITY:
+           - Ensure upstream attribution to original creator penguinpecker is faithfully preserved across `LICENSE`, `NOTICE.md`, and `README.md` under MIT terms.
+           - Verify application naming consistently reflects "Mac Screen Record" across bundle identifiers, menu items, window titles, and default output directory paths.
+
+    - path: "Sources/CaptureCore/**"
+      instructions: "Audit ScreenCaptureKit stream management, sample buffer lifecycle, audio level monitoring, and graceful stream failure/salvage recovery."
+
+    - path: "Sources/EncoderKit/**"
+      instructions: "Audit AVAssetWriter multi-track synchronization, queue backpressure handling, VideoToolbox hardware encoder configuration, and GIF generation memory bounds."
+
+    - path: "Sources/RecorderUI/**"
+      instructions: "Audit SwiftUI view state, @MainActor dispatch safety, keystroke password masking (IsSecureEventInputEnabled), and Metal/Vision webcam processing pipeline."
+
+    - path: "Scripts/**"
+      instructions: "Audit shell and python build scripts for reproducible compilation, stable codesigning, CycloneDX SBOM generation, and absence of external network fetching."
+
+knowledge_base:
+  opt_out: false
+  learnings:
+    scope: "auto"
+  linked_repositories:
+    - repository: "knowthankyew/privacy-telemetry"
+      instructions: "Contains canonical zero-egress invariants, cryptographic evidence sealing standards, and privacy schemas for the KnowThankYew suite. Verify Mac Screen Record strictly complies."
+    - repository: "knowthankyew/portfolio-admin"
+      instructions: "Contains portfolio integration standards, SBOM schemas, and administrative compliance specifications."
