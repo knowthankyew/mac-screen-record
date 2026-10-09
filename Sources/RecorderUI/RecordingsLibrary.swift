@@ -124,7 +124,7 @@ public final class RecordingsLibrary: ObservableObject {
                 }
                 primaryDeleted = true
             } catch {
-                log.error("Failed to delete recording at \(url.path): \(error.localizedDescription, privacy: .public)")
+                log.error("Failed to delete recording at \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         } else {
             primaryDeleted = true
@@ -150,7 +150,7 @@ public final class RecordingsLibrary: ObservableObject {
                     }
                     log.info("Deleted associated artifact: \(item.lastPathComponent, privacy: .public)")
                 } catch {
-                    log.error("Failed to delete artifact at \(item.path): \(error.localizedDescription, privacy: .public)")
+                    log.error("Failed to delete artifact at \(item.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
                 }
             }
         }
@@ -195,7 +195,14 @@ public final class RecordingsLibrary: ObservableObject {
     /// Export a recording as an animated GIF beside the source file.
     @discardableResult
     public func exportGIF(_ file: RecordingFile, options: GIFExporter.Options = .init()) async throws -> URL {
-        let dest = file.url.deletingPathExtension().appendingPathExtension("gif")
+        let parent = file.url.deletingLastPathComponent()
+        let baseName = file.url.deletingPathExtension().lastPathComponent
+        var dest = parent.appendingPathComponent(baseName).appendingPathExtension("gif")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: dest.path) {
+            dest = parent.appendingPathComponent("\(baseName) (\(counter))").appendingPathExtension("gif")
+            counter += 1
+        }
         try await GIFExporter.export(source: file.url, destination: dest, options: options)
         await reload()
         return dest

@@ -115,6 +115,7 @@ private struct RecordingRow: View {
             Button("Rename…") { startRename() }
             if file.url.pathExtension.lowercased() != "gif" {
                 Button("Export as GIF") { exportGIF() }
+                    .disabled(exportingID != nil)
             }
             Divider()
             Button("Move to Trash", role: .destructive) { library.delete(file) }
@@ -138,6 +139,7 @@ private struct RecordingRow: View {
     }
 
     private func exportGIF() {
+        guard exportingID == nil else { return }
         exportingID = file.url
         Task {
             do {

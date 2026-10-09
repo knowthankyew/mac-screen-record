@@ -138,7 +138,7 @@ and is **fully open-source under MIT**, this is for you.
 
 ## Comparison vs paid Mac screen recorders
 
-|                              | Free Mac Screen Recorder | QuickTime | Loom | CleanShot X | ScreenFlow | Camtasia |
+|                              | Mac Screen Record        | QuickTime | Loom | CleanShot X | ScreenFlow | Camtasia |
 |------------------------------|:------------------------:|:---------:|:----:|:-----------:|:----------:|:--------:|
 | Free                         | ✅ MIT                   | ✅        | ⚠️ Limited free tier | ❌ \$29 one-off | ❌ \$169 | ❌ \$300 |
 | Open source                  | ✅                       | ❌        | ❌   | ❌          | ❌         | ❌       |
@@ -254,8 +254,7 @@ After granting any of these in **System Settings → Privacy & Security**, macOS
 | Apple ProRes 4444  | MOV       | Editing with alpha; archival-grade quality                |
 | Animated GIF       | GIF       | Slack / Twitter / GitHub issue attachments (post-export)  |
 
-All video encoding happens on the GPU via Apple's VideoToolbox — there is no
-CPU-encode fallback path because there's no need for one on Apple Silicon.
+All video encoding is handled by Apple's VideoToolbox framework, utilizing hardware acceleration where available on Apple Silicon and Intel Macs.
 
 ---
 
@@ -275,7 +274,7 @@ Monitoring permission.
 
 ## Architecture
 
-The codebase is split into four small Swift packages:
+The codebase is structured as one Swift package with four library modules:
 
 ```
 MacScreenRecord (executable)
@@ -345,7 +344,7 @@ settings UI.
 
 ### Does it run on Intel Macs?
 
-Yes. Free Mac Screen Recorder natively supports both Apple Silicon (`arm64`) and Intel (`x86_64`) Macs running macOS 13+. Build scripts automatically detect host architecture and compile native Mach-O binaries.
+Yes. Mac Screen Record natively supports both Apple Silicon (`arm64`) and Intel (`x86_64`) Macs running macOS 13+. Build scripts automatically detect host architecture and compile native Mach-O binaries.
 
 ### What happens if a recording is interrupted or fails?
 

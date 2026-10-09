@@ -12,7 +12,7 @@ KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 P12_PASSWORD="msr-local"
 
 echo "==> Checking for existing identity '$CERT_NAME'..."
-if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
+if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -F "\"$CERT_NAME\"" >/dev/null 2>&1; then
     echo "✓ Identity already present in login keychain. Nothing to do."
     exit 0
 fi

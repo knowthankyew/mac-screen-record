@@ -8,7 +8,7 @@
 
 ## 1. Portfolio Architectural Scope & Treatment
 
-Within the **`knowthankyew`** portfolio, `mac-screen-record` serves as the **Native macOS Reality & Evidence Capture Engine**. Its purpose is to provide consumers, legal advocates, and researchers with an air-gapped, zero-dependency utility to capture undeniable visual and auditory evidence of corporate wrongdoing—including deceptive checkout patterns, hidden subscription cancellation traps (ROSCA violations), wage portal discrepancies, and predatory terms modals.
+Within the **`knowthankyew`** portfolio, `mac-screen-record` serves as the **Native macOS Reality & Evidence Capture Engine**. Its purpose is to provide users, advocates, and researchers with an air-gapped, zero-dependency utility to capture high-fidelity visual and auditory records of software workflows, regulatory interfaces, subscription disclosures, and user interface interactions.
 
 Similar to how **`gradcast`** is explicitly designated in the Portfolio Master Brief as an *inherently public civic open-data engine*, **`mac-screen-record`** is explicitly designated as a **pure native desktop utility governed by local OS invariants**:
 1. **Zero Network Egress**: Zero socket frameworks, zero telemetry SDKs, zero cloud uploads. The binary contains zero networking imports (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`).
@@ -45,7 +45,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
   - Zero-egress background blur and virtual backdrops.
   - Keystroke overlay with active password masking via `IsSecureEventInputEnabled()`.
-  - Global Carbon hotkeys (`⌘⇧R` / `⌘⇧S`) and Menu Bar status controller.
+  - Global Carbon hotkeys (`⌃⌥⌘R` / `⌃⌥⌘S`) and Menu Bar status controller.
   - Automated CycloneDX JSON SBOM (`bom.json`) and `NOTICE.md` supply chain disclosures.
 
 ---
@@ -53,7 +53,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 ## 4. Active & Future Portfolio Roadmap
 
 ### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal)
-**Objective**: Transform raw screen recordings into verifiable, tamper-evident legal records suitable for regulatory filings (FTC, CFPB, state AGs) and dispute resolution.
+**Objective**: Provide verifiable local checksums and recording metadata manifests for regulatory filings and documentation workflows.
 
 - **Cryptographic Checksumming**:
   - Immediately upon recording termination, compute SHA-256 and SHA-512 cryptographic hashes of the saved media container before closing the file handle.
@@ -62,15 +62,14 @@ The inherited upstream roadmap included extensive planning for commercial conten
     - **Temporal Integrity**: Precise start and end UTC timestamps tracked monotonically via `mach_continuous_time`.
     - **Capture Context**: Target display resolution, color space, active window titles, and application bundle identifiers.
     - **Audio Telemetry**: Verification of active audio input channels, sample rates, and system audio loopback state.
-    - **Egress Attestation**: Affirmation that zero network sockets were opened by the recorder process during the session.
-    - **Integrity Seal**: SHA-256 checksum and file byte size for unassailable court / agency submission.
+    - **Integrity Seal**: SHA-256 checksum and file byte size for reproducible local verification and external timestamp authority countersigning.
 
 ### Phase 8: Universal Keyboard Control & Workflow Polish
 **Objective**: Fast, tactile, zero-permission hotkey controls for seamless evidence capture without mouse interference.
 
 - **Expanded Global Hotkey Suite**:
-  - `⌘⇧R`: Start recording.
-  - `⌘⇧S`: Stop recording.
+  - `⌃⌥⌘R`: Start recording.
+  - `⌃⌥⌘S`: Stop recording.
   - `⌥Space`: Non-destructive pause / resume with presentation timestamp (PTS) rewriting.
   - `⌃⌥P`: Quick toggle Facecam presenter overlay.
   - `⌃⌥K`: Quick toggle keystroke indicator.

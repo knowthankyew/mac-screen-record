@@ -553,6 +553,7 @@ public final class RecordingViewModel: ObservableObject {
     }
 
     public func startRecording() async {
+        guard status != .stopping else { return }
         // Friendly preflight: surface the most common reason recording fails.
         permissions.refresh()
         guard permissions.hasScreenRecording else {
@@ -566,7 +567,6 @@ public final class RecordingViewModel: ObservableObject {
         }
         let geometry = currentGeometry(for: source)
         let url = freshOutputURL()
-        self.lastRecordingURL = url
 
         var settings = RecordingSettings(
             width: geometry.outputWidth,
@@ -594,6 +594,7 @@ public final class RecordingViewModel: ObservableObject {
                 settings: settings,
                 exceptingWindowIDs: exceptions
             )
+            self.lastRecordingURL = url
             status = .recording(startedAt: Date())
         } catch let captureError as CaptureSession.CaptureError {
             status = .error(captureError.errorDescription ?? "Recording failed.")
@@ -631,8 +632,8 @@ public final class RecordingViewModel: ObservableObject {
 
         log.error("Active recording interrupted: \(message, privacy: .public)")
 
-        // 1. Immediately update status so UI reflects failure
-        status = .error("⚠️ Recording interrupted: \(message)")
+        // 1. Mark status as stopping while salvage is in progress to prevent re-triggering startRecording
+        status = .stopping
 
         // 2. Aggressive user alert: system alert sound
         NSSound.beep()
@@ -656,11 +657,12 @@ public final class RecordingViewModel: ObservableObject {
             do {
                 let savedURL = try await self.session.stop()
                 self.lastRecordingURL = savedURL
-                self.log.info("Salvaged partial recording: \(savedURL.path, privacy: .public)")
+                self.log.info("Salvaged partial recording: \(savedURL.lastPathComponent, privacy: .public)")
                 self.status = .error("⚠️ Recording failed: \(message). Partial video saved as \(savedURL.lastPathComponent).")
                 await self.library.reload()
             } catch {
                 self.log.error("Auto-salvage failed: \(error.localizedDescription, privacy: .public)")
+                self.status = .error("⚠️ Recording interrupted: \(message). Partial file could not be saved.")
             }
         }
     }

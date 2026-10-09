@@ -166,11 +166,21 @@ public final class PresetsStore: ObservableObject {
     }
 
     public func load() {
-        let rawData = defaults.data(forKey: key) ?? defaults.data(forKey: legacyKey)
-        guard let data = rawData,
-              let decoded = try? JSONDecoder().decode([Preset].self, from: data)
-        else { return }
-        presets = decoded
+        var loadedPresets: [Preset]?
+        var loadedFromLegacy = false
+
+        if let data = defaults.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([Preset].self, from: data) {
+            loadedPresets = decoded
+        } else if let legacyData = defaults.data(forKey: legacyKey),
+                  let decoded = try? JSONDecoder().decode([Preset].self, from: legacyData) {
+            loadedPresets = decoded
+            loadedFromLegacy = true
+        }
+
+        guard let loaded = loadedPresets else { return }
+        presets = loaded
+
         let rawDefaultStr = defaults.string(forKey: defaultKey) ?? defaults.string(forKey: legacyDefaultKey)
         if let str = rawDefaultStr, let uid = UUID(uuidString: str), presets.contains(where: { $0.id == uid }) {
             defaultPresetID = uid
@@ -178,6 +188,13 @@ public final class PresetsStore: ObservableObject {
             defaultPresetID = nil
         }
         normalizeFacecamProfiles()
+
+        if loadedFromLegacy {
+            persist()
+            if let defaultPresetID {
+                defaults.set(defaultPresetID.uuidString, forKey: defaultKey)
+            }
+        }
     }
 
     private func persist() {

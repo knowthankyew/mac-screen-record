@@ -569,21 +569,26 @@ private extension Binding where Value == Int? {
     }
 }
 
+private final class WindowAccessorView: NSView {
+    var callback: ((NSWindow?) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        callback?(window)
+    }
+}
+
 private struct WindowAccessor: NSViewRepresentable {
     let callback: (NSWindow?) -> Void
 
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async { [weak view] in
-            callback(view?.window)
-        }
+    func makeNSView(context: Context) -> WindowAccessorView {
+        let view = WindowAccessorView()
+        view.callback = callback
         return view
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { [weak nsView] in
-            callback(nsView?.window)
-        }
+    func updateNSView(_ nsView: WindowAccessorView, context: Context) {
+        nsView.callback = callback
     }
 }
 

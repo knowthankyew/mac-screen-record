@@ -109,14 +109,30 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     public func show(deviceID: String) throws {
-        try configureSession(deviceID: deviceID)
+        guard let device = AVCaptureDevice(uniqueID: deviceID) else {
+            throw NSError(domain: "Webcam", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Camera not found"])
+        }
+        let input = try AVCaptureDeviceInput(device: device)
         if window == nil {
             let panel = makePanel()
             self.window = panel
         }
         currentDeviceID = deviceID
         let session = captureSession
-        sessionQueue.async { session.startRunning() }
+        let output = videoOutput
+        let processor = videoProcessor
+        let vQueue = videoQueue
+        sessionQueue.async {
+            Self.applySessionConfiguration(
+                captureSession: session,
+                videoOutput: output,
+                videoProcessor: processor,
+                videoQueue: vQueue,
+                input: input
+            )
+            session.startRunning()
+        }
         reposition()
         window?.orderFront(nil)
         isVisible = true
@@ -131,8 +147,25 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     public func setDevice(_ deviceID: String) throws {
-        try configureSession(deviceID: deviceID)
+        guard let device = AVCaptureDevice(uniqueID: deviceID) else {
+            throw NSError(domain: "Webcam", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Camera not found"])
+        }
+        let input = try AVCaptureDeviceInput(device: device)
         currentDeviceID = deviceID
+        let session = captureSession
+        let output = videoOutput
+        let processor = videoProcessor
+        let vQueue = videoQueue
+        sessionQueue.async {
+            Self.applySessionConfiguration(
+                captureSession: session,
+                videoOutput: output,
+                videoProcessor: processor,
+                videoQueue: vQueue,
+                input: input
+            )
+        }
     }
 
     /// Prompts the user to select an image from disk and returns its URL if chosen.
@@ -152,12 +185,13 @@ public final class WebcamOverlayController: ObservableObject {
 
     // MARK: - Internals
 
-    private func configureSession(deviceID: String) throws {
-        guard let device = AVCaptureDevice(uniqueID: deviceID) else {
-            throw NSError(domain: "Webcam", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Camera not found"])
-        }
-        let input = try AVCaptureDeviceInput(device: device)
+    nonisolated private static func applySessionConfiguration(
+        captureSession: AVCaptureSession,
+        videoOutput: AVCaptureVideoDataOutput,
+        videoProcessor: WebcamVideoProcessor,
+        videoQueue: DispatchQueue,
+        input: AVCaptureDeviceInput
+    ) {
         captureSession.beginConfiguration()
         captureSession.inputs.forEach { captureSession.removeInput($0) }
         captureSession.outputs.forEach { captureSession.removeOutput($0) }

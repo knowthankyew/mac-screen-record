@@ -13,6 +13,13 @@ DIST_DIR="$ROOT/dist"
 APP_DIR="$DIST_DIR/$APP_NAME.app"
 
 ARCH="${ARCH:-$(uname -m)}"
+case "$ARCH" in
+    arm64|x86_64) ;;
+    *)
+        echo "ERROR: Unsupported architecture '$ARCH'. Supported architectures: arm64, x86_64." >&2
+        exit 1
+        ;;
+esac
 
 echo "==> Building Swift package ($CONFIG for $ARCH)..."
 cd "$ROOT"
@@ -33,6 +40,7 @@ cp "$ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 if [ -f "$ROOT/Scripts/generate-sbom.py" ]; then
     echo "==> Generating CycloneDX SBOM..."
     mkdir -p "$DIST_DIR"
+    export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
     VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
     python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
     cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
@@ -48,10 +56,10 @@ CERT_NAME="Mac Screen Record Local"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 if [ -z "$SIGN_IDENTITY" ]; then
-    if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
+    if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -F "\"$CERT_NAME\"" >/dev/null 2>&1; then
         SIGN_IDENTITY="$CERT_NAME"
         echo "==> Code signing with stable identity '$CERT_NAME'..."
-    elif security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "Free Mac Screen Recorder Local"; then
+    elif security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -F "\"Free Mac Screen Recorder Local\"" >/dev/null 2>&1; then
         SIGN_IDENTITY="Free Mac Screen Recorder Local"
         echo "==> Code signing with inherited identity 'Free Mac Screen Recorder Local'..."
     else

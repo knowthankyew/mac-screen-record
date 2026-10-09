@@ -5,7 +5,7 @@
 ## Mac Screen Record 0.3.0
 
 **Release:** `v0.3.0` (Build `3`)  
-**Date:** October 1, 2026  
+**Date:** October 8, 2026  
 **Architectures:** Apple Silicon (`arm64`), Intel (`x86_64`)  
 **Minimum OS:** macOS 13.0 (Ventura) or later  
 

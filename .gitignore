@@ -13,3 +13,5 @@ dist/
 xcuserdata/
 .vscode/
 .idea/
+/coderabbit_findings.txt
+/coderabbit_review.md

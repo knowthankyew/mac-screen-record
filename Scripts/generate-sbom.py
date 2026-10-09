@@ -13,13 +13,19 @@ from datetime import datetime, timezone
 
 def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0"):
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
-    ts = datetime.fromtimestamp(int(epoch), timezone.utc) if epoch else datetime.now(timezone.utc)
+    if epoch:
+        try:
+            ts = datetime.fromtimestamp(int(epoch), timezone.utc)
+        except (ValueError, OverflowError):
+            sys.exit(f"ERROR: Invalid SOURCE_DATE_EPOCH='{epoch}'. Expected integer timestamp.")
+    else:
+        ts = datetime.now(timezone.utc)
     now_iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
     serial_uuid = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, f'mac-screen-record/{version}/{arch}')}"
     app_ref = f"pkg:generic/mac-screen-record@{version}?arch={arch}"
 
     sbom = {
-        "$schema": "http://cyclonedx.org/schema/bom-1.5.json",
+        "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
         "serialNumber": serial_uuid,

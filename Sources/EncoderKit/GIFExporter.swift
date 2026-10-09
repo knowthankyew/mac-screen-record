@@ -14,7 +14,9 @@ public enum GIFExporter {
         public var maxWidth: Int = 600
         public var loops: Int = 0          // 0 = forever
         public init(fps: Int = 12, maxWidth: Int = 600, loops: Int = 0) {
-            self.fps = fps; self.maxWidth = maxWidth; self.loops = loops
+            self.fps = max(1, min(fps, 60))
+            self.maxWidth = max(100, maxWidth)
+            self.loops = max(0, loops)
         }
     }
 
@@ -45,7 +47,8 @@ public enum GIFExporter {
         }
 
         let totalSeconds = duration.seconds
-        let frameCount = max(1, Int(totalSeconds * Double(options.fps)))
+        let maxFrames = 600
+        let frameCount = min(maxFrames, max(1, Int(totalSeconds * Double(options.fps))))
         let interval = totalSeconds / Double(frameCount)
 
         let generator = AVAssetImageGenerator(asset: asset)
@@ -78,8 +81,8 @@ public enum GIFExporter {
 
         let frameProps: [String: Any] = [
             kCGImagePropertyGIFDictionary as String: [
-                kCGImagePropertyGIFDelayTime as String: 1.0 / Double(options.fps),
-                kCGImagePropertyGIFUnclampedDelayTime as String: 1.0 / Double(options.fps),
+                kCGImagePropertyGIFDelayTime as String: interval,
+                kCGImagePropertyGIFUnclampedDelayTime as String: interval,
             ]
         ]
 
