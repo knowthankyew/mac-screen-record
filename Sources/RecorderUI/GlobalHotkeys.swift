@@ -11,6 +11,7 @@ public final class GlobalHotkey {
     private let handler: Handler
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
+    private var hotKeyID = EventHotKeyID()
 
     /// `keyCode` is a Carbon virtual key code (e.g. `kVK_ANSI_R = 15`).
     /// `modifiers` is an OR of `cmdKey | shiftKey | optionKey | controlKey`.
@@ -25,7 +26,7 @@ public final class GlobalHotkey {
     }
 
     private func register(keyCode: Int, modifiers: Int) {
-        let hotKeyID = EventHotKeyID(signature: 0x46734D52 /* "FsMR" */, id: UInt32.random(in: 1...UInt32.max))
+        self.hotKeyID = EventHotKeyID(signature: 0x4D535263 /* "MSRc" */, id: UInt32.random(in: 1...UInt32.max))
         var ref: EventHotKeyRef?
         let regStatus = RegisterEventHotKey(
             UInt32(keyCode),
@@ -43,9 +44,24 @@ public final class GlobalHotkey {
             eventKind: UInt32(kEventHotKeyPressed)
         )
         let userData = Unmanaged.passUnretained(self).toOpaque()
-        let callback: EventHandlerUPP = { _, _, ptr -> OSStatus in
-            guard let ptr else { return noErr }
+        let callback: EventHandlerUPP = { _, event, ptr -> OSStatus in
+            guard let ptr, let event else { return OSStatus(eventNotHandledErr) }
             let me = Unmanaged<GlobalHotkey>.fromOpaque(ptr).takeUnretainedValue()
+            var pressed = EventHotKeyID()
+            let err = GetEventParameter(
+                event,
+                EventParamName(kEventParamDirectObject),
+                EventParamType(typeEventHotKeyID),
+                nil,
+                MemoryLayout<EventHotKeyID>.size,
+                nil,
+                &pressed
+            )
+            guard err == noErr,
+                  pressed.signature == me.hotKeyID.signature,
+                  pressed.id == me.hotKeyID.id else {
+                return OSStatus(eventNotHandledErr)
+            }
             DispatchQueue.main.async { me.handler() }
             return noErr
         }
@@ -60,7 +76,7 @@ public final class GlobalHotkey {
     }
 }
 
-/// High-level toggle: ⌘⇧R starts recording, ⌘⇧S stops.
+/// High-level toggle: ⌃⌥⌘R starts recording, ⌃⌥⌘S stops.
 @MainActor
 public final class GlobalHotkeyController {
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "Hotkeys")
@@ -71,14 +87,14 @@ public final class GlobalHotkeyController {
 
     public func install(start: @escaping @MainActor () -> Void,
                         stop:  @escaping @MainActor () -> Void) {
-        let cmdShift = cmdKey | shiftKey
-        startKey = GlobalHotkey(keyCode: kVK_ANSI_R, modifiers: cmdShift) {
+        let hyperModifiers = cmdKey | optionKey | controlKey
+        startKey = GlobalHotkey(keyCode: kVK_ANSI_R, modifiers: hyperModifiers) {
             Task { @MainActor in start() }
         }
-        stopKey = GlobalHotkey(keyCode: kVK_ANSI_S, modifiers: cmdShift) {
+        stopKey = GlobalHotkey(keyCode: kVK_ANSI_S, modifiers: hyperModifiers) {
             Task { @MainActor in stop() }
         }
-        log.info("Global hotkeys installed: ⌘⇧R / ⌘⇧S")
+        log.info("Global hotkeys installed: ⌃⌥⌘R / ⌃⌥⌘S")
     }
 
     public func uninstall() {

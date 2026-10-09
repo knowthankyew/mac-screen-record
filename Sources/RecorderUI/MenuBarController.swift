@@ -14,6 +14,11 @@ public final class MenuBarController: NSObject {
     public override init() { super.init() }
 
     public func install(vm: RecordingViewModel) {
+        if let existing = self.statusItem {
+            NSStatusBar.system.removeStatusItem(existing)
+            self.statusItem = nil
+        }
+        cancellables.removeAll()
         self.vm = vm
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = idleIcon
@@ -68,11 +73,12 @@ public final class MenuBarController: NSObject {
 
         let isRecording: Bool = {
             if case .recording = vm?.status { return true }
+            if case .paused = vm?.status { return true }
             return false
         }()
 
         let toggle = NSMenuItem(
-            title: isRecording ? "Stop Recording  ⌘⇧S" : "Start Recording  ⌘⇧R",
+            title: isRecording ? "Stop Recording  ⌃⌥⌘S" : "Start Recording  ⌃⌥⌘R",
             action: #selector(toggleRecording),
             keyEquivalent: ""
         )

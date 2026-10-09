@@ -39,8 +39,8 @@ public struct SettingsView: View {
             }
 
             Section("Hotkeys") {
-                LabeledContent("Start recording", value: "⌘⇧R")
-                LabeledContent("Stop recording",  value: "⌘⇧S")
+                LabeledContent("Start recording", value: "⌃⌥⌘R")
+                LabeledContent("Stop recording",  value: "⌃⌥⌘S")
                 Text("Hotkeys are system-wide. Rebinding from inside the app is on the roadmap.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -121,7 +121,7 @@ and is **fully open-source under MIT**, this is for you.
 - 🎭 **Named presets** — save and instantly recall configurations with live UI sync
 - 📚 **Recordings library** — browse past recordings with date, size, duration
 - 🔄 **Rename**, **drag-out** to Finder/Slack/Mail, **delete to Trash**
-- ⌨️ **Global hotkeys**: ⌘⇧R to start, ⌘⇧S to stop — works from any app
+- ⌨️ **Global hotkeys**: ⌃⌥⌘R to start, ⌃⌥⌘S to stop — works from any app without conflicting with system Save As or browser reloads
 - 📍 **Menu bar status item** — quick toggle and error status without opening the main window
 - ⚙️ **Settings panel** — configure output folder, defaults, and inspect privacy guarantees
 
@@ -211,8 +211,8 @@ once notarization is set up. For now, building from source takes ~30 seconds.
    mouse clicks*, or *Show keystrokes*.
 5. **Pick a codec** — H.264 for compatibility, HEVC for smaller files,
    ProRes for editing pipelines.
-6. Press ⌘⇧R or click *Start Recording*.
-7. Press ⌘⇧S or click *Stop Recording* to finish.
+6. Press ⌃⌥⌘R or click *Start Recording*.
+7. Press ⌃⌥⌘S or click *Stop Recording* to finish.
 8. The recording opens in the library; right-click for *Export as GIF*.
 
 Recordings are saved to `~/Movies/Mac Screen Record/` by default —
@@ -263,8 +263,8 @@ CPU-encode fallback path because there's no need for one on Apple Silicon.
 
 | Action               | Shortcut |
 |----------------------|----------|
-| Start recording      | ⌘⇧R (system-wide) |
-| Stop recording       | ⌘⇧S (system-wide) |
+| Start recording      | ⌃⌥⌘R (system-wide) |
+| Stop recording       | ⌃⌥⌘S (system-wide) |
 | Quit app             | ⌘Q       |
 
 The system-wide hotkeys are registered through the Carbon

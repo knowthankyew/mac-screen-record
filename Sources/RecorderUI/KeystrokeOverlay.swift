@@ -192,16 +192,17 @@ private final class KeystrokePanel: NSPanel {
 
     func setText(_ s: String) {
         label.stringValue = s
+        contentView?.layer?.removeAnimation(forKey: "fade")
         contentView?.layer?.opacity = 1
     }
 
     func fadeOut() {
+        guard let layer = contentView?.layer else { return }
         let anim = CABasicAnimation(keyPath: "opacity")
-        anim.fromValue = 1
+        anim.fromValue = layer.presentation()?.opacity ?? layer.opacity
         anim.toValue = 0
         anim.duration = 0.25
-        anim.fillMode = .forwards
-        anim.isRemovedOnCompletion = false
-        contentView?.layer?.add(anim, forKey: "fade")
+        layer.opacity = 0
+        layer.add(anim, forKey: "fade")
     }
 }
