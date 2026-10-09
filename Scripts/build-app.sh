@@ -46,17 +46,20 @@ printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
 
 CERT_NAME="Mac Screen Record Local"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
-# Detect via find-certificate to avoid forcing trust setup.
-if security find-certificate -c "$CERT_NAME" "$KEYCHAIN" >/dev/null 2>&1; then
-    SIGN_IDENTITY="$CERT_NAME"
-    echo "==> Code signing with stable identity '$CERT_NAME'..."
-elif security find-certificate -c "Free Mac Screen Recorder Local" "$KEYCHAIN" >/dev/null 2>&1; then
-    SIGN_IDENTITY="Free Mac Screen Recorder Local"
-    echo "==> Code signing with inherited identity 'Free Mac Screen Recorder Local'..."
-else
-    SIGN_IDENTITY="-"
-    echo "==> Ad-hoc signing (run Scripts/setup-stable-signing.sh for persistent TCC permissions)..."
+SIGN_IDENTITY="${SIGN_IDENTITY:-}"
+if [ -z "$SIGN_IDENTITY" ]; then
+    if security find-certificate -c "$CERT_NAME" "$KEYCHAIN" >/dev/null 2>&1; then
+        SIGN_IDENTITY="$CERT_NAME"
+        echo "==> Code signing with stable identity '$CERT_NAME'..."
+    elif security find-certificate -c "Free Mac Screen Recorder Local" "$KEYCHAIN" >/dev/null 2>&1; then
+        SIGN_IDENTITY="Free Mac Screen Recorder Local"
+        echo "==> Code signing with inherited identity 'Free Mac Screen Recorder Local'..."
+    else
+        SIGN_IDENTITY="-"
+        echo "==> Ad-hoc signing (run Scripts/setup-stable-signing.sh for persistent TCC permissions)..."
+    fi
 fi
+find "$APP_DIR" -name "*.cstemp" -delete 2>/dev/null || true
 codesign --force --deep --sign "$SIGN_IDENTITY" \
     --entitlements "$ROOT/Resources/MacScreenRecord.entitlements" \
     --options runtime \

@@ -29,7 +29,7 @@ struct RecordingsListView: View {
                         .font(.system(size: 36))
                         .foregroundStyle(.secondary)
                     Text("No recordings yet").foregroundStyle(.secondary)
-                    Text("Files saved to ~/Movies/Free Mac Screen Recorder/")
+                    Text("Files saved to ~/Movies/Mac Screen Record/")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                     Spacer()

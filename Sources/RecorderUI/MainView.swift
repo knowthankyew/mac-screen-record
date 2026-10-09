@@ -135,7 +135,7 @@ public struct MainView: View {
                 .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(isRecording ? .red : .secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Free Mac Screen Recorder").font(.title2.bold())
+                Text("Mac Screen Record").font(.title2.bold())
                 if case .recording(let started) = vm.status {
                     RecordingTimerView(startedAt: started)
                         .font(.caption.monospacedDigit())
@@ -317,7 +317,7 @@ public struct MainView: View {
                     Text(c.displayName).tag(c)
                 }
             }
-            Text("Saved to ~/Movies/Free Mac Screen Recorder/")
+            Text("Saved to ~/Movies/Mac Screen Record/")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

@@ -45,7 +45,7 @@ public final class MenuBarController: NSObject {
         default:
             item.button?.image = idleIcon
             item.button?.image?.isTemplate = true
-            item.button?.toolTip = "Free Mac Screen Recorder"
+            item.button?.toolTip = "Mac Screen Record"
         }
         item.menu = buildMenu()
     }
@@ -109,7 +109,7 @@ public final class MenuBarController: NSObject {
 
         menu.addItem(.separator())
 
-        let quit = NSMenuItem(title: "Quit Free Mac Screen Recorder", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Mac Screen Record", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         menu.addItem(quit)
         return menu
     }
@@ -138,7 +138,7 @@ public final class MenuBarController: NSObject {
     // MARK: - Icons
 
     private var idleIcon: NSImage? {
-        NSImage(systemSymbolName: "record.circle", accessibilityDescription: "Free Mac Screen Recorder")
+        NSImage(systemSymbolName: "record.circle", accessibilityDescription: "Mac Screen Record")
     }
     private var recordingIcon: NSImage? {
         let img = NSImage(systemSymbolName: "record.circle.fill", accessibilityDescription: "Recording")

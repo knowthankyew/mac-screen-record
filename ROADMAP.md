@@ -1,222 +1,88 @@
-# Mac Screen Record — Roadmap
+# Mac Screen Record — Strategic Architecture & Roadmap
 
-**Target versions:** v0.4.0 – v0.8.0+  
-**Subsystems:** `RecorderUI`, `CaptureCore`, `DeviceKit`, `EncoderKit`, Build & Distribution
-
----
-
-## Shipped (Phases 1 – 5)
-
-- ✅ **Phase 1 — Core Capture & Encoding**: Display/window/app source selection, system audio capture, microphone capture with AGC, H.264/HEVC/ProRes encoding, custom resolution overrides.
-- ✅ **Phase 2 — Interaction & Persistence**: Drag-to-select region capture, live recording timer, real-time dual audio level meters, recordings library with Finder reveal, capture presets.
-- ✅ **Phase 3 — Overlays & Hotkeys**: Hardware-accelerated webcam PiP overlay, mouse click highlights, global Carbon hotkeys (`⌘⇧R` / `⌘⇧S`), menu bar status item controller.
-- ✅ **Phase 4 — Polish & Flexibility**: Non-destructive pause/resume with PTS presentation timestamp rewriting, keystroke overlay with modifier key visualization, animated GIF exporter with palette quantization, App Settings panel, library management.
-- ✅ **Phase 5 — Hardening & Universal Mac Support**: Native Intel (`x86_64`) support alongside Apple Silicon, self-healing local code signing for persistent macOS TCC permissions, mid-stream interruption detection with auto-salvage of partial recordings, artifact cleanup wizard, sensitive password field masking, CycloneDX SBOM supply chain attestation.
+> **Portfolio Alignment**: Native macOS Zero-Egress Evidence & Reality Capture Engine  
+> **Governance Standard**: `knowthankyew` Consumer-Safe Zero-Egress & Air-Gap Invariant  
+> **Target Baseline**: macOS 13.0+ (Ventura, Sonoma, Sequoia) | Apple Silicon & Intel x86_64  
 
 ---
 
-## Phase 6: Facecam Studio & Unified PiP Engine
+## 1. Portfolio Architectural Scope & Treatment
 
-### 6.1 Quick-Toggle Header & Smart Profiles *(Shipped in v0.3.5)*
-- **Header Facecam Toggle (`person.crop.square` / `person.crop.square.fill`)**: One-click quick activation right in the window header next to History (`film.stack`).
-- **Intelligent Profile Resolution**:
-  - Automatically loads and applies the profile designated with `useForFacecam`.
-  - If only one profile has PIP enabled, it is automatically marked as the Facecam profile.
-  - Creating the first profile with PIP auto-checks `"Use as default Facecam profile"`.
-  - If no profile has PIP configured, turns on the camera in the current context, smoothly scrolls to **Overlays**, and highlights the controls with an accent border and badge.
-- **Preset Serialization**: Full persistence of camera device, corner, size, background mode, mouse clicks, and keystrokes with backwards-compatible JSON decoding.
+Within the **`knowthankyew`** portfolio, `mac-screen-record` serves as the **Native macOS Reality & Evidence Capture Engine**. Its purpose is to provide consumers, legal advocates, and researchers with an air-gapped, zero-dependency utility to capture undeniable visual and auditory evidence of corporate wrongdoing—including deceptive checkout patterns, hidden subscription cancellation traps (ROSCA violations), wage portal discrepancies, and predatory terms modals.
 
-### 6.2 Geometric Shapes Engine (Beyond the Circle)
-- **Shape Catalog**:
-  - **Classic Circle**: 1:1 round badge.
-  - **Squircle / Rounded Rectangle**: Apple Human Interface superellipse with adjustable corner radius (`8px` to `48px`).
-  - **Widescreen Rectangle (16:9 / 4:3)**: Standard broadcast sensor aspect ratio to capture hand gestures and desk items.
-  - **Stadium / Pill**: Compact horizontal or vertical pill.
-  - **Architectural Arch / Vault**: Curved top with flat flush bottom designed to anchor cleanly into screen corners.
-  - **Geometric Polygons**: Hexagons and octagons with 4x MSAA edge antialiasing.
-- **Technical Architecture**: `CAShapeLayer` clipping path and Metal fragment shader stencil masks with aspect ratio locking (`1:1`, `4:3`, `16:9`, `Freeform`).
-
-### 6.3 Border & Stroke Engine ("Solid Color" & Standard Workflow)
-- **Configurable Stroke Width**: Continuous slider from `0 px` (borderless) to `20 px` with numeric stepper.
-- **"Solid Color" Standard System Workflow**:
-  - Standard macOS `NSColorPanel` integration.
-  - Color Wheel (HSV) with luminance/saturation controls.
-  - RGB Sliders (0–255 / 0–100%) and direct Hex input (`#RRGGBB` / `#RRGGBBAA`).
-  - System color swatches & recent favorites.
-  - Screen Loupe / Eyedropper to sample any pixel from slides, code, or brand assets.
-- **Contrast Shadow**: Optional subtle drop shadow (`blur: 8px, opacity: 0.35, y: -2px`) for readability across dark and light content.
-
-### 6.4 Blurred Custom Backdrop Engine
-- **Concept**: Allows users to import a high-res photo of their real office, a stylish interior, or branded graphic, and applies GPU Gaussian blur (`CIGaussianBlur`) *behind* the Neural Engine person silhouette cutout.
-- **Why it matters**: Solves the messy room problem naturally without generic, flat-looking virtual backgrounds.
-- **Blur Radii**: Subtle (`10px`), Balanced (`22px`), Strong (`40px`), or Custom slider (`2–60px`).
-
-### 6.5 Modular Branding & Watermark Engine (Independent Logo vs. PiP-Anchored Frame)
-- **Architectural Decoupling**: Strict segregation between the Branding Layer and the PiP Layer, tied together through a unified configuration UX in Overlays.
-- **Mode 1: Independent Screen Watermark (No PiP Required)**:
-  - Place a corporate logo, channel badge, or copyright watermark in any screen corner (`Top Left`, `Top Right`, `Bottom Left`, `Bottom Right`) with adjustable padding.
-  - Continuous scaling (`24px` icon to `320px` banner) and opacity slider (`10%` to `100%`).
-  - Operates completely independently of whether the camera is active.
-- **Mode 2: PiP-Anchored Broadcaster Mode**:
-  - **Backing Plate**: Sits behind the person cutout silhouette.
-  - **Framing Bezel**: Sits over the webcam frame with a transparent inner cutout.
-  - Synchronously moves, snaps, and scales whenever the Facecam PiP is repositioned.
-- **Web-Standard Formats**: PNG-24 with alpha, WebP with alpha, and vector SVG rendered at screen-native Retina DPI.
-
-### 6.6 Unified PiP Engine: MP4 Media Playback Mode
-- **Clarified Terminology**:
-  - **Picture-in-Picture (PiP)**: The universal floating window engine (`WebcamPanel` / Metal / `SCContentFilter` exception layer).
-  - **Facecam**: The fast-load live camera presenter mode.
-  - **Video PiP**: File-based playback mode allowing users to load and play an `.mp4` or `.mov` inside the exact same floating overlay container.
-- **Features**: Pre-recorded talking head demos, reactions, looping animated logo mascots, transport controls (play, pause, scrub bar, loop), audio mix routing (mix to recording, monitor, or mute), and inherited geometric styling.
+Similar to how **`gradcast`** is explicitly designated in the Portfolio Master Brief as an *inherently public civic open-data engine*, **`mac-screen-record`** is explicitly designated as a **pure native desktop utility governed by local OS invariants**:
+1. **Zero Network Egress**: Zero socket frameworks, zero telemetry SDKs, zero cloud uploads. The binary contains zero networking imports (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`).
+2. **Zero Third-Party Dependencies**: Zero SPM dependencies; strictly bound to native Apple SDKs (`ScreenCaptureKit`, `AVFoundation`, `VideoToolbox`, `Vision`, `Metal`).
+3. **In-Memory Volatile Security**: Keystroke overlays operate transiently in RAM and automatically suppress when password fields are active (`IsSecureEventInputEnabled`).
 
 ---
 
-## Phase 7: Discoverable & Rebindable Keyboard Shortcuts
+## 2. Scope Realignment: Circumventing Upstream Commercial Streamer Bloat
 
-### Objective
-Provide universal keyboard control across all core recording, overlay, and navigation actions, with zero-permission global operation and complete user rebindability.
+The inherited upstream roadmap included extensive planning for commercial content-creator and broadcasting studio tools. To preserve architectural purity and fulfill the `knowthankyew` consumer defense mission, those features are **circumvented and intentionally descheduled**:
 
-```
-+--------------------------------------------------------------------------+
-|  KEYBOARD SHORTCUTS REFERENCE                                       [⌘/] |
-+--------------------------------------------------------------------------+
-|  GLOBAL SYSTEM HOTKEYS (Active even when recorder is hidden/in background) |
-|   • Start / Stop Recording        ⌘⇧R / ⌘⇧S                              |
-|   • Pause / Resume Recording      ⌥Space                                 |
-|   • Toggle PiP Overlay (Facecam)  ⌃⌥P                                    |
-|   • Toggle Mouse Click Highlights ⌃⌥M                                    |
-|   • Toggle Keystroke Overlay      ⌃⌥K                                    |
-|                                                                          |
-|  IN-APP SHORTCUTS                                                        |
-|   • Browse Recordings Library     ⌘L                                     |
-|   • App Settings / Preferences    ⌘,                                     |
-|   • Refresh Displays & Devices    ⌘R                                     |
-|   • Cycle Presets                 ⌘1 … ⌘9                                |
-+--------------------------------------------------------------------------+
-```
-
-### 7.1 Core Actions & Default Palette
-- **Start Recording**: `⌘⇧R` (Global Carbon hotkey, no permissions required).
-- **Stop Recording**: `⌘⇧S` (Global Carbon hotkey).
-- **Pause / Resume Recording**: `⌥Space` (or `⌘⌥Space`).
-- **Toggle PiP Overlay (Facecam)**: `⌃⌥P` (Control-Option-P).
-- **Toggle Mouse Click Highlights ("Show Clicks")**: `⌃⌥M`.
-- **Toggle Keystroke Overlay**: `⌃⌥K`.
-- **Open Recordings Library**: `⌘L`.
-- **Cycle Presets**: `⌘1` through `⌘9`.
-
-### 7.2 Discoverability Architecture
-- **In-App Tooltip Badges**: Every primary button and toggle displays its shortcut badge in its hover tooltip (e.g., `"Start Recording (⌘⇧R)"`, `"Toggle Facecam PiP (⌃⌥P)"`).
-- **Native macOS Menu Bar Glyphs**: Standard `NSMenuItem.keyEquivalent` integration displaying macOS symbols (`⌘`, `⇧`, `⌥`, `⌃`) in the system status bar menu.
-- **Searchable Shortcuts Cheat Sheet (`⌘/` or `?`)**: Interactive modal dialog listing all global and in-app shortcuts with quick search.
-
-### 7.3 User-Rebindable Hotkeys Engine
-- **In-App Key Recorder**: A dedicated preference panel in App Settings where users can click to record custom key combinations.
-- **Carbon Dynamic Re-registration**: Instantly re-registers hotkeys via `RegisterEventHotKey` without requiring an application restart.
-- **Conflict Detection**: Validates against macOS system-reserved shortcuts (e.g. Spotlight, Mission Control) and flags key collisions.
-- **Preset Binding**: Optional ability to associate specific hotkeys with distinct capture profiles.
+| Inherited Upstream Proposal | Status | Portfolio Justification |
+| :--- | :--- | :--- |
+| **Modular Watermark & Branding Engine** (Phase 6.5) | **Circumvented / Descheduled** | Corporate logo branding and watermark overlays cater to commercial marketing, not consumer evidence gathering. |
+| **Video PiP Playback Engine** (Phase 6.6: playing arbitrary MP4s inside PiP) | **Circumvented / Descheduled** | Embedding a file-based media player inside a capture overlay container creates code bloat, increases memory pressure, and diverges from honest reality recording. |
+| **Complex Geometric Polygons** (Hexagons, octagons, superellipses) | **Circumvented / Descheduled** | Elaborate broadcast stencils add Metal shader complexity with zero evidentiary value. The standard circular Facecam PiP satisfies all presenter needs. |
+| **HSV Color Wheel Sliders & Palette Steppers** (Phase 6.3) | **Streamlined** | Standard system color controls are sufficient; custom design studio color pickers are out of scope. |
 
 ---
 
-## Phase 8: Post-Capture Trim & Visual Polish
+## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.3.5)
 
-### 8.1 In-App Trim Before Save
-- **Problem**: Screen recordings almost always have dead air at the beginning (before switching apps) and end (switching back to stop the recording).
-- **Solution**: A lightweight post-capture review modal displayed immediately after clicking Stop:
-  - **Scrubbable Thumbnail Timeline**: Visual filmstrip generated asynchronously via `AVAssetImageGenerator`.
-  - **Draggable In / Out Handles**: Precise start and end trim markers with frame-accurate stepping (`←` / `→` arrow keys).
-  - **Lossless / Passthrough Trimming**: Uses `AVAssetExportSession` with `AVAssetExportPresetPassthrough` to perform sub-second trims without re-encoding, preserving pristine video quality and metadata.
-  - **Actions**: "Save Trimmed", "Save Original", "Discard", or "Open in QuickTime".
-
-### 8.2 Cursor Click Ripple Style Customization
-- **Expanded Visual Styles**:
-  - **Concentric Radar Wave**: Expanding double rings that dissipate outward.
-  - **Soft Glow Pulse**: Expanding diffuse radial glow with smooth alpha falloff.
-  - **High-Contrast Ring**: Crisp geometric ring for technical tutorials.
-  - **Burst Particles**: Subtle mini-particle burst for playful/creator content.
-- **Customization Controls**:
-  - Color Picker (matches "Solid Color" engine or theme accent).
-  - Radius / Size Slider (`20px` to `80px`).
-  - Duration Slider (`0.2s` to `0.8s`).
-  - Left-Click vs. Right-Click differentiation (distinct colors).
-  - Optional subtle click sound effect or haptic feedback.
+- ✅ **Core Hardware Capture & Encoding (v0.1.0)**:
+  - Display, single-window, specific application, and drag-to-select region capture via ScreenCaptureKit.
+  - VideoToolbox hardware-accelerated encoding (H.264, HEVC, Apple ProRes 422 / 4444).
+  - System audio capture and microphone capture with live level meters.
+- ✅ **Local Persistence & Presets (v0.2.0)**:
+  - Local recordings library (`~/Movies/Mac Screen Record/`) with Finder reveal and non-destructive trash deletion.
+  - Reusable capture presets with automated startup default loading and migration fallback.
+  - Native Intel (`x86_64`) and Apple Silicon (`arm64`) architecture parity.
+  - Stable self-signed local identity harness preserving macOS TCC permissions across builds.
+- ✅ **Neural Engine Presenter PiP & Security Guards (v0.3.0 - v0.3.5)**:
+  - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
+  - Zero-egress background blur and virtual backdrops.
+  - Keystroke overlay with active password masking via `IsSecureEventInputEnabled()`.
+  - Global Carbon hotkeys (`⌘⇧R` / `⌘⇧S`) and Menu Bar status controller.
+  - Automated CycloneDX JSON SBOM (`bom.json`) and `NOTICE.md` supply chain disclosures.
 
 ---
 
-## Phase 9: Intelligent Capture (Auto-Zoom & Live Transcription)
+## 4. Active & Future Portfolio Roadmap
 
-### 9.1 Dynamic Auto-Zoom on Cursor (Screen Studio Style)
-- **Concept**: Dynamically magnifies the active area of interest when the presenter clicks, types, or navigates menus, keeping viewers focused without manual post-production keyframing.
-- **Algorithm & Motion Physics**:
-  - **Interest Point Detection**: Tracks mouse clicks, text input events, and cursor dwell time to calculate focal centroids.
-  - **Spring Physics Interpolation**: Uses critically damped spring physics (`response: 0.6s, damping: 0.82`) for buttery smooth camera pans and zooms.
-  - **Metal Viewport Cropping**: Renders dynamic viewport transformations in real-time or records metadata sidecar coordinates for non-destructive post-recording pan/zoom rendering.
-  - **Configurability**: Zoom Depth (`1.25x`, `1.5x`, `2.0x`), Smoothness slider, and manual override shortcut (`⌘+` / `⌘-` to zoom focal area on demand).
+### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal)
+**Objective**: Transform raw screen recordings into verifiable, tamper-evident legal records suitable for regulatory filings (FTC, CFPB, state AGs) and dispute resolution.
 
-### 9.2 Live Captions & Transcription via Apple Speech Framework
-- **Zero-Egress Posture**: Leverages Apple's native on-device `SFSpeechRecognizer` (macOS Speech framework). 100% private, zero network egress, fully functional offline.
-- **Real-Time Visual Captions**:
-  - Floating, modern subtitle badge rendered over the screen capture.
-  - Word-level highlighting (karaoke style) synchronized with speech cadence.
-  - Customizable typography (font, size, background pill color, text color).
-- **Subtitle Export Formats**:
-  - Generates synchronized `.srt` and `.vtt` sidecar subtitle files alongside the recorded `.mp4`.
-  - Optional burned-in hard subtitles directly in the video track.
+- **Cryptographic Checksumming**:
+  - Immediately upon recording termination, compute SHA-256 and SHA-512 cryptographic hashes of the saved media container before closing the file handle.
+- **Deterministic Evidence Manifest (`.evidence.json`)**:
+  - Generate an optional companion metadata manifest alongside the output file (e.g., `Record_2026-10-09_12-00-00.mp4` + `Record_2026-10-09_12-00-00.evidence.json`):
+    - **Temporal Integrity**: Precise start and end UTC timestamps tracked monotonically via `mach_continuous_time`.
+    - **Capture Context**: Target display resolution, color space, active window titles, and application bundle identifiers.
+    - **Audio Telemetry**: Verification of active audio input channels, sample rates, and system audio loopback state.
+    - **Egress Attestation**: Affirmation that zero network sockets were opened by the recorder process during the session.
+    - **Integrity Seal**: SHA-256 checksum and file byte size for unassailable court / agency submission.
 
----
+### Phase 8: Universal Keyboard Control & Workflow Polish
+**Objective**: Fast, tactile, zero-permission hotkey controls for seamless evidence capture without mouse interference.
 
-## Phase 10: Developer & Distribution Ecosystem
+- **Expanded Global Hotkey Suite**:
+  - `⌘⇧R`: Start recording.
+  - `⌘⇧S`: Stop recording.
+  - `⌥Space`: Non-destructive pause / resume with presentation timestamp (PTS) rewriting.
+  - `⌃⌥P`: Quick toggle Facecam presenter overlay.
+  - `⌃⌥K`: Quick toggle keystroke indicator.
+- **In-App Hotkey Customization**:
+  - Allow users to remap hotkeys within the Settings panel using Carbon event modifiers.
 
-### 10.1 Notarized Signed Releases on GitHub Releases
-- **Automated Notarization Pipeline**:
-  - CI workflow utilizing Apple's `xcrun notarytool` with App Store Connect API keys.
-  - Automated `stapler` stapling to the `.app` bundle and DMG installer.
-  - Gatekeeper-compliant distribution removing macOS quarantine warnings (`"Apple could not verify this app"`).
-- **Release Automation**:
-  - Automated GitHub Releases packaging upon semantic version tags (`v0.4.0`, etc.).
-  - Checksums (SHA-256) and embedded CycloneDX SBOM (`bom.json`) for supply chain verification.
+### Phase 9: Automated Supply Chain & Zero-Egress CI Gate
+**Objective**: Continuous automated verification that the codebase never introduces remote dependencies or network egress.
 
-### 10.2 Full Xcode Project Alongside SwiftPM
-- **Dual Development Ergonomics**:
-  - Provide an official `.xcodeproj` generated cleanly alongside the root `Package.swift`.
-  - Enables Xcode-native visual debugging, SwiftUI Canvas Previews, Metal frame capture (`MTLFrameCaptureManager`), Instruments profiling, and Apple Developer signing configuration.
-  - Maintained via a clean generation script (`Scripts/generate-xcodeproj.sh` using SwiftPM / XcodeGen) to prevent configuration drift.
-
----
-
-## Horizon: Stretch Goals *(Nice-to-Have)*
-
-- **User-Defined Custom Cam Window Shapes**:
-  - Upload arbitrary alpha stencil masks (PNG/WebP) or vector paths (`.svg`) to create comic speech bubbles, game HUDs, or organic brushstroke cam windows.
-  - Automated edge outline dilation stroke using the "Solid Color" engine.
-- **Standalone Presenter Mode**:
-  - Float the Facecam overlay freely across any display during live video calls (Zoom, Google Meet, Microsoft Teams, Slack Huddles) without recording active.
-- **Dual-Track ISO MP4 Recording**:
-  - Simultaneously record `Screen_Capture.mp4` and `Facecam_Isolated.mp4` with shared timecode for multi-cam NLE editing in Final Cut Pro or Premiere.
-- **Native Apple Silicon Center Stage & Studio Light**:
-  - Direct UI toggles for AVFoundation `isCenterStageActive` and `isStudioLightActive`.
-- **Lower-Third Presenter Name Badge**:
-  - Attachable title badge displaying presenter name, role, and social handles.
-
----
-
-## Milestone & Release Schedule
-
-| Phase | Milestone | Target Version | Scope & Deliverables | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **Phase 1** | Core Capture & Audio | v0.1.0 | Screen/window capture, mic + system audio, codecs, custom resolution | ✅ Shipped |
-| **Phase 2** | Region & Persistence | v0.1.5 | Region drag-select, level meters, presets, library | ✅ Shipped |
-| **Phase 3** | Overlays & Menus | v0.2.0 | Webcam PiP, mouse clicks, global hotkeys, menu bar status | ✅ Shipped |
-| **Phase 4** | Pause & Export | v0.2.5 | Non-destructive pause/resume, keystrokes, GIF export, settings | ✅ Shipped |
-| **Phase 5** | Hardening & Universal | v0.3.0 | Intel support, stable signing, auto-salvage, artifact cleanup, SBOM | ✅ Shipped |
-| **Phase 6** | Facecam Studio & PiP | v0.4.0 – v0.5.5 | Header toggle (shipped v0.3.5), geometric shapes, "Solid Color" outline, blurred backdrop, modular branding, MP4 Video PiP | 🚀 In Progress |
-| **Phase 7** | Rebindable Hotkeys | v0.6.0 | Rebindable hotkey engine, `⌘/` cheat sheet, tooltip badges, menu bar glyphs | 🟡 Planned |
-| **Phase 8** | Post-Capture Trim | v0.6.5 | In-app trim before save (thumbnail timeline), click ripple styles | 🟡 Planned |
-| **Phase 9** | Intelligent Capture | v0.7.0 | Screen Studio-style auto-zoom, on-device live speech captions (`SFSpeechRecognizer`) | 🟡 Planned |
-| **Phase 10** | Distribution & IDE | v0.7.5 | Notarized GitHub releases (`notarytool`), full `.xcodeproj` generator | 🟡 Planned |
-| **Horizon** | Stretch Goals | v0.8.0+ | Custom SVG shape stencils, standalone meeting mode, dual-track ISO recording | 🔮 Nice-to-Have |
-
----
-
-Want a feature on this list to move from planned to shipped? Open an issue or a PR.
+- **Static Zero-Egress CI Linter**:
+  - GitHub Actions runner scanning all Swift source files for forbidden networking primitives (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`, `WebKit`).
+- **Zero-SPM Dependency Gate**:
+  - Build failure if `url:` is detected in `Package.swift`.
+- **Automated CycloneDX SBOM Attestation**:
+  - Continuous validation of `bom.json` schema 1.5 compliance during every release build.

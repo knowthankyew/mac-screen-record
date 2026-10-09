@@ -196,7 +196,7 @@ struct PresetsBar: View {
 
                 Toggle("Set as default profile on startup", isOn: $setAsStartupDefault)
                     .font(.subheadline)
-                    .help("Loads these settings automatically whenever Free Mac Screen Recorder launches")
+                    .help("Loads these settings automatically whenever Mac Screen Record launches")
 
                 if vm.webcamEnabled {
                     Toggle("Use as default Facecam profile", isOn: $useForFacecam)

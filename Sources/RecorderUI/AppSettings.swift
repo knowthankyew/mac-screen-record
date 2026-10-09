@@ -44,9 +44,16 @@ public final class AppSettings: ObservableObject {
 
         let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
                     ?? FileManager.default.homeDirectoryForCurrentUser
-        let fallback = movies.appendingPathComponent("Free Mac Screen Recorder", isDirectory: true)
+        let fallback = movies.appendingPathComponent("Mac Screen Record", isDirectory: true)
         if let stored = d.string(forKey: Keys.folderPath), !stored.isEmpty {
-            self.outputFolder = URL(fileURLWithPath: stored, isDirectory: true)
+            let storedURL = URL(fileURLWithPath: stored, isDirectory: true)
+            let legacyFallback = movies.appendingPathComponent("Free Mac Screen Recorder", isDirectory: true)
+            // If stored path points to legacy default and no files are there, migrate to new default
+            if storedURL.path == legacyFallback.path && !FileManager.default.fileExists(atPath: storedURL.path) {
+                self.outputFolder = fallback
+            } else {
+                self.outputFolder = storedURL
+            }
         } else {
             self.outputFolder = fallback
         }
@@ -60,7 +67,7 @@ public final class AppSettings: ObservableObject {
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.directoryURL = outputFolder
-        panel.message = "Choose where Free Mac Screen Recorder saves recordings"
+        panel.message = "Choose where Mac Screen Record saves records"
         panel.prompt = "Choose"
         if panel.runModal() == .OK, let url = panel.url {
             outputFolder = url

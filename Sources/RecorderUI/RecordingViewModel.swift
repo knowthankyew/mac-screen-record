@@ -733,7 +733,7 @@ public final class RecordingViewModel: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
         let stamp = formatter.string(from: Date())
-        return outputFolder.appendingPathComponent("Recording_\(stamp).\(codec.fileExtension)")
+        return outputFolder.appendingPathComponent("Record_\(stamp).\(codec.fileExtension)")
     }
 }
 
