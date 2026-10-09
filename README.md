@@ -60,7 +60,7 @@ a cloud service before letting you download it. Paid alternatives are great
 but cost \$8–\$30/month. The frameworks Apple ships in modern macOS are
 fast, hardware-accelerated, and capable of everything those paid apps do.
 
-This project is a clean-room implementation that makes those frameworks
+This project is an open-source hard fork and desktop application that makes those frameworks
 directly available as a polished desktop app. It runs locally, has zero
 dependencies on outside services, and is small enough that you can read the
 entire source in an afternoon.
@@ -215,8 +215,8 @@ once notarization is set up. For now, building from source takes ~30 seconds.
 7. Press ⌘⇧S or click *Stop Recording* to finish.
 8. The recording opens in the library; right-click for *Export as GIF*.
 
-Recordings are saved to `~/Movies/Free Mac Screen Recorder/` by default —
-change this in *Free Mac Screen Recorder → Settings*.
+Recordings are saved to `~/Movies/Mac Screen Record/` by default —
+change this in *Mac Screen Record → Settings*.
 
 ---
 
@@ -398,11 +398,9 @@ See [ROADMAP.md](ROADMAP.md) for the full technical specification and release pl
 
 ### Planned:
 
-- 🟡 [Phase 6](ROADMAP.md#phase-6-facecam-studio--unified-pip-engine) — Facecam Studio & Unified PiP Engine (geometric shapes, custom backdrop, branding, MP4 PiP)
-- 🟡 [Phase 7](ROADMAP.md#phase-7-discoverable--rebindable-keyboard-shortcuts) — Rebindable hotkeys, `⌘/` cheat sheet, tooltip badges
-- 🟡 [Phase 8](ROADMAP.md#phase-8-post-capture-trim--visual-polish) — In-app trim before save, cursor click ripple style customization
-- 🟡 [Phase 9](ROADMAP.md#phase-9-intelligent-capture-auto-zoom--live-transcription) — Auto-zoom on cursor (Screen Studio-style), live on-device captions via Apple Speech
-- 🟡 [Phase 10](ROADMAP.md#phase-10-developer--distribution-ecosystem) — Notarized signed releases, full `.xcodeproj` alongside SwiftPM
+- 🟡 [Phase 7](ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256 manifests, tamper-evident capture context)
+- 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume, toggle hotkeys)
+- 🟡 [Phase 9](ROADMAP.md#phase-9-automated-supply-chain--zero-egress-ci-gate) — Automated Supply Chain & Zero-Egress CI Gate (static network primitives scanner, zero-SPM gate)
 
 Want a feature on this list to move from 🟡 to ✅? Open an issue or a PR.
 
@@ -434,8 +432,7 @@ contributions:
 - New presets in the default set (e.g. *Tutorial 1080p60*, *Quick demo 720p30*)
 - More click highlight styles
 - Trim-before-save UI
-- A Sparkle-free auto-update mechanism that just diffs against the latest
-  GitHub release tag
+- Additional local export presets or offline codec tuning
 - Documentation improvements
 
 Before submitting:
@@ -453,8 +450,7 @@ written here.
 
 ## License
 
-[MIT](LICENSE). Use it, fork it, ship it commercially. Attribution is
-appreciated but not required.
+[MIT](LICENSE). Use it, fork it, ship it commercially. In accordance with the MIT License, copies or substantial portions must retain the copyright and permission notices.
 
 ---
 

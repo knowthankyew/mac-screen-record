@@ -48,10 +48,10 @@ CERT_NAME="Mac Screen Record Local"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 SIGN_IDENTITY="${SIGN_IDENTITY:-}"
 if [ -z "$SIGN_IDENTITY" ]; then
-    if security find-certificate -c "$CERT_NAME" "$KEYCHAIN" >/dev/null 2>&1; then
+    if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
         SIGN_IDENTITY="$CERT_NAME"
         echo "==> Code signing with stable identity '$CERT_NAME'..."
-    elif security find-certificate -c "Free Mac Screen Recorder Local" "$KEYCHAIN" >/dev/null 2>&1; then
+    elif security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "Free Mac Screen Recorder Local"; then
         SIGN_IDENTITY="Free Mac Screen Recorder Local"
         echo "==> Code signing with inherited identity 'Free Mac Screen Recorder Local'..."
     else
@@ -64,7 +64,8 @@ codesign --force --deep --sign "$SIGN_IDENTITY" \
     --entitlements "$ROOT/Resources/MacScreenRecord.entitlements" \
     --options runtime \
     "$APP_DIR" || {
-        echo "WARN: signing failed; bundle is unsigned." >&2
+        echo "ERROR: codesign failed with identity '$SIGN_IDENTITY'." >&2
+        exit 1
     }
 
 echo ""

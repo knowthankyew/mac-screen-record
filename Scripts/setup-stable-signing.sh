@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Creates a stable, self-signed code-signing identity in the login keychain
-# so every rebuild of Free Mac Screen Recorder produces a signature with the
+# so every rebuild of Mac Screen Record produces a signature with the
 # same designated requirement. macOS TCC then preserves Screen Recording /
 # Camera / Microphone permissions across rebuilds.
 #
@@ -12,7 +12,7 @@ KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 P12_PASSWORD="msr-local"
 
 echo "==> Checking for existing identity '$CERT_NAME'..."
-if security find-identity -v -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
+if security find-identity -p codesigning "$KEYCHAIN" 2>/dev/null | grep -q "$CERT_NAME"; then
     echo "✓ Identity already present in login keychain. Nothing to do."
     exit 0
 fi

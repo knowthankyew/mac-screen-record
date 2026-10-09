@@ -106,15 +106,15 @@ Free Mac Screen Recorder `v0.2.0` represents a major milestone in platform suppo
 ./Scripts/build-app.sh release
 
 # 3. Launch
-open "dist/Free Mac Screen Recorder.app"
+open "dist/Mac Screen Record.app"
 ```
 
 ### 2. Verify Version
 Check the app bundle metadata:
 ```bash
-defaults read "$PWD/dist/Free Mac Screen Recorder.app/Contents/Info.plist" CFBundleShortVersionString
+defaults read "$PWD/dist/Mac Screen Record.app/Contents/Info.plist" CFBundleShortVersionString
 # Output: 0.3.0
 
-defaults read "$PWD/dist/Free Mac Screen Recorder.app/Contents/Info.plist" CFBundleVersion
+defaults read "$PWD/dist/Mac Screen Record.app/Contents/Info.plist" CFBundleVersion
 # Output: 3
 ```

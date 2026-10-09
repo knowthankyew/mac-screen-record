@@ -12,8 +12,10 @@ import uuid
 from datetime import datetime, timezone
 
 def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0"):
-    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    serial_uuid = f"urn:uuid:{uuid.uuid4()}"
+    epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    ts = datetime.fromtimestamp(int(epoch), timezone.utc) if epoch else datetime.now(timezone.utc)
+    now_iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
+    serial_uuid = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, f'mac-screen-record/{version}/{arch}')}"
     app_ref = f"pkg:generic/mac-screen-record@{version}?arch={arch}"
 
     sbom = {
