@@ -394,12 +394,15 @@ See [ROADMAP.md](ROADMAP.md) for the full technical specification and release pl
 - ✅ Phase 3 — Webcam PiP, click highlights, global hotkeys, menu bar status
 - ✅ Phase 4 — Pause/resume with PTS rewriting, keystroke overlay, GIF export, settings panel, library polish
 - ✅ Phase 5 — Intel (`x86_64`) support, stable local code signing for persistent TCC, mid-stream auto-salvage, artifact cleanup, SBOM attestation
+- ✅ Phase 6 — Neural Engine person segmentation PiP (blur, virtual backdrops, custom image, cutout), quick-toggle Facecam profiles, automated claims linter (`Scripts/audit-claims.py`)
 
 ### Planned:
 
 - 🟡 [Phase 7](ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256 manifests, tamper-evident capture context)
 - 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
-- 🟡 [Phase 9](ROADMAP.md#phase-9-automated-supply-chain--zero-egress-ci-gate) — Automated Supply Chain & Zero-Egress CI Gate (static network primitives scanner, zero-SPM gate)
+- 🟡 [Phase 9](ROADMAP.md#phase-9-automated-supply-chain--zero-egress-ci-gate) — Automated Supply Chain & Zero-Egress CI Gate (GitHub Actions static network primitives scanner, zero-SPM gate)
+- 🔜 [Phase 10](ROADMAP.md#phase-10-post-capture--posthumous-library-lossless-trim) — Post-Capture & Posthumous Library Lossless Trim (trim before save + lossless trim of loaded/library `.mp4`/`.mov`/`.m4v` files)
+- 🔜 [Phase 11](ROADMAP.md#phase-11-streamlined-facecam--pip-improvements) — Streamlined Facecam & PiP Improvements (blurred custom image backdrop, Circle vs. Rounded-Rectangle toggle, system border controls)
 
 Want a feature on this list to move from 🟡 to ✅? Open an issue or a PR.
 

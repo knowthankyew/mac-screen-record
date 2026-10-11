@@ -25,8 +25,8 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | :--- | :--- | :--- |
 | **Modular Watermark & Branding Engine** (Phase 6.5) | **Circumvented / Descheduled** | Corporate logo branding and watermark overlays cater to commercial marketing, not consumer evidence gathering. |
 | **Video PiP Playback Engine** (Phase 6.6: playing arbitrary MP4s inside PiP) | **Circumvented / Descheduled** | Embedding a file-based media player inside a capture overlay container creates code bloat, increases memory pressure, and diverges from honest reality recording. |
-| **Complex Geometric Polygons** (Hexagons, octagons, superellipses) | **Circumvented / Descheduled** | Elaborate broadcast stencils add Metal shader complexity with zero evidentiary value. The standard circular Facecam PiP satisfies all presenter needs. |
-| **HSV Color Wheel Sliders & Palette Steppers** (Phase 6.3) | **Streamlined** | Standard system color controls are sufficient; custom design studio color pickers are out of scope. |
+| **Complex Geometric Polygons** (Hexagons, octagons, architectural vaults) | **Circumvented / Descheduled** | Elaborate broadcast stencils add Metal shader complexity with zero evidentiary value. Clean Circle vs. Rounded-Rectangle framing is scheduled in Phase 11. |
+| **HSV Color Wheel Sliders & Palette Steppers** (Phase 6.3) | **Streamlined (Phase 11)** | Standard macOS system color controls are sufficient; custom design studio color pickers are out of scope. |
 
 ---
 
@@ -41,16 +41,29 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Reusable capture presets with automated startup default loading and migration fallback.
   - Native Intel (`x86_64`) and Apple Silicon (`arm64`) architecture parity.
   - Stable self-signed local identity harness preserving macOS TCC permissions across builds.
-- ✅ **Neural Engine Presenter PiP & Security Guards (v0.3.0)**:
+- ✅ **Neural Engine Presenter PiP, Security Guards & Claims Audit (v0.3.0)**:
   - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
-  - Zero-egress background blur and virtual backdrops.
-  - Keystroke overlay with active password masking via `IsSecureEventInputEnabled()`.
+  - Zero-egress background blur, 5 virtual backdrops, custom background image replacement, cutout silhouette mode, and Quick-Toggle Facecam header workflow (`useForFacecam`).
+  - Keystroke overlay with synchronous password masking via `IsSecureEventInputEnabled()`.
   - Global Carbon hotkeys (`⌃⌥⌘R` / `⌃⌥⌘S`) and Menu Bar status controller.
-  - Automated CycloneDX JSON SBOM (`bom.json`) and `NOTICE.md` supply chain disclosures.
+  - Automated CycloneDX JSON SBOM (`bom.json`), `NOTICE.md` supply chain disclosures, and `Scripts/audit-claims.py` verification gate.
 
 ---
 
 ## 4. Active & Future Portfolio Roadmap
+
+### Master Milestone Grid
+
+| Phase | Milestone | Track | Scope & Deliverables | Status |
+| :--- | :--- | :--- | :--- | :---: |
+| **Phases 1–6** | **Core Capture, Universal Mac, Neural Engine PiP & Claims Linter** | Foundation (`v0.1.0 – v0.3.0`) | ScreenCaptureKit + VideoToolbox, Intel/ARM64 parity, stable TCC signing, auto-salvage, ANE/Metal PiP, Facecam quick-toggle, CycloneDX SBOM, `Scripts/audit-claims.py` (7-pass CodeRabbit 0-Major baseline) | ✅ **Shipped** |
+| **Phase 7** | **Cryptographic Evidence Integrity (*The Evidence Seal*)** | Portfolio Governance | Post-finalization SHA-256 / SHA-512 checksumming and companion `.evidence.json` tamper-evident metadata manifest | 🟡 **Planned** |
+| **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | 🟡 **Planned** |
+| **Phase 9** | **Automated Supply Chain & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner executing static zero-egress scanner, zero-SPM dependency gate, and CycloneDX 1.5 SBOM attestation on every push/PR | 🟡 **Planned** *(Local Gate Shipped)* |
+| **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Next After 7–9** |
+| **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Planned (Phase 10+)** |
+
+---
 
 ### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal)
 **Objective**: Provide verifiable local checksums and recording metadata manifests for regulatory filings and documentation workflows.
@@ -85,3 +98,27 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Build failure if `url:` is detected in `Package.swift`.
 - **Automated CycloneDX SBOM Attestation**:
   - Continuous validation of `bom.json` schema 1.5 compliance during every release build.
+
+---
+
+## 5. Phase 10+: Post-Capture Trim & Streamlined PiP Improvements
+
+### Phase 10: Post-Capture & Posthumous Library Lossless Trim
+**Objective**: Eliminate dead air at the start and end of recordings without re-encoding or quality loss, both immediately after capture and posthumously from the Recordings Library or disk.
+
+- **Dual Entry Points**:
+  - **In-App Trim Before Save**: Optional review modal immediately after stopping a recording, allowing the user to trim start/end dead air before finalizing the file in the library.
+  - **Posthumous Trim of Existing / Loaded Media**: Invoke the same trimmer directly from any recording in `RecordingsListView` (or by loading a supported `.mp4`, `.mov`, or `.m4v` file from disk) to save a trimmed copy (`Record_..._trimmed.mp4`) or replace the original via Trash-safe workflow.
+- **Lossless Passthrough Engine**:
+  - Scrubbable thumbnail filmstrip generated asynchronously via `AVAssetImageGenerator` with draggable In / Out handles.
+  - Sub-second frame-accurate exports using `AVAssetExportSession` (`AVAssetExportPresetPassthrough`), preserving original hardware-encoded H.264, HEVC, and ProRes bitstreams with zero generation loss.
+
+### Phase 11: Streamlined Facecam & PiP Improvements
+**Objective**: Deliver high-utility presenter overlay refinements while maintaining zero-egress, native-only simplicity.
+
+- **Blurred Custom Image Backdrop**:
+  - Allow the Gaussian blur strength selector (Subtle `10px`, Balanced `20px`, Strong `35px`) to apply directly to user-selected custom background images (`WebcamBackgroundMode.customImage`) behind the Neural Engine person segmentation mask.
+- **Circle vs. Rounded-Rectangle Framing**:
+  - Clean shape toggle in Overlays switching the `WebcamPanel` / `WebcamMetalView` mask between the classic **1:1 Circle** and a **Rounded Rectangle** (with `1:1` square and `16:9` / `4:3` aspect options).
+- **Standard System Border Controls**:
+  - Native macOS `ColorPicker` and stroke width slider (`0px – 12px`) for the PiP border ring when `showBorder` is enabled.
