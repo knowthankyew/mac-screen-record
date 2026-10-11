@@ -513,7 +513,16 @@ public final class RecordingViewModel: ObservableObject {
     // MARK: - Loading
 
     public func loadAvailableContent() async {
-        status = .loadingContent
+        let isActive: Bool
+        switch status {
+        case .recording, .paused, .stopping:
+            isActive = true
+        default:
+            isActive = false
+        }
+        if !isActive {
+            status = .loadingContent
+        }
         permissions.refresh()
         devices.refresh()
 
@@ -521,7 +530,9 @@ public final class RecordingViewModel: ObservableObject {
         // guiding the user. Avoid setting .error to prevent duplicate alarming red banners.
         guard permissions.hasScreenRecording else {
             log.info("Screen recording permission not granted yet. Waiting for authorization.")
-            status = .idle
+            if !isActive {
+                status = .idle
+            }
             return
         }
 
@@ -531,10 +542,14 @@ public final class RecordingViewModel: ObservableObject {
             self.windows  = content.windows
             self.apps     = content.apps
             if selectedDisplayID == nil { selectedDisplayID = displays.first?.id }
-            status = .ready
+            if !isActive {
+                status = .ready
+            }
         } catch {
             log.error("Could not load shareable content: \(error.localizedDescription, privacy: .public)")
-            status = .error("Couldn't enumerate screens: \(error.localizedDescription)")
+            if !isActive {
+                status = .error("Couldn't enumerate screens: \(error.localizedDescription)")
+            }
         }
     }
 

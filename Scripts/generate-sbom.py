@@ -21,10 +21,8 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0")
     else:
         ts = datetime.now(timezone.utc)
     now_iso = ts.strftime("%Y-%m-%dT%H:%M:%SZ")
-    if epoch:
-        serial_uuid = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, f'mac-screen-record/{version}/{arch}/{epoch}')}"
-    else:
-        serial_uuid = f"urn:uuid:{uuid.uuid4()}"
+    seed_epoch = epoch if epoch else "local"
+    serial_uuid = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, f'mac-screen-record/{version}/{arch}/{seed_epoch}')}"
     app_ref = f"pkg:generic/mac-screen-record@{version}?arch={arch}"
 
     sbom = {
@@ -35,13 +33,16 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0")
         "version": 1,
         "metadata": {
             "timestamp": now_iso,
-            "tools": [
-                {
-                    "vendor": "knowthankyew",
-                    "name": "generate-sbom",
-                    "version": "1.0.0"
-                }
-            ],
+            "tools": {
+                "components": [
+                    {
+                        "type": "application",
+                        "publisher": "knowthankyew",
+                        "name": "generate-sbom",
+                        "version": "1.0.0"
+                    }
+                ]
+            },
             "component": {
                 "type": "application",
                 "bom-ref": app_ref,

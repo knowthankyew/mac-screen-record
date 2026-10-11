@@ -11,7 +11,7 @@ reviews:
   sequence_diagrams: true
   auto_review:
     enabled: true
-    drafts: true
+    drafts: false
 
   # Filter out build artifacts, dist bundles, media outputs, and SBOM JSON
   path_filters:

@@ -14,7 +14,7 @@ public enum GIFExporter {
         public var maxWidth: Int = 600
         public var loops: Int = 0          // 0 = forever
         public init(fps: Int = 12, maxWidth: Int = 600, loops: Int = 0) {
-            self.fps = max(1, min(fps, 60))
+            self.fps = max(1, min(fps, 50))
             self.maxWidth = max(100, maxWidth)
             self.loops = max(0, loops)
         }
@@ -49,7 +49,7 @@ public enum GIFExporter {
         let totalSeconds = duration.seconds
         let maxFrames = 600
         let frameCount = min(maxFrames, max(1, Int(totalSeconds * Double(options.fps))))
-        let interval = totalSeconds / Double(frameCount)
+        let interval = max(0.02, totalSeconds / Double(frameCount))
 
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
@@ -87,6 +87,7 @@ public enum GIFExporter {
         ]
 
         for i in 0..<frameCount {
+            try Task.checkCancellation()
             let t = CMTime(seconds: Double(i) * interval, preferredTimescale: 600)
             do {
                 let cg = try await generator.image(at: t).image

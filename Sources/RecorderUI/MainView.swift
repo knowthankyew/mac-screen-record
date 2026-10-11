@@ -576,13 +576,16 @@ public struct MainView: View {
                     vm.deleteLastRecordingArtifacts(moveToTrash: moveToTrash)
                     showDeleteArtifactsSheet = false
                 }
-                .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(moveToTrash ? .defaultAction : nil)
                 .buttonStyle(.borderedProminent)
                 .tint(.red)
             }
         }
         .padding(20)
         .frame(width: 440)
+        .onAppear {
+            moveToTrash = true
+        }
     }
 }
 

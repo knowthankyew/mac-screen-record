@@ -48,4 +48,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false  // keep running in the menu bar after the main window closes
     }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard let vm else { return .terminateNow }
+        switch vm.status {
+        case .recording, .paused:
+            Task { @MainActor in
+                await vm.stopRecording()
+                NSApp.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
+        case .stopping:
+            Task { @MainActor in
+                while case .stopping = vm.status {
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+                NSApp.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
+        default:
+            return .terminateNow
+        }
+    }
 }

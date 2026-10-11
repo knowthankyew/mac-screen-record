@@ -181,6 +181,7 @@ public final class PresetsStore: ObservableObject {
         guard let loaded = loadedPresets else { return }
         presets = loaded
 
+        let hadLegacyDefault = defaults.object(forKey: legacyDefaultKey) != nil
         let rawDefaultStr = defaults.string(forKey: defaultKey) ?? defaults.string(forKey: legacyDefaultKey)
         if let str = rawDefaultStr, let uid = UUID(uuidString: str), presets.contains(where: { $0.id == uid }) {
             defaultPresetID = uid
@@ -191,9 +192,15 @@ public final class PresetsStore: ObservableObject {
 
         if loadedFromLegacy {
             persist()
+            defaults.removeObject(forKey: legacyKey)
+        }
+        if loadedFromLegacy || hadLegacyDefault {
             if let defaultPresetID {
                 defaults.set(defaultPresetID.uuidString, forKey: defaultKey)
+            } else {
+                defaults.removeObject(forKey: defaultKey)
             }
+            defaults.removeObject(forKey: legacyDefaultKey)
         }
     }
 
@@ -210,6 +217,7 @@ public final class PresetsStore: ObservableObject {
         } else {
             defaults.removeObject(forKey: defaultKey)
         }
+        defaults.removeObject(forKey: legacyDefaultKey)
     }
 
     /// Normalizes facecam profile designation.

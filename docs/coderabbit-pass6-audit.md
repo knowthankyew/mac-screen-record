@@ -1,0 +1,642 @@
+Notice: Detected antigravity environment. Use `coderabbit review --agent` for structured agent-friendly output.
+╔═══════════════════════════════════════════╗
+║                                           ║
+║   New update available! 0.8.2 -> 0.9.0    ║
+║          Run: coderabbit update           ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+
+Connecting to CodeRabbit... 1s elapsed
+Preparing review... 3s elapsed
+────────────────────────────────────────
+CodeRabbit Review
+
+Diff      : tracked changes
+Compare   : main → main
+Directory : mac-screen-record
+────────────────────────────────────────
+
+(\(\
+(• .•)  For a successful technology, reality must take precedence over public relations, for Nature cannot be fooled. - Richard Feynman
+
+Summarizing changes... 4s elapsed
+Summarizing changes... 1m 01s elapsed - still working
+Writing review comments... 1m 12s elapsed - still working
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:141Sources/RecorderUI/RecordingsListView.swift:141-152]8;;
+
+  Export state is not isolated from view lifecycle and bindings.
+
+  exportingID = nil runs after the task, but the @Binding belongs to a
+  row that may be gone after reload() reorders the list. This is safe for
+  the parent @State. The Task inherits the MainActor, so the UI
+  updates are safe. If the user dismisses the view, the export continues
+  because the task is not cancelled.
+
+  Store the export Task and cancel it on onDisappear. GIFExporter then
+  removes its temporary file.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:89Sources/EncoderKit/GIFExporter.swift:89-98]8;;
+
+  Check for task cancellation in the frame loop.
+
+  The loop runs up to 600 frames. It never calls Task.checkCancellation().
+  The temporary file is removed by defer, but the work continues after the
+  caller cancels.
+
+  Add a cancellation check at the start of each iteration.
+
+
+
+
+
+
+  Proposed fix
+
+           for i in 0..<frameCount {
+  +            try Task.checkCancellation()
+               let t = CMTime(seconds: Double(i) * interval, preferredTimescale: 600)
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:41Sources/RecorderUI/RecordingsLibrary.swift:41-46]8;;
+
+  relocate(to:) leaves stale entries visible and can race with reload.
+
+  files still holds the old folder's entries until the async reload()
+  finishes. An old reload() that is still running can also write results
+  after the new one starts. This shows the old folder's files for the new
+  folder.
+
+  Clear files in relocate and keep a reload task handle that is
+  cancelled on each relocation.
+
+
+
+
+
+  Proposed fix
+
+           folder = newFolder
+  +        files = []
+           Task { await reload() }
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:194Sources/RecorderUI/RecordingsLibrary.swift:194-200]8;;
+
+  Collision loop mishandles an empty extension and the unchanged-name check.
+
+  If ext is empty, appendingPathExtension("") yields a name with a
+  trailing dot. This creates a mismatch with targetName. Use targetName
+  to build dest, and build numbered names with the same extension logic.
+
+  Also, dest != file.url is never true on the first check. The early
+  return handles the unchanged-name case. A case-only rename on a
+  case-insensitive volume, such as Clip to clip, sees the file as
+  existing. It then gets a  (2) suffix instead of a rename.
+
+  Handle case-only renames by comparing the standardized paths
+  case-insensitively, and then move directly.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:87Sources/RecorderUI/RecordingsListView.swift:87-90]8;;
+
+  Escape and Cancel can race with the onCommit handler.
+
+  Clicking "Cancel" while the field is focused can trigger onCommit first
+  on some macOS versions. That commits the rename the user wanted to cancel.
+  Use .onSubmit and @FocusState, or ignore a commit that arrives after
+  renamingID becomes nil.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:84Sources/EncoderKit/GIFExporter.swift:84-85]8;;
+
+  Clamp the GIF frame delay to the GIF-supported minimum.
+
+  interval is totalSeconds / frameCount. For long videos, frameCount
+  is capped at 600, so interval can be well above the requested 1/fps.
+  This is a timing choice, not a defect. For very short videos, interval
+  can be below 0.02 s. Most viewers clamp such delays to 0.1 s, which slows
+  playback. The fps option allows up to 60, which gives 0.0167 s.
+
+  Clamp the effective frame rate to 50 fps (0.02 s) in Options.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:138Sources/RecorderUI/RecordingsLibrary.swift:138-156]8;;
+
+  Sidecar cleanup can delete unrelated files.
+
+  The match includes itemName == baseName + suffix, with suffixes .tmp
+  and .part. It also matches itemBase == baseName + suffix. For
+  clip.mp4, the code deletes clip.tmp, clip.part, clip-partial.mp4,
+  clip-partial.json, and similar files.
+
+  clip-partial.mp4 could be a separate, valid recording. The delete then
+  removes a different user recording, and with moveToTrash: false the
+  removal is permanent. Restrict matching to known partial extensions, or
+  exclude supported media extensions.
+
+  Also, the sidecar cleanup runs even when the primary deletion failed. Run
+  it only when primaryDeleted is true.
+
+
+
+
+
+  Proposed fix
+
+  -        if let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+  +        let mediaExts: Set<String> = ["mp4", "mov", "m4v", "gif"]
+  +        if primaryDeleted, let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+               for item in contents where item != url {
+  +                if mediaExts.contains(item.pathExtension.lowercased()) { continue }
+                   let itemName = item.lastPathComponent
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/ClickHighlightOverlay.swift:28Sources/RecorderUI/ClickHighlightOverlay.swift:28-37]8;;
+
+  Reorder or rebuild the panels when the screen configuration changes.
+
+  show() creates the panels only once. After a display is added or
+  rearranged, clicks on the changed display produce no ripple, and
+  windowIDs becomes stale. Observe
+  NSApplication.didChangeScreenParametersNotification and rebuild the
+  panels while isVisible is true.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:184Sources/RecorderUI/Presets.swift:184-197]8;;
+
+  Migrate the legacy default ID even when presets already use the new key.
+
+  rawDefaultStr falls back to legacyDefaultKey. The ID is written to
+  defaultKey only when loadedFromLegacy is true. Suppose presets load
+  from the new key but the default exists only under the legacy key. The
+  legacy value is then re-read on every launch. If setDefault(id: nil)
+  runs, it removes only defaultKey, so the legacy default comes back on
+  the next launch. To fix this, write the resolved ID to defaultKey and
+  remove legacyDefaultKey in load().
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:110Scripts/audit-claims.py:110-114]8;;
+
+  The egress scan does not cover Package.swift, Scripts/, or C/ObjC
+  sources.
+
+  It only scans Sources//.swift. Add .m, .h, and .c files under
+  Sources. Swift can import Darwin and call socket through aliases,
+  such as Darwin.socket. The \bsocket\s\( pattern matches that form.
+  Other forms, such as dlsym, are not covered. State this limit in the
+  docs, so that the claim "never imports networking" is not over-stated.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:52Scripts/audit-claims.py:52-57]8;;
+
+  The audit checks the exact source text of other scripts, which makes it
+  fragile.
+
+  f'version: str = "{version}"' does not match the real signature,
+  version: str = "0.3.0" in generate-sbom.py. Line 14 reads `def
+  generate_sbom(output_path: str, arch: str = "arm64", version: str =
+  "0.3.0"). The substring version: str = "0.3.0"` does match. The check on
+  build-app.sh for echo "0.3.0" also passes. Both checks break on
+  harmless edits. Read the version from a single source instead.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:73Scripts/setup-stable-signing.sh:73-79]8;;
+
+  The script marks a self-signed certificate as trustAsRoot for code
+  signing.
+
+  add-trusted-cert writes a user-domain trust setting. It trusts this
+  certificate for code signing in the user's login keychain, which is the
+  stated goal. The private key is generated locally and is only accessible
+  to /usr/bin/codesign. The risk is limited to the local user. Document
+  the trust change in the README so that users know about it.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:25Scripts/generate-sbom.py:25-27]8;;
+
+  The SBOM serial number is not deterministic when SOURCE_DATE_EPOCH is
+  unset.
+
+  build-app.sh always exports SOURCE_DATE_EPOCH, so the build path is
+  reproducible. Direct runs use uuid4(). This is acceptable.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:30Scripts/generate-sbom.py:30-31]8;;
+
+  The SBOM uses a deprecated tool format and a non-CycloneDX $schema URL.
+
+  CycloneDX 1.5 deprecates the tools array form in favor of
+  tools.components. The $schema URL uses http:// and the official
+  identifier is http://cyclonedx.org/schema/bom-1.5.schema.json, so this
+  one is fine. Validators accept the deprecated tools form, so the impact is
+  low.
+
+
+
+
+
+
+  Also applies to: 38-44
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/.coderabbit.yaml:14.coderabbit.yaml:14]8;;
+
+  Draft PR review is enabled.
+
+  drafts: true makes CodeRabbit review draft PRs on every push.
+  Incremental reviews on work in progress can add noise. Set drafts: false
+  if this is not intended.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/NOTICE.md:31NOTICE.md:31]8;;
+
+  The notice states that the overlay suppresses and fades out immediately.
+
+  This is a security claim. The audit script does not check it.
+  Scripts/audit-claims.py only checks hotkeys, entitlements, version, and
+  egress patterns. It never confirms that KeystrokeOverlay.swift calls
+  IsSecureEventInputEnabled(). Add a check so the claim cannot drift from
+  the code.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:43Scripts/build-app.sh:43]8;;
+
+  The SOURCE_DATE_EPOCH fallback can produce an empty value.
+
+  git log -1 --format=%ct exits 0 in a repository with no commits. It
+  prints nothing. The || branch then does not run, and SOURCE_DATE_EPOCH
+  is empty. generate-sbom.py treats an empty value as unset, so the build
+  is not reproducible. The risk is low, but the fix is cheap.
+
+
+  Proposed fix
+
+  -    export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
+  +    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+  +        SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || true)"
+  +        SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
+  +    fi
+  +    export SOURCE_DATE_EPOCH
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:75Scripts/build-app.sh:75-81]8;;
+
+  The --deep flag with --options runtime is deprecated for signing.
+
+  Apple recommends signing nested code individually. The bundle here has one
+  executable, so the impact is low.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:132Scripts/audit-claims.py:132-152]8;;
+
+  The entitlements check requires only that the key text appears in
+  NOTICE.md.
+
+  The check does not verify the entitlement against the documented
+  justification. Missing Resources/MacScreenRecord.entitlements raises an
+  unhandled FileNotFoundError, and the same holds for other read_text
+  calls. Wrap file reads so that the script reports a clear error list.
+
+
+────────────────────────────────────────────────────────────────────────
+  trivial [Maintainability & Code Quality]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:45Scripts/build-app.sh:45-47]8;;
+
+  The SBOM and claims audit run before codesign, and the audit result is not
+  tied to the SBOM.
+
+  audit-claims.py reads dist/bom.json, which is generated just before
+  it, so the order is correct. Note that cp of bom.json into the bundle
+  happens before signing, so the SBOM is covered by the signature. This is
+  fine.
+
+  However, audit-claims.py is optional (if [ -f ... ]). A missing script
+  silently skips the privacy gate. Make the script mandatory for release
+  builds.
+
+
+
+
+
+
+  Also applies to: 51-54
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Security & Privacy] | 🛡️ Analyzed with Security Review
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/KeystrokeOverlay.swift:50Sources/RecorderUI/KeystrokeOverlay.swift:50-88]8;;
+
+  Security: Sensitive Data Exposure (CWE-367)
+  Reachability: External · Exploitability: Difficult
+
+  Check secure input at event arrival, before creating the main-actor task.
+
+  The monitor closures enqueue handle(event:) before checking secure
+  input. If secure input ends before the task runs, handle(event:) can
+  render an event received while secure input was active. Check
+  IsSecureEventInputEnabled() synchronously in each closure. Return the
+  event from the local monitor when suppressed so normal application input
+  is preserved.
+
+
+  Guard both monitor callbacks
+
+           globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+  +            guard !IsSecureEventInputEnabled() else { return }
+               Task { @MainActor in self?.handle(event: event) }
+           }
+           localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+  +            guard !IsSecureEventInputEnabled() else { return event }
+               Task { @MainActor in self?.handle(event: event) }
+               return event
+           }
+
+Writing review comments... 3m 23s elapsed - still working - 21 findings so far
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:76Scripts/audit-claims.py:76]8;;
+
+  Restrict the BSD connect pattern.
+
+  scan_swift_source_for_egress scans every Swift file under Sources/ and
+  fails the audit when a pattern matches. \bconnect\s*\( also matches
+  unrelated calls such as Combine's connect(), so valid Swift code can
+  fail the audit. Match Darwin.connect( or an unqualified BSD form such as
+  connect(fd, ...), and keep the self-test aligned with that form.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:65Sources/CaptureCore/CaptureSession.swift:65-77]8;;
+
+  A failed filter build leaves the session stuck in .starting until
+  relaunch.
+
+  Line 71 sets state = .starting before the call to
+  Self.buildFilter(...) on Lines 73-77. buildFilter throws
+  CaptureError.sourceNotFound in ordinary cases, for example when the
+  selected window or app closes after enumeration. It also throws when
+  SCShareableContent.current fails, for example after permission is
+  revoked. That error leaves the method without any state reset.
+
+  After that:
+  - start() accepts only .idle, .finished, and .failed, so every
+  later start throws "CaptureSession is already running".
+  - stop() rejects .starting with "Not recording".
+
+  The user cannot record again until the app restarts.
+  stream.addStreamOutput on Lines 118 and 120 has the same gap. In that
+  case the encoder has already started and the microphone may be running, so
+  both stay active.
+
+  Reset the state on every early-exit path, and tear down the encoder and
+  microphone after they start.
+
+
+  🐛 Proposed fix
+
+  -        let filter = try await Self.buildFilter(
+  -            for: source,
+  -            excludingBundleID: ourBundleID,
+  -            exceptingWindowIDs: exceptingWindowIDs
+  -        )
+  +        let filter: SCContentFilter
+  +        do {
+  +            filter = try await Self.buildFilter(
+  +                for: source,
+  +                excludingBundleID: ourBundleID,
+  +                exceptingWindowIDs: exceptingWindowIDs
+  +            )
+  +        } catch {
+  +            state = .failed(error.localizedDescription)
+  +            throw error
+  +        }
+
+  Also wrap SCStream(...) and both addStreamOutput calls in a
+  do/catch. The catch must call encoder.cancel(), stop micCapture,
+  clear self.encoder and self.micCapture, and set .failed.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Functional Correctness]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:517Sources/RecorderUI/RecordingViewModel.swift:517-526]8;;
+
+  loadAvailableContent() replaces an active recording status, and the user
+  loses the stop control.
+
+  Line 516 sets status = .loadingContent without checking the current
+  status. The function then sets .idle (Line 524), .ready, or .error
+  while the CaptureSession is still recording. Three callers can reach it
+  during a recording:
+  - The header refresh button (MainView Lines 187-190).
+  - MainView.task, which runs again when the window reopens after it was
+  closed. The app stays alive in the menu bar.
+  - permissionsCancellable.
+
+  After the status is replaced:
+  - toggleRecording() calls startRecording(), and session.start throws
+  "already running".
+  - The stop hotkey and the menu bar act only on .recording and .paused,
+  so neither stops the session.
+
+  The capture runs until the app quits, and the file is never finalized. If
+  the status is .recording, .paused, or .stopping, refresh the device
+  and content lists without changing status.
+
+
+  🐛 Proposed fix
+
+       public func loadAvailableContent() async {
+  -        status = .loadingContent
+  +        let isActive: Bool
+  +        switch status {
+  +        case .recording, .paused, .stopping: isActive = true
+  +        default: isActive = false
+  +        }
+  +        if !isActive { status = .loadingContent }
+           permissions.refresh()
+           devices.refresh()
+   
+           guard permissions.hasScreenRecording else {
+               log.info("Screen recording permission not granted yet. Waiting for authorization.")
+  -            status = .idle
+  +            if !isActive { status = .idle }
+               return
+           }
+
+  Apply the same isActive guard to the .ready and .error assignments.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/MacScreenRecord/App.swift:48Sources/MacScreenRecord/App.swift:48-50]8;;
+
+  Quitting during a recording does not finalize the file.
+
+  The status-item menu has "Quit Mac Screen Record" bound to q, and the
+  app menu has ⌘Q. Both call NSApplication.terminate(_:). AppDelegate
+  does not implement applicationShouldTerminate(_:), so the process exits
+  without calling CaptureSession.stop() and VideoEncoder.finish().
+
+  The 10-second movieFragmentInterval limits the damage, but up to 10
+  seconds of the recording is lost. The file may also need recovery before
+  it plays. The trigger is an ordinary user action during an active
+  recording.
+
+  Return .terminateLater while vm.status is .recording, .paused, or
+  .stopping. Stop the recording, then call
+  NSApp.reply(toApplicationShouldTerminate: true).
+
+
+  🐛 Proposed fix
+
+       func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+           false  // keep running in the menu bar after the main window closes
+       }
+  +
+  +    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+  +        guard let vm else { return .terminateNow }
+  +        switch vm.status {
+  +        case .recording, .paused:
+  +            Task { @MainActor in
+  +                await vm.stopRecording()
+  +                NSApp.reply(toApplicationShouldTerminate: true)
+  +            }
+  +            return .terminateLater
+  +        default:
+  +            return .terminateNow
+  +        }
+  +    }
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Data Integrity & Integration]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MainView.swift:558Sources/RecorderUI/MainView.swift:558-581]8;;
+
+  The Return key can permanently delete files, and the "Move to Trash"
+  choice carries over between presentations.
+
+  Lines 575-579 give the destructive button
+  .keyboardShortcut(.defaultAction). When "Move files to Trash" is off,
+  pressing Return runs "Permanently Delete", and that deletion cannot be
+  undone. moveToTrash is view @State (Line 11). If the user turns it off
+  once, it stays off the next time the sheet opens, and the sheet then
+  defaults to permanent deletion.
+
+  Reset moveToTrash = true each time the sheet opens. Bind Return to the
+  destructive button only in Trash mode.
+
+
+  🛡️ Proposed fix
+
+                   Button(moveToTrash ? "Move to Trash" : "Permanently Delete", role: .destructive) {
+                       vm.deleteLastRecordingArtifacts(moveToTrash: moveToTrash)
+                       showDeleteArtifactsSheet = false
+                   }
+  -                .keyboardShortcut(.defaultAction)
+  +                .keyboardShortcut(moveToTrash ? .defaultAction : .init("\u{0}"), modifiers: [])
+                   .buttonStyle(.borderedProminent)
+                   .tint(.red)
+
+  Also add .onAppear { moveToTrash = true } to deleteArtifactsSheet.
+
+
+────────────────────────────────────────────────────────────────────────
+  major [Stability & Availability]
+  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:82Sources/CaptureCore/CaptureSession.swift:82-90]8;;
+
+  state is written from the main queue and from the generic executor
+  without synchronization.
+
+  CaptureSession is not actor-isolated. start() and stop() are
+  nonisolated async functions, so they run on the global concurrent
+  executor. They write state at Lines 71, 126, 159, 176, and 181. The new
+  onError handler (Lines 84-89) and stream(_:didStopWithError:) (Lines
+  229-234) write state = .failed(msg) from DispatchQueue.main.
+
+  The salvage flow makes these writes overlap.
+  RecordingViewModel.handleRecordingFailure calls session.stop(). At the
+  same time, a writer failure inside encoder.finish() dispatches another
+  .failed write to main. State holds a String payload, so concurrent
+  writes are a real data race. @unchecked Sendable hides the race from the
+  compiler. The race can also leave the final state at .failed after
+  stop() has already set .idle.
+
+  Pick one isolation domain for state and use it everywhere. One option is
+  to mark CaptureSession @MainActor and make the sample-buffer callbacks
+  nonisolated. Another option is to guard state with a lock and route
+  all writes through it.
+
+
+
+
+
+
+  Also applies to: 228-234
+
+
+────────────────────────────────────────
+Review complete
+Review completed
+27 findings ✔
+
+Major    6
+Minor    7
+Trivial  14
+
+50 files reviewed:
+  - .coderabbit.yaml
+  - .gitignore
+  - LICENSE
+  - NOTICE.md
+  - Package.swift
+  - README.md
+  - RELEASE_NOTES.md
+  - ROADMAP.md
+  - Resources/Info.plist
+  - Resources/MacScreenRecord.entitlements
+  ... and 40 more files
+────────────────────────────────────────
+
+Print all AI prompts: coderabbit review --show-prompts

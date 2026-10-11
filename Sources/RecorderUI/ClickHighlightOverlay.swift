@@ -18,6 +18,7 @@ public final class ClickHighlightController: ObservableObject {
     private var panels: [ClickHighlightPanel] = []
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var screenObserver: NSObjectProtocol?
 
     public init() {}
 
@@ -27,11 +28,7 @@ public final class ClickHighlightController: ObservableObject {
 
     public func show() {
         guard !isVisible else { return }
-        panels = NSScreen.screens.map { screen in
-            let p = ClickHighlightPanel(screen: screen)
-            p.orderFront(nil)
-            return p
-        }
+        rebuildPanels()
         installMonitors()
         isVisible = true
     }
@@ -41,6 +38,15 @@ public final class ClickHighlightController: ObservableObject {
         for p in panels { p.orderOut(nil) }
         panels.removeAll()
         isVisible = false
+    }
+
+    private func rebuildPanels() {
+        for p in panels { p.orderOut(nil) }
+        panels = NSScreen.screens.map { screen in
+            let p = ClickHighlightPanel(screen: screen)
+            p.orderFront(nil)
+            return p
+        }
     }
 
     // MARK: - Mouse monitoring
@@ -54,12 +60,23 @@ public final class ClickHighlightController: ObservableObject {
             Task { @MainActor in self?.spawnRipple(globalLocation: NSEvent.mouseLocation, button: event.type) }
             return event
         }
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.isVisible else { return }
+                self.rebuildPanels()
+            }
+        }
     }
 
     private func removeMonitors() {
         if let g = globalMonitor { NSEvent.removeMonitor(g) }
         if let l = localMonitor  { NSEvent.removeMonitor(l) }
-        globalMonitor = nil; localMonitor = nil
+        if let s = screenObserver { NotificationCenter.default.removeObserver(s) }
+        globalMonitor = nil; localMonitor = nil; screenObserver = nil
     }
 
     private func spawnRipple(globalLocation: NSPoint, button: NSEvent.EventType) {

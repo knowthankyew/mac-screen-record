@@ -48,12 +48,26 @@ public final class KeystrokeOverlayController: ObservableObject {
 
     private func installMonitors() {
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+            if IsSecureEventInputEnabled() {
+                Task { @MainActor in self?.suppressForSecureInput() }
+                return
+            }
             Task { @MainActor in self?.handle(event: event) }
         }
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+            if IsSecureEventInputEnabled() {
+                Task { @MainActor in self?.suppressForSecureInput() }
+                return event
+            }
             Task { @MainActor in self?.handle(event: event) }
             return event
         }
+    }
+
+    private func suppressForSecureInput() {
+        hideWorkItem?.cancel()
+        window?.fadeOut()
+        log.debug("Keystroke overlay suppressed: secure event input is active")
     }
 
     private func removeMonitors() {

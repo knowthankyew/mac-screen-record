@@ -30,6 +30,8 @@ public final class RecordingsLibrary: ObservableObject {
     @Published public private(set) var folder: URL
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "RecordingsLibrary")
+    private var reloadTask: Task<Void, Never>?
+    private static let supportedExts: Set<String> = ["mp4", "mov", "m4v", "gif"]
 
     public init(folder: URL) {
         self.folder = folder
@@ -40,23 +42,27 @@ public final class RecordingsLibrary: ObservableObject {
     /// output destination in Settings) and reload the file list.
     public func relocate(to newFolder: URL) {
         guard newFolder != folder else { return }
+        reloadTask?.cancel()
         try? FileManager.default.createDirectory(at: newFolder, withIntermediateDirectories: true)
         folder = newFolder
-        Task { await reload() }
+        files = []
+        reloadTask = Task { [weak self] in
+            await self?.reload()
+        }
     }
 
     public func reload() async {
+        let targetFolder = folder
         let fm = FileManager.default
         guard let items = try? fm.contentsOfDirectory(
-            at: folder,
+            at: targetFolder,
             includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
             options: [.skipsHiddenFiles]
         ) else {
-            files = []
+            if folder == targetFolder { files = [] }
             return
         }
-        let supportedExts: Set<String> = ["mp4", "mov", "m4v", "gif"]
-        let candidates = items.filter { supportedExts.contains($0.pathExtension.lowercased()) }
+        let candidates = items.filter { Self.supportedExts.contains($0.pathExtension.lowercased()) }
 
         // Lightweight metadata first so the list renders immediately.
         let initial = candidates.map { url -> RecordingFile in
@@ -70,6 +76,7 @@ public final class RecordingsLibrary: ObservableObject {
             )
         }
         .sorted { $0.createdAt > $1.createdAt }
+        guard !Task.isCancelled, folder == targetFolder else { return }
         files = initial
 
         // Then load durations asynchronously and merge in.
@@ -85,6 +92,7 @@ public final class RecordingsLibrary: ObservableObject {
                 }
             }
             for await (url, secs) in group {
+                guard !Task.isCancelled, folder == targetFolder else { return }
                 if let idx = files.firstIndex(where: { $0.url == url }) {
                     let f = files[idx]
                     files[idx] = RecordingFile(
@@ -134,8 +142,9 @@ public final class RecordingsLibrary: ObservableObject {
         let dir = url.deletingLastPathComponent()
         let baseName = url.deletingPathExtension().lastPathComponent
         let knownArtifactSuffixes = ["-partial", "-fragment", ".tmp", ".part"]
-        if let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+        if primaryDeleted, let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
             for item in contents where item != url {
+                if Self.supportedExts.contains(item.pathExtension.lowercased()) { continue }
                 let itemName = item.lastPathComponent
                 let itemBase = item.deletingPathExtension().lastPathComponent
                 let isAssociatedArtifact = knownArtifactSuffixes.contains { suffix in
@@ -186,17 +195,23 @@ public final class RecordingsLibrary: ObservableObject {
 
         let ext = file.url.pathExtension
         let parent = file.url.deletingLastPathComponent()
-        let targetName = ext.isEmpty ? trimmed : "\(trimmed).\(ext)"
+        let makeFileName = { (stem: String) -> String in
+            ext.isEmpty ? stem : "\(stem).\(ext)"
+        }
+        let targetName = makeFileName(trimmed)
         if targetName == file.url.lastPathComponent {
             return
         }
 
-        var dest = parent.appendingPathComponent(trimmed).appendingPathExtension(ext)
-        // If a name collision exists, append a numeric suffix.
-        var counter = 2
-        while FileManager.default.fileExists(atPath: dest.path) && dest != file.url {
-            dest = parent.appendingPathComponent("\(trimmed) (\(counter))").appendingPathExtension(ext)
-            counter += 1
+        var dest = parent.appendingPathComponent(targetName)
+        let isCaseOnlyRename = targetName.lowercased() == file.url.lastPathComponent.lowercased()
+        // If a name collision exists with a different file, append a numeric suffix.
+        if !isCaseOnlyRename {
+            var counter = 2
+            while FileManager.default.fileExists(atPath: dest.path) {
+                dest = parent.appendingPathComponent(makeFileName("\(trimmed) (\(counter))"))
+                counter += 1
+            }
         }
         try FileManager.default.moveItem(at: file.url, to: dest)
         if let i = files.firstIndex(where: { $0.url == file.url }) {

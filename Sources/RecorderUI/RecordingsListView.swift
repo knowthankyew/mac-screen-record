@@ -8,6 +8,7 @@ struct RecordingsListView: View {
     @State private var renamingID: URL?
     @State private var renameText: String = ""
     @State private var exportingID: URL?
+    @State private var exportTask: Task<Void, Never>?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -45,6 +46,7 @@ struct RecordingsListView: View {
                             renamingID: $renamingID,
                             renameText: $renameText,
                             exportingID: $exportingID,
+                            exportTask: $exportTask,
                             errorMessage: $errorMessage
                         )
                     }
@@ -62,6 +64,10 @@ struct RecordingsListView: View {
             Text(errorMessage ?? "")
         }
         .task { await library.reload() }
+        .onDisappear {
+            exportTask?.cancel()
+            exportTask = nil
+        }
     }
 }
 
@@ -71,6 +77,7 @@ private struct RecordingRow: View {
     @Binding var renamingID: URL?
     @Binding var renameText: String
     @Binding var exportingID: URL?
+    @Binding var exportTask: Task<Void, Never>?
     @Binding var errorMessage: String?
 
     private var isRenaming: Bool { renamingID == file.url }
@@ -84,8 +91,9 @@ private struct RecordingRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 if isRenaming {
                     HStack(spacing: 6) {
-                        TextField("Name", text: $renameText, onCommit: commitRename)
+                        TextField("Name", text: $renameText)
                             .textFieldStyle(.roundedBorder)
+                            .onSubmit { commitRename() }
                         Button("Save", action: commitRename)
                         Button("Cancel") { renamingID = nil }
                     }
@@ -128,6 +136,7 @@ private struct RecordingRow: View {
     }
 
     private func commitRename() {
+        guard renamingID == file.url else { return }
         let target = file
         let newName = renameText
         renamingID = nil
@@ -141,13 +150,18 @@ private struct RecordingRow: View {
     private func exportGIF() {
         guard exportingID == nil else { return }
         exportingID = file.url
-        Task {
+        exportTask = Task {
+            defer {
+                exportingID = nil
+                exportTask = nil
+            }
             do {
                 _ = try await library.exportGIF(file)
+            } catch is CancellationError {
+                // Cancelled on view dismissal
             } catch {
                 errorMessage = "GIF export failed: \(error.localizedDescription)"
             }
-            exportingID = nil
         }
     }
 }

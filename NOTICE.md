@@ -20,7 +20,7 @@ Mac Screen Record is a native macOS utility application designed to capture disp
 
 ## 2. Consumer Privacy Defaults & Air-Gap Invariant
 This application conforms to the `knowthankyew` Consumer-Safe Zero-Egress specification:
-- **Zero Network Egress (`deny`):** Application code does not import or invoke networking APIs (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`), establish socket connections, or execute outbound network requests (verified locally during the build pipeline via `Scripts/audit-claims.py`, with automated GitHub Actions CI gating planned in Phase 9).
+- **Zero Network Egress (`deny`):** Application code does not import or invoke networking APIs (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`), establish BSD socket connections (`socket`, `connect`, `sys/socket.h`), or execute outbound network requests (statically verified across Swift and C/Objective-C sources during the build pipeline via `Scripts/audit-claims.py`, with automated GitHub Actions CI gating planned in Phase 9).
 - **Zero Cloud Persistence:** Media is never uploaded to remote servers, cloud buckets, or third-party hosting services.
 - **Zero Remote Telemetry:** The application does not bundle analytics SDKs, trackers, or remote error reporting pipelines. Diagnostics are handled exclusively through Apple's local unified logging subsystem (`os.Logger`).
 - **Programmatic Claims Verification:** User-facing privacy assertions are derived directly at runtime from `PrivacyClaimsProvider`.

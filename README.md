@@ -235,7 +235,7 @@ app.
 After granting any of these in **System Settings → Privacy & Security**, macOS requires the app to restart to apply the updated TCC token.
 
 > [!TIP]
-> **Preserving Permissions Across Rebuilds:** macOS tracks ad-hoc signed apps by binary hash (`cdhash`), causing permissions to reset every rebuild. Running `./Scripts/setup-stable-signing.sh` creates a stable local certificate (`Mac Screen Record Local`) in your login keychain so permissions remain granted permanently across all future updates.
+> **Preserving Permissions Across Rebuilds:** macOS tracks ad-hoc signed apps by binary hash (`cdhash`), causing permissions to reset every rebuild. Running `./Scripts/setup-stable-signing.sh` creates a stable local self-signed certificate (`Mac Screen Record Local`) in your user login keychain (`~/Library/Keychains/login.keychain-db`) and marks it as trusted for code signing (`trustAsRoot -p codeSign` in the user domain) so permissions remain granted permanently across all future updates.
 >
 > If you previously ran an ad-hoc build and permissions seem stuck in System Settings, reset the stale TCC entry with:
 > ```bash

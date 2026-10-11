@@ -40,7 +40,11 @@ cp "$ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 if [ -f "$ROOT/Scripts/generate-sbom.py" ]; then
     echo "==> Generating CycloneDX SBOM..."
     mkdir -p "$DIST_DIR"
-    export SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || date +%s)}"
+    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+        SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || true)"
+        SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
+    fi
+    export SOURCE_DATE_EPOCH
     VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
     python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
     cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
@@ -48,10 +52,12 @@ fi
 if [ -f "$ROOT/NOTICE.md" ]; then
     cp "$ROOT/NOTICE.md" "$APP_DIR/Contents/Resources/NOTICE.md"
 fi
-if [ -f "$ROOT/Scripts/audit-claims.py" ]; then
-    echo "==> Auditing documentation & privacy claims parity..."
-    python3 "$ROOT/Scripts/audit-claims.py"
+if [ ! -f "$ROOT/Scripts/audit-claims.py" ]; then
+    echo "ERROR: Mandatory privacy & claims gate '$ROOT/Scripts/audit-claims.py' is missing." >&2
+    exit 1
 fi
+echo "==> Auditing documentation & privacy claims parity..."
+python3 "$ROOT/Scripts/audit-claims.py"
 
 # PkgInfo (legacy but expected)
 printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"
@@ -72,7 +78,7 @@ if [ -z "$SIGN_IDENTITY" ]; then
     fi
 fi
 find "$APP_DIR" -name "*.cstemp" -delete 2>/dev/null || true
-codesign --force --deep --sign "$SIGN_IDENTITY" \
+codesign --force --sign "$SIGN_IDENTITY" \
     --entitlements "$ROOT/Resources/MacScreenRecord.entitlements" \
     --options runtime \
     "$APP_DIR" || {

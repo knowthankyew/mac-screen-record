@@ -45,7 +45,12 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
     private let videoQueue = DispatchQueue(label: "com.macscreenrecord.capture.video", qos: .userInitiated)
     private let audioQueue = DispatchQueue(label: "com.macscreenrecord.capture.audio", qos: .userInitiated)
 
-    public private(set) var state: State = .idle
+    private let stateLock = NSLock()
+    private var _state: State = .idle
+    public private(set) var state: State {
+        get { stateLock.lock(); defer { stateLock.unlock() }; return _state }
+        set { stateLock.lock(); _state = newValue; stateLock.unlock() }
+    }
     public var onFailure: (@Sendable (String) -> Void)?
 
     public init(ourBundleID: String, levels: AudioLevelMonitor = AudioLevelMonitor()) {
@@ -62,31 +67,38 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
         settings: RecordingSettings,
         exceptingWindowIDs: [CGWindowID] = []
     ) async throws {
-        switch state {
-        case .idle, .finished, .failed:
-            break
-        default:
+        let canStart: Bool = stateLock.withLock {
+            switch _state {
+            case .idle, .finished, .failed:
+                _state = .starting
+                return true
+            default:
+                return false
+            }
+        }
+        guard canStart else {
             throw CaptureError.streamFailed("CaptureSession is already running")
         }
-        state = .starting
 
-        let filter = try await Self.buildFilter(
-            for: source,
-            excludingBundleID: ourBundleID,
-            exceptingWindowIDs: exceptingWindowIDs
-        )
+        let filter: SCContentFilter
+        do {
+            filter = try await Self.buildFilter(
+                for: source,
+                excludingBundleID: ourBundleID,
+                exceptingWindowIDs: exceptingWindowIDs
+            )
+        } catch {
+            state = .failed(error.localizedDescription)
+            throw error
+        }
         let config = Self.buildConfiguration(geometry: geometry, source: source, settings: settings)
 
         // Encoder starts first so we have a place to send frames.
         let encoder = VideoEncoder(settings: settings)
         encoder.onError = { [weak self] error in
             let msg = error.localizedDescription
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.log.error("Encoder reported error: \(msg, privacy: .public)")
-                self.state = .failed(msg)
-                self.onFailure?(msg)
-            }
+            self?.log.error("Encoder reported error: \(msg, privacy: .public)")
+            self?.reportAsyncFailure(msg)
         }
         do {
             try encoder.start()
@@ -115,9 +127,18 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
         }
 
         let stream = SCStream(filter: filter, configuration: config, delegate: self)
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: videoQueue)
-        if settings.captureSystemAudio {
-            try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
+        do {
+            try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: videoQueue)
+            if settings.captureSystemAudio {
+                try stream.addStreamOutput(self, type: .audio, sampleHandlerQueue: audioQueue)
+            }
+        } catch {
+            state = .failed(error.localizedDescription)
+            self.encoder?.cancel()
+            self.encoder = nil
+            self.micCapture?.stop()
+            self.micCapture = nil
+            throw CaptureError.streamFailed(error.localizedDescription)
         }
         self.stream = stream
 
@@ -137,26 +158,41 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
     }
 
     public func pause() {
-        guard case .recording = state else { return }
-        encoder?.pause()
-        state = .paused
+        let didPause: Bool = stateLock.withLock {
+            guard case .recording = _state else { return false }
+            _state = .paused
+            return true
+        }
+        if didPause {
+            encoder?.pause()
+        }
     }
 
     public func resume() {
-        guard case .paused = state else { return }
-        encoder?.resume()
-        state = .recording
+        let didResume: Bool = stateLock.withLock {
+            guard case .paused = _state else { return false }
+            _state = .recording
+            return true
+        }
+        if didResume {
+            encoder?.resume()
+        }
     }
 
     @discardableResult
     public func stop() async throws -> URL {
-        switch state {
-        case .recording, .paused, .failed:
-            break
-        default:
+        let canStop: Bool = stateLock.withLock {
+            switch _state {
+            case .recording, .paused, .failed:
+                _state = .stopping
+                return true
+            default:
+                return false
+            }
+        }
+        guard canStop else {
             throw CaptureError.streamFailed("Not recording")
         }
-        state = .stopping
 
         do { try await stream?.stopCapture() } catch {
             log.error("stopCapture failed: \(error.localizedDescription, privacy: .public)")
@@ -226,11 +262,24 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
 
     public func stream(_ stream: SCStream, didStopWithError error: Error) {
         let msg = error.localizedDescription
+        log.error("Stream stopped with error: \(msg, privacy: .public)")
+        reportAsyncFailure(msg)
+    }
+
+    private func reportAsyncFailure(_ msg: String) {
+        stateLock.lock()
+        let shouldNotify: Bool
+        switch _state {
+        case .starting, .recording, .paused:
+            _state = .failed(msg)
+            shouldNotify = true
+        default:
+            shouldNotify = false
+        }
+        stateLock.unlock()
+        guard shouldNotify else { return }
         DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.log.error("Stream stopped with error: \(msg, privacy: .public)")
-            self.state = .failed(msg)
-            self.onFailure?(msg)
+            self?.onFailure?(msg)
         }
     }
 

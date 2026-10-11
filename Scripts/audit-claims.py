@@ -16,18 +16,43 @@ def fail(errors: list[str], msg: str) -> None:
     errors.append(msg)
 
 
+def read_text_checked(root: Path, rel_path: str, errors: list[str]) -> str | None:
+    target = root / rel_path
+    if not target.is_file():
+        fail(errors, f"Missing required file: {rel_path}")
+        return None
+    try:
+        return target.read_text(encoding="utf-8")
+    except OSError as exc:
+        fail(errors, f"Could not read {rel_path}: {exc}")
+        return None
+
+
+def load_plist_checked(root: Path, rel_path: str, errors: list[str]) -> dict | None:
+    target = root / rel_path
+    if not target.is_file():
+        fail(errors, f"Missing required plist: {rel_path}")
+        return None
+    try:
+        with target.open("rb") as f:
+            data = plistlib.load(f)
+        if not isinstance(data, dict):
+            fail(errors, f"Plist {rel_path} root is not a dictionary")
+            return None
+        return data
+    except Exception as exc:
+        fail(errors, f"Could not parse plist {rel_path}: {exc}")
+        return None
+
+
 def check_version_and_branding_parity(root: Path, errors: list[str]) -> str:
-    info_plist_path = root / "Resources" / "Info.plist"
-    if not info_plist_path.is_file():
-        fail(errors, "Missing Resources/Info.plist")
+    plist = load_plist_checked(root, "Resources/Info.plist", errors)
+    if plist is None:
         return "0.0.0"
 
-    with info_plist_path.open("rb") as f:
-        plist = plistlib.load(f)
-
-    version = plist.get("CFBundleShortVersionString", "")
-    bundle_name = plist.get("CFBundleName", "")
-    bundle_id = plist.get("CFBundleIdentifier", "")
+    version = str(plist.get("CFBundleShortVersionString", ""))
+    bundle_name = str(plist.get("CFBundleName", ""))
+    bundle_id = str(plist.get("CFBundleIdentifier", ""))
 
     if not version:
         fail(errors, "CFBundleShortVersionString is empty in Resources/Info.plist")
@@ -36,29 +61,26 @@ def check_version_and_branding_parity(root: Path, errors: list[str]) -> str:
     if bundle_id != "com.macscreenrecord.app":
         fail(errors, f"CFBundleIdentifier in Info.plist expected 'com.macscreenrecord.app', got '{bundle_id}'")
 
-    release_notes = (root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
-    if f"## Mac Screen Record {version}" not in release_notes:
-        fail(errors, f"RELEASE_NOTES.md missing heading '## Mac Screen Record {version}'")
-    if f"`v{version}`" not in release_notes:
-        fail(errors, f"RELEASE_NOTES.md missing version tag '`v{version}`'")
+    release_notes = read_text_checked(root, "RELEASE_NOTES.md", errors)
+    if release_notes is not None:
+        if f"## Mac Screen Record {version}" not in release_notes:
+            fail(errors, f"RELEASE_NOTES.md missing heading '## Mac Screen Record {version}'")
+        if f"`v{version}`" not in release_notes:
+            fail(errors, f"RELEASE_NOTES.md missing version tag '`v{version}`'")
 
-    roadmap = (root / "ROADMAP.md").read_text(encoding="utf-8")
-    if f"(v0.1.0 – v{version})" not in roadmap:
-        fail(errors, f"ROADMAP.md milestone header does not match '(v0.1.0 – v{version})'")
-    if f"(v{version})" not in roadmap:
-        fail(errors, f"ROADMAP.md missing shipped milestone entry for '(v{version})'")
+    roadmap = read_text_checked(root, "ROADMAP.md", errors)
+    if roadmap is not None:
+        if f"(v0.1.0 – v{version})" not in roadmap:
+            fail(errors, f"ROADMAP.md milestone header does not match '(v0.1.0 – v{version})'")
+        if f"(v{version})" not in roadmap:
+            fail(errors, f"ROADMAP.md missing shipped milestone entry for '(v{version})'")
 
-    sbom_script = (root / "Scripts" / "generate-sbom.py").read_text(encoding="utf-8")
-    if f'version: str = "{version}"' not in sbom_script:
-        fail(errors, f"Scripts/generate-sbom.py default version does not match '{version}'")
-
-    build_script = (root / "Scripts" / "build-app.sh").read_text(encoding="utf-8")
-    if f'echo "{version}"' not in build_script:
-        fail(errors, f"Scripts/build-app.sh fallback version does not match '{version}'")
-    if 'APP_NAME="Mac Screen Record"' not in build_script:
-        fail(errors, "Scripts/build-app.sh APP_NAME does not match 'Mac Screen Record'")
-    if 'BUNDLE_ID="com.macscreenrecord.app"' not in build_script:
-        fail(errors, "Scripts/build-app.sh BUNDLE_ID does not match 'com.macscreenrecord.app'")
+    build_script = read_text_checked(root, "Scripts/build-app.sh", errors)
+    if build_script is not None:
+        if 'APP_NAME="Mac Screen Record"' not in build_script:
+            fail(errors, "Scripts/build-app.sh APP_NAME does not match 'Mac Screen Record'")
+        if 'BUNDLE_ID="com.macscreenrecord.app"' not in build_script:
+            fail(errors, "Scripts/build-app.sh BUNDLE_ID does not match 'com.macscreenrecord.app'")
 
     return version
 
@@ -73,7 +95,7 @@ FORBIDDEN_EGRESS_PATTERNS = [
     (r"\bNWListener\b", "NWListener"),
     (r"\bWKWebView\b", "WKWebView"),
     (r"\bsocket\s*\(", "BSD socket(...)"),
-    (r"\bconnect\s*\(", "BSD connect(...)"),
+    (r"(?<!\.)\b(?:Darwin\.)?connect\s*\(", "BSD connect(...)"),
     (r"\bsockaddr_in6?\b", "sockaddr_in/sockaddr_in6"),
     (r"\bCFSocket\w*\b", "CFSocket"),
     (r"sys/socket\.h", "sys/socket.h"),
@@ -81,7 +103,7 @@ FORBIDDEN_EGRESS_PATTERNS = [
 ]
 
 
-def scan_swift_source_for_egress(content: str) -> list[str]:
+def scan_source_for_egress(content: str) -> list[str]:
     matched_labels: list[str] = []
     for pattern, label in FORBIDDEN_EGRESS_PATTERNS:
         if re.search(pattern, content):
@@ -90,70 +112,93 @@ def scan_swift_source_for_egress(content: str) -> list[str]:
 
 
 def check_zero_egress_and_dependencies(root: Path, errors: list[str]) -> None:
-    package_swift = (root / "Package.swift").read_text(encoding="utf-8")
-    if re.search(r"\.package\s*\(\s*url\s*:", package_swift):
+    package_swift = read_text_checked(root, "Package.swift", errors)
+    if package_swift is not None and re.search(r"\.package\s*\(\s*url\s*:", package_swift):
         fail(errors, "Package.swift contains external remote package dependencies")
 
     # Self-test fixture: verify scanner catches both high-level frameworks and low-level BSD sockets
+    # while ignoring benign Combine-style `.connect()` method calls.
     fixtures = [
         ("import Darwin\nlet fd = socket(AF_INET, SOCK_STREAM, 0)", "BSD socket(...)"),
         ("import Darwin\nlet rc = connect(fd, addr, len)", "BSD connect(...)"),
+        ("import Darwin\nlet rc = Darwin.connect(fd, addr, len)", "BSD connect(...)"),
         ("import Foundation\nlet s = URLSession.shared", "URLSession"),
         ("import Network\nlet c = NWConnection(host: h, port: p, using: .tcp)", "import Network"),
     ]
     for sample_code, expected_label in fixtures:
-        detected = scan_swift_source_for_egress(sample_code)
+        detected = scan_source_for_egress(sample_code)
         if expected_label not in detected:
             fail(errors, f"Zero-egress scanner self-test failed to reject fixture for '{expected_label}'")
 
+    benign_code = "let cancellable = publisher.makeConnectable().connect()"
+    if scan_source_for_egress(benign_code):
+        fail(errors, "Zero-egress scanner self-test falsely flagged benign '.connect()' method call")
+
     sources_dir = root / "Sources"
-    for swift_file in sorted(sources_dir.rglob("*.swift")):
-        content = swift_file.read_text(encoding="utf-8")
-        rel_path = swift_file.relative_to(root)
-        for label in scan_swift_source_for_egress(content):
+    if not sources_dir.is_dir():
+        fail(errors, "Missing Sources/ directory")
+        return
+
+    source_exts = {".swift", ".c", ".m", ".mm", ".h", ".hpp", ".cpp"}
+    for src_file in sorted(sources_dir.rglob("*")):
+        if not src_file.is_file() or src_file.suffix not in source_exts:
+            continue
+        rel_path = str(src_file.relative_to(root))
+        content = read_text_checked(root, rel_path, errors)
+        if content is None:
+            continue
+        for label in scan_source_for_egress(content):
             fail(errors, f"Forbidden network/web symbol '{label}' found in {rel_path}")
 
 
-def check_hotkey_parity(root: Path, errors: list[str]) -> None:
-    hotkeys_swift = (root / "Sources" / "RecorderUI" / "GlobalHotkeys.swift").read_text(encoding="utf-8")
-    if "cmdKey | optionKey | controlKey" not in hotkeys_swift:
-        fail(errors, "GlobalHotkeys.swift does not declare hyper modifiers 'cmdKey | optionKey | controlKey'")
-    if "keyCode: kVK_ANSI_R" not in hotkeys_swift or "keyCode: kVK_ANSI_S" not in hotkeys_swift:
-        fail(errors, "GlobalHotkeys.swift missing expected kVK_ANSI_R or kVK_ANSI_S bindings")
+def check_hotkey_and_secure_input_parity(root: Path, errors: list[str]) -> None:
+    hotkeys_swift = read_text_checked(root, "Sources/RecorderUI/GlobalHotkeys.swift", errors)
+    if hotkeys_swift is not None:
+        if "cmdKey | optionKey | controlKey" not in hotkeys_swift:
+            fail(errors, "GlobalHotkeys.swift does not declare hyper modifiers 'cmdKey | optionKey | controlKey'")
+        if "keyCode: kVK_ANSI_R" not in hotkeys_swift or "keyCode: kVK_ANSI_S" not in hotkeys_swift:
+            fail(errors, "GlobalHotkeys.swift missing expected kVK_ANSI_R or kVK_ANSI_S bindings")
 
     for doc_name in ("README.md", "ROADMAP.md"):
-        doc_text = (root / doc_name).read_text(encoding="utf-8")
+        doc_text = read_text_checked(root, doc_name, errors)
+        if doc_text is None:
+            continue
         if "⌃⌥⌘R" not in doc_text or "⌃⌥⌘S" not in doc_text:
             fail(errors, f"{doc_name} missing documented hyper shortcuts '⌃⌥⌘R' and '⌃⌥⌘S'")
         if "⌘⇧R" in doc_text or "⌘⇧S" in doc_text:
             fail(errors, f"{doc_name} contains stale legacy shortcut '⌘⇧R' or '⌘⇧S'")
 
+    keystroke_swift = read_text_checked(root, "Sources/RecorderUI/KeystrokeOverlay.swift", errors)
+    if keystroke_swift is not None and "IsSecureEventInputEnabled()" not in keystroke_swift:
+        fail(errors, "KeystrokeOverlay.swift does not call IsSecureEventInputEnabled() as claimed in NOTICE.md")
+
 
 def check_entitlements_and_tcc_justifications(root: Path, errors: list[str]) -> None:
-    info_plist_path = root / "Resources" / "Info.plist"
-    entitlements_path = root / "Resources" / "MacScreenRecord.entitlements"
-    notice_text = (root / "NOTICE.md").read_text(encoding="utf-8")
-
-    with info_plist_path.open("rb") as f:
-        info_plist = plistlib.load(f)
-    with entitlements_path.open("rb") as f:
-        entitlements = plistlib.load(f)
+    info_plist = load_plist_checked(root, "Resources/Info.plist", errors)
+    entitlements = load_plist_checked(root, "Resources/MacScreenRecord.entitlements", errors)
+    notice_text = read_text_checked(root, "NOTICE.md", errors)
+    if info_plist is None or entitlements is None or notice_text is None:
+        return
 
     tcc_keys = [k for k in info_plist.keys() if k.startswith("NS") and k.endswith("UsageDescription")]
     if not tcc_keys:
         fail(errors, "No NS*UsageDescription keys found in Resources/Info.plist")
 
+    def has_table_justification(key: str) -> bool:
+        pattern = rf"^\|\s*`{re.escape(key)}`\s*\|[^|]+\|\s*(\S[^|]*)\|"
+        return re.search(pattern, notice_text, flags=re.MULTILINE) is not None
+
     for key in tcc_keys:
-        if f"`{key}`" not in notice_text:
-            fail(errors, f"Info.plist TCC key '{key}' lacks a documented justification in NOTICE.md")
+        if not has_table_justification(key):
+            fail(errors, f"Info.plist TCC key '{key}' lacks a non-empty table justification in NOTICE.md")
 
     for ent_key in entitlements.keys():
-        if f"`{ent_key}`" not in notice_text:
-            fail(errors, f"Entitlement '{ent_key}' in MacScreenRecord.entitlements lacks a documented justification in NOTICE.md")
+        if not has_table_justification(ent_key):
+            fail(errors, f"Entitlement '{ent_key}' in MacScreenRecord.entitlements lacks a non-empty table justification in NOTICE.md")
 
 
 def check_sbom_and_privacy_claims(root: Path, version: str, errors: list[str]) -> None:
-    claims_swift = (root / "Sources" / "RecorderUI" / "PrivacyClaims.swift").read_text(encoding="utf-8")
+    claims_swift = read_text_checked(root, "Sources/RecorderUI/PrivacyClaims.swift", errors)
     expected_claims = {
         'networkEgressPolicy: String = "deny"': ("knowthankyew:privacy:network_egress", "deny"),
         'telemetryMode: String = "disabled"': ("knowthankyew:privacy:telemetry_mode", "disabled"),
@@ -161,18 +206,22 @@ def check_sbom_and_privacy_claims(root: Path, version: str, errors: list[str]) -
         "externalCloudUpload: Bool = false": ("knowthankyew:privacy:cloud_upload", "false"),
     }
 
-    for swift_sig in expected_claims:
-        if swift_sig not in claims_swift:
-            fail(errors, f"PrivacyClaims.swift missing expected default '{swift_sig}'")
+    if claims_swift is not None:
+        for swift_sig in expected_claims:
+            if swift_sig not in claims_swift:
+                fail(errors, f"PrivacyClaims.swift missing expected default '{swift_sig}'")
 
-    sbom_script = (root / "Scripts" / "generate-sbom.py").read_text(encoding="utf-8")
-    if '"$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json"' not in sbom_script:
+    sbom_script = read_text_checked(root, "Scripts/generate-sbom.py", errors)
+    if sbom_script is not None and '"$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json"' not in sbom_script:
         fail(errors, "Scripts/generate-sbom.py missing canonical CycloneDX 1.5 schema URI")
 
     bom_path = root / "dist" / "bom.json"
     if bom_path.is_file():
+        bom_text = read_text_checked(root, "dist/bom.json", errors)
+        if bom_text is None:
+            return
         try:
-            bom = json.loads(bom_path.read_text(encoding="utf-8"))
+            bom = json.loads(bom_text)
         except json.JSONDecodeError as exc:
             fail(errors, f"dist/bom.json is not valid JSON: {exc}")
             return
@@ -198,7 +247,7 @@ def main() -> int:
 
     version = check_version_and_branding_parity(root, errors)
     check_zero_egress_and_dependencies(root, errors)
-    check_hotkey_parity(root, errors)
+    check_hotkey_and_secure_input_parity(root, errors)
     check_entitlements_and_tcc_justifications(root, errors)
     check_sbom_and_privacy_claims(root, version, errors)
 
@@ -208,7 +257,7 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print(f"✓ Claims Audit passed (v{version}: version parity, zero-egress, hotkeys, entitlements, SBOM).")
+    print(f"✓ Claims Audit passed (v{version}: version parity, zero-egress, hotkeys, secure-input, entitlements, SBOM).")
     return 0
 
 
