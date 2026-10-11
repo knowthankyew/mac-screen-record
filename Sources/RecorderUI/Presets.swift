@@ -221,18 +221,32 @@ public final class PresetsStore: ObservableObject {
     /// Note on deletion: If deleting a profile leaves exactly 1 remaining PIP profile that had not been
     /// marked, it will be automatically promoted to the Facecam profile.
     public func normalizeFacecamProfiles() {
+        var changed = false
+        for i in presets.indices where !presets[i].webcamEnabled && presets[i].useForFacecam {
+            presets[i].useForFacecam = false
+            changed = true
+        }
         let pipPresets = presetsWithPIP
         if pipPresets.count == 1 {
             let singlePIPId = pipPresets[0].id
-            var changed = false
             for i in presets.indices {
                 if presets[i].id == singlePIPId && !presets[i].useForFacecam {
                     presets[i].useForFacecam = true
                     changed = true
                 }
             }
-            if changed { persist() }
+        } else if pipPresets.filter(\.useForFacecam).count > 1 {
+            var seenFirst = false
+            for i in presets.indices where presets[i].webcamEnabled && presets[i].useForFacecam {
+                if seenFirst {
+                    presets[i].useForFacecam = false
+                    changed = true
+                } else {
+                    seenFirst = true
+                }
+            }
         }
+        if changed { persist() }
     }
 
     public func setAsFacecam(id: UUID) {
@@ -263,7 +277,16 @@ public final class PresetsStore: ObservableObject {
 
     public func update(_ preset: Preset) {
         if let i = presets.firstIndex(where: { $0.id == preset.id }) {
-            presets[i] = preset
+            var updated = preset
+            if !updated.webcamEnabled {
+                updated.useForFacecam = false
+            }
+            presets[i] = updated
+            if updated.webcamEnabled && updated.useForFacecam {
+                for j in presets.indices where j != i {
+                    presets[j].useForFacecam = false
+                }
+            }
             normalizeFacecamProfiles()
             persist()
         }

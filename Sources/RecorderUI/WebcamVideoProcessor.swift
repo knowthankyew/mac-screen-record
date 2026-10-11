@@ -247,8 +247,22 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
                     .cropped(to: CGRect(x: cropOriginX, y: cropOriginY, width: size.width, height: size.height))
                     .transformed(by: CGAffineTransform(translationX: -cropOriginX, y: -cropOriginY))
             }
-            // Fallback while custom image loads asynchronously in background
-            return WebcamBackgroundPreset.warmStudio.makeImage(size: size)
+            // Fallback while custom image loads asynchronously in background (or if load failed)
+            lock.lock()
+            if let fallback = self.cachedPresetImage,
+               self.lastCachedPreset == .warmStudio,
+               self.lastCachedPresetSize == size {
+                lock.unlock()
+                return fallback
+            }
+            lock.unlock()
+            let generated = WebcamBackgroundPreset.warmStudio.makeImage(size: size)
+            lock.lock()
+            self.cachedPresetImage = generated
+            self.lastCachedPreset = .warmStudio
+            self.lastCachedPresetSize = size
+            lock.unlock()
+            return generated
 
         case .cutout:
             // Transparent background: Blend with mask will composite foreground person

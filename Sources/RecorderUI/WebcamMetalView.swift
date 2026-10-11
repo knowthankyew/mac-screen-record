@@ -67,6 +67,8 @@ public final class WebcamMetalView: MTKView, MTKViewDelegate {
 
     // MARK: - MTKViewDelegate
 
+    private let inFlightSemaphore = DispatchSemaphore(value: 3)
+
     public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
 
     public func draw(in view: MTKView) {
@@ -77,18 +79,28 @@ public final class WebcamMetalView: MTKView, MTKViewDelegate {
         }
         lock.unlock()
 
-        guard let currentDrawable = view.currentDrawable,
-              let commandQueue = self.commandQueue,
-              let ciContext = self.ciContext,
-              let commandBuffer = commandQueue.makeCommandBuffer() else {
-            return
-        }
-
         let targetSize = view.drawableSize
         guard targetSize.width > 0 && targetSize.height > 0 else { return }
 
         let extent = image.extent
         guard extent.width > 0 && extent.height > 0 else { return }
+
+        guard inFlightSemaphore.wait(timeout: .now()) == .success else {
+            return
+        }
+
+        guard let currentDrawable = view.currentDrawable,
+              let commandQueue = self.commandQueue,
+              let ciContext = self.ciContext,
+              let commandBuffer = commandQueue.makeCommandBuffer() else {
+            inFlightSemaphore.signal()
+            return
+        }
+
+        let semaphore = inFlightSemaphore
+        commandBuffer.addCompletedHandler { _ in
+            semaphore.signal()
+        }
 
         // Scale image to match the view's backing drawable dimensions
         let scaleX = targetSize.width / extent.width

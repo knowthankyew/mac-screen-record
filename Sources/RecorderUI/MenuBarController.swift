@@ -43,7 +43,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
             item.button?.image = pausedIcon
             item.button?.image?.isTemplate = false
             item.button?.toolTip = "Recording paused"
-        case .error(let msg):
+        case .error(let msg), .interrupted(let msg, _):
             item.button?.image = errorIcon
             item.button?.image?.isTemplate = false
             item.button?.toolTip = "⚠️ Recording Error: \(msg)"
@@ -52,7 +52,6 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
             item.button?.image?.isTemplate = true
             item.button?.toolTip = "Mac Screen Record"
         }
-        item.menu = buildMenu()
     }
 
     // MARK: - Menu & NSMenuDelegate
@@ -71,7 +70,8 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
     private func populateMenu(_ menu: NSMenu) {
         menu.removeAllItems()
 
-        if case .error(let msg) = vm?.status {
+        switch vm?.status {
+        case .error(let msg), .interrupted(let msg, _):
             let errorItem = NSMenuItem(
                 title: "⚠️ Recording Failed: \(msg)",
                 action: #selector(showWindow),
@@ -80,6 +80,8 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
             errorItem.target = self
             menu.addItem(errorItem)
             menu.addItem(.separator())
+        default:
+            break
         }
 
         let isRecording: Bool = {

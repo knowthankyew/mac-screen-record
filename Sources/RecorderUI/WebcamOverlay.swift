@@ -108,15 +108,26 @@ public final class WebcamOverlayController: ObservableObject {
         return CGWindowID(w.windowNumber)
     }
 
-    public func show(deviceID: String) throws {
+    public func show(deviceID: String) async throws {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            break
+        case .notDetermined:
+            let granted = await AVCaptureDevice.requestAccess(for: .video)
+            guard granted else {
+                throw NSError(
+                    domain: "Webcam",
+                    code: 2,
+                    userInfo: [NSLocalizedDescriptionKey: "Camera access was not granted. Enable it in System Settings › Privacy & Security › Camera."]
+                )
+            }
         case .denied, .restricted:
             throw NSError(
                 domain: "Webcam",
                 code: 2,
                 userInfo: [NSLocalizedDescriptionKey: "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."]
             )
-        default:
+        @unknown default:
             break
         }
         guard let device = AVCaptureDevice(uniqueID: deviceID) else {

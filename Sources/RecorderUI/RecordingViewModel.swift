@@ -28,6 +28,7 @@ public final class RecordingViewModel: ObservableObject {
         case paused(startedAt: Date, pausedAt: Date)
         case stopping
         case finished(URL)
+        case interrupted(message: String, partialURL: URL?)
         case error(String)
     }
 
@@ -261,7 +262,7 @@ public final class RecordingViewModel: ObservableObject {
             return
         }
         do {
-            try webcam.show(deviceID: id)
+            try await webcam.show(deviceID: id)
             selectedWebcamDeviceID = id
             webcamEnabled = true
         } catch {
@@ -538,8 +539,11 @@ public final class RecordingViewModel: ObservableObject {
     }
 
     public func dismissError() {
-        if case .error = status {
+        switch status {
+        case .error, .interrupted:
             status = displays.isEmpty ? .idle : .ready
+        default:
+            break
         }
     }
 
@@ -672,11 +676,17 @@ public final class RecordingViewModel: ObservableObject {
                 let savedURL = try await self.session.stop()
                 self.lastRecordingURL = savedURL
                 self.log.info("Salvaged partial recording: \(savedURL.lastPathComponent, privacy: .public)")
-                self.status = .error("⚠️ Recording failed: \(message). Partial video saved as \(savedURL.lastPathComponent).")
+                self.status = .interrupted(
+                    message: "⚠️ Recording failed: \(message). Partial video saved as \(savedURL.lastPathComponent).",
+                    partialURL: savedURL
+                )
                 await self.library.reload()
             } catch {
                 self.log.error("Auto-salvage failed: \(error.localizedDescription, privacy: .public)")
-                self.status = .error("⚠️ Recording interrupted: \(message). Partial file could not be saved.")
+                self.status = .interrupted(
+                    message: "⚠️ Recording interrupted: \(message). Partial file could not be saved.",
+                    partialURL: nil
+                )
             }
         }
     }
@@ -684,6 +694,8 @@ public final class RecordingViewModel: ObservableObject {
     public func revealLastRecording() {
         if case .finished(let url) = status {
             NSWorkspace.shared.activateFileViewerSelecting([url])
+        } else if case .interrupted(_, let partialURL?) = status {
+            NSWorkspace.shared.activateFileViewerSelecting([partialURL])
         } else if let url = lastRecordingURL {
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } else if let latest = library.files.first {
@@ -693,12 +705,20 @@ public final class RecordingViewModel: ObservableObject {
 
     /// Deletes all artifacts (primary file + any matching temporary/partial fragments) associated with the last recording.
     public func deleteLastRecordingArtifacts(moveToTrash: Bool = true) {
-        guard let url = lastRecordingURL else { return }
+        let targetURL: URL?
+        if case .interrupted(_, let partialURL) = status {
+            targetURL = partialURL
+        } else {
+            targetURL = lastRecordingURL
+        }
+        guard let url = targetURL else { return }
         library.deleteArtifacts(at: url, moveToTrash: moveToTrash)
-        self.lastRecordingURL = nil
+        if self.lastRecordingURL == url {
+            self.lastRecordingURL = nil
+        }
         switch status {
-        case .finished, .error:
-            status = .ready
+        case .finished, .error, .interrupted:
+            status = displays.isEmpty ? .idle : .ready
         default:
             break
         }

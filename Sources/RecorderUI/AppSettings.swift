@@ -59,7 +59,15 @@ public final class AppSettings: ObservableObject {
         } else {
             self.outputFolder = fallback
         }
-        try? FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: outputFolder, withIntermediateDirectories: true)
+        } catch {
+            if outputFolder != fallback {
+                self.outputFolder = fallback
+                UserDefaults.standard.set(fallback.path, forKey: Keys.folderPath)
+                try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
+            }
+        }
     }
 
     public static func isLocalNonUbiquitous(_ url: URL) -> Bool {

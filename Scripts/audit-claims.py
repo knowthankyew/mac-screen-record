@@ -63,29 +63,55 @@ def check_version_and_branding_parity(root: Path, errors: list[str]) -> str:
     return version
 
 
+FORBIDDEN_EGRESS_PATTERNS = [
+    (r"\bimport\s+Network\b", "import Network"),
+    (r"\bimport\s+CFNetwork\b", "import CFNetwork"),
+    (r"\bimport\s+WebKit\b", "import WebKit"),
+    (r"\bURLSession\b", "URLSession"),
+    (r"\bNSURLConnection\b", "NSURLConnection"),
+    (r"\bNWConnection\b", "NWConnection"),
+    (r"\bNWListener\b", "NWListener"),
+    (r"\bWKWebView\b", "WKWebView"),
+    (r"\bsocket\s*\(", "BSD socket(...)"),
+    (r"\bconnect\s*\(", "BSD connect(...)"),
+    (r"\bsockaddr_in6?\b", "sockaddr_in/sockaddr_in6"),
+    (r"\bCFSocket\w*\b", "CFSocket"),
+    (r"sys/socket\.h", "sys/socket.h"),
+    (r"\bgetaddrinfo\s*\(", "getaddrinfo(...)"),
+]
+
+
+def scan_swift_source_for_egress(content: str) -> list[str]:
+    matched_labels: list[str] = []
+    for pattern, label in FORBIDDEN_EGRESS_PATTERNS:
+        if re.search(pattern, content):
+            matched_labels.append(label)
+    return matched_labels
+
+
 def check_zero_egress_and_dependencies(root: Path, errors: list[str]) -> None:
     package_swift = (root / "Package.swift").read_text(encoding="utf-8")
     if re.search(r"\.package\s*\(\s*url\s*:", package_swift):
         fail(errors, "Package.swift contains external remote package dependencies")
 
-    forbidden_patterns = [
-        (r"\bimport\s+Network\b", "import Network"),
-        (r"\bimport\s+CFNetwork\b", "import CFNetwork"),
-        (r"\bimport\s+WebKit\b", "import WebKit"),
-        (r"\bURLSession\b", "URLSession"),
-        (r"\bNSURLConnection\b", "NSURLConnection"),
-        (r"\bNWConnection\b", "NWConnection"),
-        (r"\bNWListener\b", "NWListener"),
-        (r"\bWKWebView\b", "WKWebView"),
+    # Self-test fixture: verify scanner catches both high-level frameworks and low-level BSD sockets
+    fixtures = [
+        ("import Darwin\nlet fd = socket(AF_INET, SOCK_STREAM, 0)", "BSD socket(...)"),
+        ("import Darwin\nlet rc = connect(fd, addr, len)", "BSD connect(...)"),
+        ("import Foundation\nlet s = URLSession.shared", "URLSession"),
+        ("import Network\nlet c = NWConnection(host: h, port: p, using: .tcp)", "import Network"),
     ]
+    for sample_code, expected_label in fixtures:
+        detected = scan_swift_source_for_egress(sample_code)
+        if expected_label not in detected:
+            fail(errors, f"Zero-egress scanner self-test failed to reject fixture for '{expected_label}'")
 
     sources_dir = root / "Sources"
     for swift_file in sorted(sources_dir.rglob("*.swift")):
         content = swift_file.read_text(encoding="utf-8")
         rel_path = swift_file.relative_to(root)
-        for pattern, label in forbidden_patterns:
-            if re.search(pattern, content):
-                fail(errors, f"Forbidden network/web symbol '{label}' found in {rel_path}")
+        for label in scan_swift_source_for_egress(content):
+            fail(errors, f"Forbidden network/web symbol '{label}' found in {rel_path}")
 
 
 def check_hotkey_parity(root: Path, errors: list[str]) -> None:

@@ -160,14 +160,29 @@ public final class RecordingsLibrary: ObservableObject {
         }
     }
 
+    public enum RenameError: LocalizedError {
+        case emptyName
+        case leadingDot
+        case invalidCharacters
+
+        public var errorDescription: String? {
+            switch self {
+            case .emptyName:
+                return "Recording name cannot be empty."
+            case .leadingDot:
+                return "Recording name cannot start with a period ('.'), as macOS hides dot-files."
+            case .invalidCharacters:
+                return "Recording name cannot contain path separators ('/' or '\\')."
+            }
+        }
+    }
+
     /// Rename a recording on disk (preserves extension) and refresh the entry.
     public func rename(_ file: RecordingFile, to newBaseName: String) throws {
         let trimmed = newBaseName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty,
-              !trimmed.contains("/"),
-              !trimmed.contains("\\"),
-              trimmed != ".",
-              trimmed != ".." else { return }
+        guard !trimmed.isEmpty else { throw RenameError.emptyName }
+        guard !trimmed.hasPrefix(".") else { throw RenameError.leadingDot }
+        guard !trimmed.contains("/") && !trimmed.contains("\\") else { throw RenameError.invalidCharacters }
 
         let ext = file.url.pathExtension
         let parent = file.url.deletingLastPathComponent()

@@ -59,10 +59,14 @@ public final class PermissionsMonitor: ObservableObject {
     public func relaunchApp() {
         let url = Bundle.main.bundleURL
         let task = Process()
-        task.launchPath = "/usr/bin/open"
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         task.arguments = ["-n", url.path]
-        try? task.run()
-        NSApp.terminate(nil)
+        do {
+            try task.run()
+            NSApp.terminate(nil)
+        } catch {
+            NSSound.beep()
+        }
     }
 }
 
