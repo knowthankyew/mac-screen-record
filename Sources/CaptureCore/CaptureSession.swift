@@ -134,10 +134,10 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
             }
         } catch {
             state = .failed(error.localizedDescription)
-            self.encoder?.cancel()
-            self.encoder = nil
             self.micCapture?.stop()
             self.micCapture = nil
+            self.encoder?.cancel()
+            self.encoder = nil
             throw CaptureError.streamFailed(error.localizedDescription)
         }
         self.stream = stream
@@ -148,11 +148,11 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
             log.info("Capture started")
         } catch {
             state = .failed(error.localizedDescription)
+            self.micCapture?.stop()
+            self.micCapture = nil
             self.encoder?.cancel()
             self.encoder = nil
             self.stream = nil
-            self.micCapture?.stop()
-            self.micCapture = nil
             throw CaptureError.streamFailed(error.localizedDescription)
         }
     }

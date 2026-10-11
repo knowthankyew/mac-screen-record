@@ -113,14 +113,17 @@ public final class RecordingsLibrary: ObservableObject {
     }
 
     /// Deletes a recording entry from the library. Alias for `deleteArtifacts(at:moveToTrash:)`.
-    public func delete(_ file: RecordingFile, moveToTrash: Bool = true) {
+    @discardableResult
+    public func delete(_ file: RecordingFile, moveToTrash: Bool = true) -> Error? {
         deleteArtifacts(at: file.url, moveToTrash: moveToTrash)
     }
 
     /// Deletes the primary recording file and any matching sidecars or partial fragments.
-    public func deleteArtifacts(at url: URL, moveToTrash: Bool = true) {
+    @discardableResult
+    public func deleteArtifacts(at url: URL, moveToTrash: Bool = true) -> Error? {
         let fm = FileManager.default
         var primaryDeleted = false
+        var primaryError: Error? = nil
         if fm.fileExists(atPath: url.path) {
             do {
                 if moveToTrash {
@@ -132,6 +135,7 @@ public final class RecordingsLibrary: ObservableObject {
                 }
                 primaryDeleted = true
             } catch {
+                primaryError = error
                 log.error("Failed to delete recording at \(url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         } else {
@@ -167,6 +171,7 @@ public final class RecordingsLibrary: ObservableObject {
         if primaryDeleted {
             files.removeAll { $0.url == url }
         }
+        return primaryError
     }
 
     public enum RenameError: LocalizedError {

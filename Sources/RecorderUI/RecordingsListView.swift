@@ -111,7 +111,7 @@ private struct RecordingRow: View {
             Button { library.open(file) }            label: { Image(systemName: "play.circle") }.buttonStyle(.borderless).help("Open")
             Button { library.revealInFinder(file) }  label: { Image(systemName: "folder") }.buttonStyle(.borderless).help("Reveal in Finder")
             Button(role: .destructive) {
-                library.delete(file)
+                deleteFile()
             } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Move to Trash")
         }
         .padding(.vertical, 4)
@@ -126,7 +126,13 @@ private struct RecordingRow: View {
                     .disabled(exportingID != nil)
             }
             Divider()
-            Button("Move to Trash", role: .destructive) { library.delete(file) }
+            Button("Move to Trash", role: .destructive) { deleteFile() }
+        }
+    }
+
+    private func deleteFile() {
+        if let err = library.delete(file) {
+            errorMessage = "Delete failed: \(err.localizedDescription)"
         }
     }
 

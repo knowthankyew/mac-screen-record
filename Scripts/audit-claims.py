@@ -89,10 +89,13 @@ FORBIDDEN_EGRESS_PATTERNS = [
     (r"\bimport\s+Network\b", "import Network"),
     (r"\bimport\s+CFNetwork\b", "import CFNetwork"),
     (r"\bimport\s+WebKit\b", "import WebKit"),
-    (r"\bURLSession\b", "URLSession"),
+    (r"#\s*(?:import|include)\s*[<\"](?:CFNetwork|Network|WebKit)/", "#import Network/CFNetwork/WebKit"),
+    (r"\bN?S?URLSession\b", "URLSession/NSURLSession"),
     (r"\bNSURLConnection\b", "NSURLConnection"),
     (r"\bNWConnection\b", "NWConnection"),
     (r"\bNWListener\b", "NWListener"),
+    (r"\bnw_(?:connection|listener|endpoint|parameters)_\w*\b", "Network.framework C API (nw_*)"),
+    (r"\bCF(?:StreamCreatePairWithSocket|ReadStreamCreateForHTTPRequest|HostCreateWithName)\w*\b", "CFNetwork stream/socket API"),
     (r"\bWKWebView\b", "WKWebView"),
     (r"\bsocket\s*\(", "BSD socket(...)"),
     (r"(?<!\.)\b(?:Darwin\.)?connect\s*\(", "BSD connect(...)"),
@@ -122,7 +125,10 @@ def check_zero_egress_and_dependencies(root: Path, errors: list[str]) -> None:
         ("import Darwin\nlet fd = socket(AF_INET, SOCK_STREAM, 0)", "BSD socket(...)"),
         ("import Darwin\nlet rc = connect(fd, addr, len)", "BSD connect(...)"),
         ("import Darwin\nlet rc = Darwin.connect(fd, addr, len)", "BSD connect(...)"),
-        ("import Foundation\nlet s = URLSession.shared", "URLSession"),
+        ("import Foundation\nlet s = URLSession.shared", "URLSession/NSURLSession"),
+        ("let s = NSURLSession.shared()", "URLSession/NSURLSession"),
+        ("let conn = nw_connection_create(ep, params)", "Network.framework C API (nw_*)"),
+        ("#import <CFNetwork/CFNetwork.h>", "#import Network/CFNetwork/WebKit"),
         ("import Network\nlet c = NWConnection(host: h, port: p, using: .tcp)", "import Network"),
     ]
     for sample_code, expected_label in fixtures:
@@ -215,30 +221,36 @@ def check_sbom_and_privacy_claims(root: Path, version: str, errors: list[str]) -
     if sbom_script is not None and '"$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json"' not in sbom_script:
         fail(errors, "Scripts/generate-sbom.py missing canonical CycloneDX 1.5 schema URI")
 
-    bom_path = root / "dist" / "bom.json"
-    if bom_path.is_file():
-        bom_text = read_text_checked(root, "dist/bom.json", errors)
+    candidate_boms = [
+        "dist/Mac Screen Record.app/Contents/Resources/bom.json",
+        "dist/bom.json",
+    ]
+    for rel_bom in candidate_boms:
+        bom_path = root / rel_bom
+        if not bom_path.is_file():
+            continue
+        bom_text = read_text_checked(root, rel_bom, errors)
         if bom_text is None:
-            return
+            continue
         try:
             bom = json.loads(bom_text)
         except json.JSONDecodeError as exc:
-            fail(errors, f"dist/bom.json is not valid JSON: {exc}")
-            return
+            fail(errors, f"{rel_bom} is not valid JSON: {exc}")
+            continue
 
         if bom.get("$schema") != "http://cyclonedx.org/schema/bom-1.5.schema.json":
-            fail(errors, f"dist/bom.json has invalid $schema: {bom.get('$schema')}")
+            fail(errors, f"{rel_bom} has invalid $schema: {bom.get('$schema')}")
         if bom.get("specVersion") != "1.5":
-            fail(errors, f"dist/bom.json specVersion expected '1.5', got '{bom.get('specVersion')}'")
+            fail(errors, f"{rel_bom} specVersion expected '1.5', got '{bom.get('specVersion')}'")
 
         comp = bom.get("metadata", {}).get("component", {})
         if comp.get("version") != version:
-            fail(errors, f"dist/bom.json component version '{comp.get('version')}' != Info.plist '{version}'")
+            fail(errors, f"{rel_bom} component version '{comp.get('version')}' != Info.plist '{version}'")
 
         props = {p.get("name"): p.get("value") for p in comp.get("properties", [])}
         for _, (prop_name, prop_val) in expected_claims.items():
             if props.get(prop_name) != prop_val:
-                fail(errors, f"dist/bom.json property '{prop_name}' expected '{prop_val}', got '{props.get(prop_name)}'")
+                fail(errors, f"{rel_bom} property '{prop_name}' expected '{prop_val}', got '{props.get(prop_name)}'")
 
 
 def main() -> int:

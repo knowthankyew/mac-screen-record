@@ -398,7 +398,7 @@ See [ROADMAP.md](ROADMAP.md) for the full technical specification and release pl
 ### Planned:
 
 - 🟡 [Phase 7](ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256 manifests, tamper-evident capture context)
-- 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume, toggle hotkeys)
+- 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
 - 🟡 [Phase 9](ROADMAP.md#phase-9-automated-supply-chain--zero-egress-ci-gate) — Automated Supply Chain & Zero-Egress CI Gate (static network primitives scanner, zero-SPM gate)
 
 Want a feature on this list to move from 🟡 to ✅? Open an issue or a PR.

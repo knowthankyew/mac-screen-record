@@ -37,18 +37,20 @@ cp "$BIN" "$APP_DIR/Contents/MacOS/$EXEC_NAME"
 cp "$ROOT/Resources/Info.plist" "$APP_DIR/Contents/Info.plist"
 
 # Generate CycloneDX SBOM & embed supply chain notices
-if [ -f "$ROOT/Scripts/generate-sbom.py" ]; then
-    echo "==> Generating CycloneDX SBOM..."
-    mkdir -p "$DIST_DIR"
-    if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
-        SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || true)"
-        SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
-    fi
-    export SOURCE_DATE_EPOCH
-    VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
-    python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
-    cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
+if [ ! -f "$ROOT/Scripts/generate-sbom.py" ]; then
+    echo "ERROR: Mandatory SBOM generator '$ROOT/Scripts/generate-sbom.py' is missing." >&2
+    exit 1
 fi
+echo "==> Generating CycloneDX SBOM..."
+mkdir -p "$DIST_DIR"
+if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
+    SOURCE_DATE_EPOCH="$(git -C "$ROOT" log -1 --format=%ct 2>/dev/null || true)"
+    SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
+fi
+export SOURCE_DATE_EPOCH
+VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
+python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
+cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
 if [ -f "$ROOT/NOTICE.md" ]; then
     cp "$ROOT/NOTICE.md" "$APP_DIR/Contents/Resources/NOTICE.md"
 fi

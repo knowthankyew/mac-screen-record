@@ -56,7 +56,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 **Objective**: Provide verifiable local checksums and recording metadata manifests for regulatory filings and documentation workflows.
 
 - **Cryptographic Checksumming**:
-  - Immediately upon recording termination, compute SHA-256 and SHA-512 cryptographic hashes of the saved media container before closing the file handle.
+  - Immediately upon recording termination, compute SHA-256 and SHA-512 cryptographic hashes of the saved media container after `AVAssetWriter.finishWriting()` completes and the file handle is closed.
 - **Deterministic Evidence Manifest (`.evidence.json`)**:
   - Generate an optional companion metadata manifest alongside the output file (e.g., `Record_2026-10-09_12-00-00.mp4` + `Record_2026-10-09_12-00-00.evidence.json`):
     - **Temporal Integrity**: Precise start and end UTC timestamps tracked monotonically via `mach_continuous_time`.

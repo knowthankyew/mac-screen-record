@@ -53,8 +53,9 @@ public enum GIFExporter {
 
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
-        generator.requestedTimeToleranceBefore = .zero
-        generator.requestedTimeToleranceAfter = .zero
+        let tolerance = CMTime(seconds: interval / 2.0, preferredTimescale: 600)
+        generator.requestedTimeToleranceBefore = tolerance
+        generator.requestedTimeToleranceAfter = tolerance
         generator.maximumSize = CGSize(width: options.maxWidth, height: 0)
 
         let tempDest = destination.deletingLastPathComponent()
@@ -88,7 +89,8 @@ public enum GIFExporter {
 
         for i in 0..<frameCount {
             try Task.checkCancellation()
-            let t = CMTime(seconds: Double(i) * interval, preferredTimescale: 600)
+            let secs = min(Double(i) * interval, max(0, totalSeconds - 0.001))
+            let t = CMTime(seconds: secs, preferredTimescale: 600)
             do {
                 let cg = try await generator.image(at: t).image
                 CGImageDestinationAddImage(dest, cg, frameProps as CFDictionary)
