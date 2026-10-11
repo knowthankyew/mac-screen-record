@@ -229,6 +229,7 @@ def check_sbom_and_privacy_claims(root: Path, version: str, errors: list[str]) -
         fail(errors, "Scripts/generate-sbom.py missing canonical CycloneDX 1.5 schema URI")
 
     candidate_boms = [
+        "bom.json",
         "dist/Mac Screen Record.app/Contents/Resources/bom.json",
         "dist/bom.json",
     ]
