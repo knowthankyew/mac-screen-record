@@ -29,6 +29,7 @@ public final class VideoEncoder: @unchecked Sendable {
     private var systemAudioInput: AVAssetWriterInput?
 
     private var sessionStarted = false
+    private var isFinishing = false
     private var sessionStartPTS: CMTime?
     private let queue = DispatchQueue(label: "com.macscreenrecord.encoder", qos: .userInitiated)
 
@@ -72,95 +73,97 @@ public final class VideoEncoder: @unchecked Sendable {
     }
 
     public func start() throws {
-        guard writer == nil else { throw EncoderError.alreadyStarted }
+        try queue.sync {
+            guard writer == nil else { throw EncoderError.alreadyStarted }
 
-        // Make sure the parent directory exists and remove any stale file.
-        let url = settings.outputURL
-        try FileManager.default.createDirectory(
-            at: url.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        if FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.removeItem(at: url)
-        }
-
-        let writer: AVAssetWriter
-        do {
-            writer = try AVAssetWriter(outputURL: url, fileType: settings.codec.avFileType)
-        } catch {
-            throw EncoderError.writerInitFailed(error.localizedDescription)
-        }
-
-        // Enable movie fragment writing for MP4 and MOV containers.
-        // This writes movie fragments (moof boxes) every 10 seconds, which:
-        // 1. Prevents buffering enormous index structures in RAM on long (e.g. 15+ min) recordings.
-        // 2. Flushes media data directly to disk periodically.
-        // 3. Guarantees that if a crash, hardware reset, or mid-stream error occurs,
-        //    all completed fragments up to the point of failure remain playable on disk.
-        if settings.codec.avFileType == .mp4 || settings.codec.avFileType == .mov {
-            writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
-        } else {
-            writer.shouldOptimizeForNetworkUse = true
-        }
-
-        // ── Video input ────────────────────────────────────────────────────
-        var videoSettings: [String: Any] = [
-            AVVideoCodecKey: settings.codec.avVideoCodec,
-            AVVideoWidthKey: settings.width,
-            AVVideoHeightKey: settings.height,
-        ]
-        switch settings.codec {
-        case .h264, .hevc:
-            videoSettings[AVVideoCompressionPropertiesKey] = [
-                AVVideoAverageBitRateKey: settings.effectiveBitrate,
-                AVVideoExpectedSourceFrameRateKey: settings.fps,
-                AVVideoMaxKeyFrameIntervalKey: settings.fps * 2,
-                AVVideoAllowFrameReorderingKey: false,
-            ]
-        case .proRes422, .proRes4444:
-            // ProRes is intra-frame; no bitrate / GOP knobs.
-            break
-        }
-
-        let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
-        videoInput.expectsMediaDataInRealTime = true
-        guard writer.canAdd(videoInput) else {
-            throw EncoderError.writerInitFailed("Writer rejected video input")
-        }
-        writer.add(videoInput)
-        self.videoInput = videoInput
-
-        // ── Audio inputs (mic + system audio as separate tracks) ──────────
-        let audioSettings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVNumberOfChannelsKey: 2,
-            AVSampleRateKey: 48_000,
-            AVEncoderBitRateKey: 192_000,
-        ]
-        if settings.captureMicrophone {
-            let mic = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
-            mic.expectsMediaDataInRealTime = true
-            if writer.canAdd(mic) {
-                writer.add(mic)
-                self.micInput = mic
-            }
-        }
-        if settings.captureSystemAudio {
-            let sys = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
-            sys.expectsMediaDataInRealTime = true
-            if writer.canAdd(sys) {
-                writer.add(sys)
-                self.systemAudioInput = sys
-            }
-        }
-
-        guard writer.startWriting() else {
-            throw EncoderError.writerInitFailed(
-                writer.error?.localizedDescription ?? "startWriting() returned false"
+            // Make sure the parent directory exists and remove any stale file.
+            let url = settings.outputURL
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
             )
+            if FileManager.default.fileExists(atPath: url.path) {
+                try FileManager.default.removeItem(at: url)
+            }
+
+            let writer: AVAssetWriter
+            do {
+                writer = try AVAssetWriter(outputURL: url, fileType: settings.codec.avFileType)
+            } catch {
+                throw EncoderError.writerInitFailed(error.localizedDescription)
+            }
+
+            // Enable movie fragment writing for MP4 and MOV containers.
+            // This writes movie fragments (moof boxes) every 10 seconds, which:
+            // 1. Prevents buffering enormous index structures in RAM on long (e.g. 15+ min) recordings.
+            // 2. Flushes media data directly to disk periodically.
+            // 3. Guarantees that if a crash, hardware reset, or mid-stream error occurs,
+            //    all completed fragments up to the point of failure remain playable on disk.
+            if settings.codec.avFileType == .mp4 || settings.codec.avFileType == .mov {
+                writer.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600)
+            } else {
+                writer.shouldOptimizeForNetworkUse = true
+            }
+
+            // ── Video input ────────────────────────────────────────────────────
+            var videoSettings: [String: Any] = [
+                AVVideoCodecKey: settings.codec.avVideoCodec,
+                AVVideoWidthKey: settings.width,
+                AVVideoHeightKey: settings.height,
+            ]
+            switch settings.codec {
+            case .h264, .hevc:
+                videoSettings[AVVideoCompressionPropertiesKey] = [
+                    AVVideoAverageBitRateKey: settings.effectiveBitrate,
+                    AVVideoExpectedSourceFrameRateKey: settings.fps,
+                    AVVideoMaxKeyFrameIntervalKey: settings.fps * 2,
+                    AVVideoAllowFrameReorderingKey: false,
+                ]
+            case .proRes422, .proRes4444:
+                // ProRes is intra-frame; no bitrate / GOP knobs.
+                break
+            }
+
+            let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
+            videoInput.expectsMediaDataInRealTime = true
+            guard writer.canAdd(videoInput) else {
+                throw EncoderError.writerInitFailed("Writer rejected video input")
+            }
+            writer.add(videoInput)
+            self.videoInput = videoInput
+
+            // ── Audio inputs (mic + system audio as separate tracks) ──────────
+            let audioSettings: [String: Any] = [
+                AVFormatIDKey: kAudioFormatMPEG4AAC,
+                AVNumberOfChannelsKey: 2,
+                AVSampleRateKey: 48_000,
+                AVEncoderBitRateKey: 192_000,
+            ]
+            if settings.captureMicrophone {
+                let mic = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+                mic.expectsMediaDataInRealTime = true
+                if writer.canAdd(mic) {
+                    writer.add(mic)
+                    self.micInput = mic
+                }
+            }
+            if settings.captureSystemAudio {
+                let sys = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+                sys.expectsMediaDataInRealTime = true
+                if writer.canAdd(sys) {
+                    writer.add(sys)
+                    self.systemAudioInput = sys
+                }
+            }
+
+            guard writer.startWriting() else {
+                throw EncoderError.writerInitFailed(
+                    writer.error?.localizedDescription ?? "startWriting() returned false"
+                )
+            }
+            self.writer = writer
+            log.info("Encoder started: \(url.lastPathComponent, privacy: .public)")
         }
-        self.writer = writer
-        log.info("Encoder started: \(url.path, privacy: .public)")
     }
 
     public enum SampleKind: Hashable, Sendable {
@@ -173,7 +176,7 @@ public final class VideoEncoder: @unchecked Sendable {
     /// delegate threads — internally serialized onto the encoder queue.
     public func append(_ sampleBuffer: CMSampleBuffer, kind: SampleKind) {
         queue.async { [weak self] in
-            guard let self, let writer = self.writer else { return }
+            guard let self, !self.isFinishing, let writer = self.writer else { return }
 
             if writer.status == .failed {
                 self.reportFailureIfNeeded(writer.error ?? EncoderError.finishFailed("Encoder asset writer has failed"))
@@ -328,7 +331,7 @@ public final class VideoEncoder: @unchecked Sendable {
 
     public func cancel() {
         queue.sync {
-            guard let writer = self.writer else { return }
+            guard !self.isFinishing, let writer = self.writer else { return }
             if writer.status == .writing {
                 writer.cancelWriting()
             }
@@ -341,16 +344,30 @@ public final class VideoEncoder: @unchecked Sendable {
     }
 
     public func finish() async throws -> URL {
-        guard let writer = self.writer else { throw EncoderError.notStarted }
-
-        // Drain queued appends before finalizing.
-        await withCheckedContinuation { cont in
-            queue.async { cont.resume() }
+        let writerToFinish: AVAssetWriter? = await withCheckedContinuation { cont in
+            queue.async { [weak self] in
+                guard let self, !self.isFinishing, let writer = self.writer else {
+                    cont.resume(returning: nil)
+                    return
+                }
+                self.isFinishing = true
+                self.videoInput?.markAsFinished()
+                self.micInput?.markAsFinished()
+                self.systemAudioInput?.markAsFinished()
+                cont.resume(returning: writer)
+            }
         }
+        guard let writer = writerToFinish else { throw EncoderError.notStarted }
 
-        videoInput?.markAsFinished()
-        micInput?.markAsFinished()
-        systemAudioInput?.markAsFinished()
+        defer {
+            queue.sync {
+                self.writer = nil
+                self.videoInput = nil
+                self.micInput = nil
+                self.systemAudioInput = nil
+                self.isFinishing = false
+            }
+        }
 
         await writer.finishWriting()
 
@@ -359,7 +376,7 @@ public final class VideoEncoder: @unchecked Sendable {
             reportFailureIfNeeded(err)
             throw EncoderError.finishFailed(err.localizedDescription)
         }
-        log.info("Encoder finished: \(writer.outputURL.path, privacy: .public)")
+        log.info("Encoder finished: \(writer.outputURL.lastPathComponent, privacy: .public)")
         return writer.outputURL
     }
 }

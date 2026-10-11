@@ -1,0 +1,180 @@
+Most recent local review with findings: 8 stored findings
+Review directory: /Users/cl0rkster/Github/mac-screen-record
+Base branch: main
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → Sources/RecorderUI/GlobalHotkeys.swift:65
+
+  Capture me weakly in the main-queue dispatch.
+
+  The Carbon callback holds an unretained pointer to GlobalHotkey. The
+  DispatchQueue.main.async closure captures me strongly. If
+  uninstall() runs before that closure runs, the closure keeps the object
+  alive briefly and calls the handler after uninstall. The handler then runs
+  after the hotkeys were removed. Capture me weakly so the handler does
+  not run after uninstall.
+
+
+  Proposed fix
+
+  -            DispatchQueue.main.async { me.handler() }
+  +            DispatchQueue.main.async { [weak me] in me?.handler() }
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Performance & Scalability]
+  → Sources/DeviceKit/DeviceManager.swift:37-42
+
+  The polling loop never ends if the task is not cancelled, and it keeps the
+  manager alive during each iteration.
+
+  The loop uses self?, so it does not retain self between iterations.
+  That part is fine. But deinit is the only place that cancels the task.
+  When self becomes nil, the loop does not exit. It keeps waking every 2.5
+  s for the rest of the process.
+
+  Add guard let self else { return } after the sleep.
+
+
+
+  Fix
+
+  -                self?.refresh()
+  +                guard let self else { return }
+  +                self.refresh()
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingsListView.swift:87-89
+
+  Remove the duplicate .defaultAction shortcut from the rename Save
+  button.
+
+  The sheet header already gives Done the
+  .keyboardShortcut(.defaultAction) shortcut. The rename row gives Save
+  the same shortcut. AppKit processes key equivalents before the field
+  editor gets the key. When the user presses Return in the rename field, one
+  of two things can happen:
+  - Return triggers Done. The sheet closes and the rename is lost.
+  - Return triggers both Save and onCommit. The second commitRename
+  then calls rename on the old file.url, which no longer exists, and
+  shows a false "Rename failed" alert.
+
+  onCommit already handles Return. Remove the shortcut from Save.
+
+
+  🐛 Proposed fix
+
+  -                        Button("Save", action: commitRename).keyboardShortcut(.defaultAction)
+  +                        Button("Save", action: commitRename)
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/WebcamOverlay.swift:111-140
+
+  Check camera authorization before creating the panel.
+
+  AVCaptureDeviceInput(device:) does not guarantee camera authorization.
+  If input creation succeeds while access is .denied or .restricted, the
+  session can produce no frames, but show(deviceID:) still creates the
+  panel and sets isVisible to true. Throw before creating the panel.
+
+
+  🛡️ Suggested fix
+
+       public func show(deviceID: String) throws {
+  +        switch AVCaptureDevice.authorizationStatus(for: .video) {
+  +        case .denied, .restricted:
+  +            throw NSError(domain: "Webcam", code: 2,
+  +                          userInfo: [NSLocalizedDescriptionKey: "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."])
+  +        default:
+  +            break
+  +        }
+           guard let device = AVCaptureDevice(uniqueID: deviceID) else {
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingViewModel.swift:313-324
+
+  Apply the startup default overlays only once per launch.
+
+  MainView calls applyStartupDefaultOverlays() from .task. SwiftUI
+  runs .task each time the view appears. For example, the view appears
+  again when the user closes and reopens the recorder window, and the
+  injected view model survives. Assume the user turned off keystrokes, click
+  highlights, or the webcam after launch. On the next appearance, the
+  default preset turns them back on. Keystroke capture then restarts after
+  the user disabled it.
+
+  Use a one-shot flag.
+
+
+  🐛 Proposed fix
+
+  +    private var didApplyStartupOverlays = false
+  +
+       public func applyStartupDefaultOverlays() async {
+  +        guard !didApplyStartupOverlays else { return }
+  +        didApplyStartupOverlays = true
+           guard let defaultP = presets.defaultPreset else { return }
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Stability & Availability]
+  → Sources/EncoderKit/VideoEncoder.swift:329-340
+
+  Serialize VideoEncoder lifecycle state on queue.
+
+  finish() accesses the writer and inputs outside queue, while
+  cancel() clears them inside queue. start() also publishes them
+  outside queue, while append() reads them on queue. If cancel()
+  overlaps finish(), it can cancel and remove the writer while
+  finalization still uses it. Serialize start(), finish(), cancel(),
+  and all accesses to the writer and inputs through one lifecycle
+  synchronization mechanism. Keep those references owned until finalization
+  completes.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → NOTICE.md:23
+
+  Correct the CI enforcement claim.
+
+  Line 23 says a static-analysis CI gate enforces zero egress, but
+  ROADMAP.md lists that gate under the future Phase 9. Do not present the
+  gate as active until it is implemented. As per path instructions,
+  “ZERO-EGRESS & NETWORK PROHIBITION” is a non-negotiable invariant.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Security & Privacy] | 🛡️ Analyzed with Security Review
+  → Sources/RecorderUI/AppSettings.swift:65-77
+
+  Security: Sensitive Data Exposure (CWE-59)
+  Reachability: Internal · Exploitability: Difficult
+
+  Resolve the output path before validating it.
+
+  url.path can hide a symlink that points into iCloud storage. Resolve the
+  URL before the resource-value lookup and path checks.
+
+
+  🔒️ Proposed fix
+
+       public static func isLocalNonUbiquitous(_ url: URL) -> Bool {
+  -        let checkURL = FileManager.default.fileExists(atPath: url.path) ? url : url.deletingLastPathComponent()
+  +        let resolved = url.resolvingSymlinksInPath()
+  +        let checkURL = FileManager.default.fileExists(atPath: resolved.path) ? resolved : resolved.deletingLastPathComponent()
+           guard let values = try? checkURL.resourceValues(forKeys: [.volumeIsLocalKey, .isUbiquitousItemKey]) else {
+               return false
+           }
+           let isLocal = values.volumeIsLocal ?? false
+           let isUbiquitous = values.isUbiquitousItem ?? false
+  -        let path = url.path
+  +        let path = resolved.path
+

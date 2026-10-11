@@ -25,6 +25,8 @@ reviews:
     - "!build/**"
     - "!DerivedData/**"
     - "!bom.json"
+    - "!docs/coderabbit-pass*.md"
+    - "!docs/coderabbit-pass*.txt"
 
   path_instructions:
     - path: "**/*"

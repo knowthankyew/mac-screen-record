@@ -86,7 +86,7 @@ private struct RecordingRow: View {
                     HStack(spacing: 6) {
                         TextField("Name", text: $renameText, onCommit: commitRename)
                             .textFieldStyle(.roundedBorder)
-                        Button("Save", action: commitRename).keyboardShortcut(.defaultAction)
+                        Button("Save", action: commitRename)
                         Button("Cancel") { renamingID = nil }
                     }
                 } else {

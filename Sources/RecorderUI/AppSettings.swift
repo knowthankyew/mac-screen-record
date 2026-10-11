@@ -63,13 +63,14 @@ public final class AppSettings: ObservableObject {
     }
 
     public static func isLocalNonUbiquitous(_ url: URL) -> Bool {
-        let checkURL = FileManager.default.fileExists(atPath: url.path) ? url : url.deletingLastPathComponent()
+        let resolved = url.resolvingSymlinksInPath()
+        let checkURL = FileManager.default.fileExists(atPath: resolved.path) ? resolved : resolved.deletingLastPathComponent()
         guard let values = try? checkURL.resourceValues(forKeys: [.volumeIsLocalKey, .isUbiquitousItemKey]) else {
             return false
         }
         let isLocal = values.volumeIsLocal ?? false
         let isUbiquitous = values.isUbiquitousItem ?? false
-        let path = url.path
+        let path = resolved.path
         if path.contains("/Library/Mobile Documents/") || path.contains("/Library/CloudStorage/") {
             return false
         }

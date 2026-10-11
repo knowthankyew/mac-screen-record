@@ -62,7 +62,7 @@ public final class GlobalHotkey {
                   pressed.id == me.hotKeyID.id else {
                 return OSStatus(eventNotHandledErr)
             }
-            DispatchQueue.main.async { me.handler() }
+            DispatchQueue.main.async { [weak me] in me?.handler() }
             return noErr
         }
         InstallEventHandler(

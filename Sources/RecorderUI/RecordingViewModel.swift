@@ -308,9 +308,13 @@ public final class RecordingViewModel: ObservableObject {
 
     // MARK: - Presets & Facecam Workflow
 
+    private var didApplyStartupOverlays = false
+
     /// Safely activates startup default overlay features (such as webcam PiP) after the view has appeared,
     /// avoiding races with AVCaptureVideoPreviewLayer or window creation.
     public func applyStartupDefaultOverlays() async {
+        guard !didApplyStartupOverlays else { return }
+        didApplyStartupOverlays = true
         guard let defaultP = presets.defaultPreset else { return }
         if defaultP.clickHighlightsEnabled && !clickHighlightsEnabled {
             toggleClickHighlights()

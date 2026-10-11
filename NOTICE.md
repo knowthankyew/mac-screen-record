@@ -20,7 +20,7 @@ Mac Screen Record is a native macOS utility application designed to capture disp
 
 ## 2. Consumer Privacy Defaults & Air-Gap Invariant
 This application conforms to the `knowthankyew` Consumer-Safe Zero-Egress specification:
-- **Zero Network Egress (`deny`):** Application code does not import or invoke networking APIs (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`), establish socket connections, or execute outbound network requests (enforced via static analysis CI gate).
+- **Zero Network Egress (`deny`):** Application code does not import or invoke networking APIs (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`), establish socket connections, or execute outbound network requests (verified locally during the build pipeline via `Scripts/audit-claims.py`, with automated GitHub Actions CI gating planned in Phase 9).
 - **Zero Cloud Persistence:** Media is never uploaded to remote servers, cloud buckets, or third-party hosting services.
 - **Zero Remote Telemetry:** The application does not bundle analytics SDKs, trackers, or remote error reporting pipelines. Diagnostics are handled exclusively through Apple's local unified logging subsystem (`os.Logger`).
 - **Programmatic Claims Verification:** User-facing privacy assertions are derived directly at runtime from `PrivacyClaimsProvider`.
@@ -38,5 +38,21 @@ When the optional keystroke overlay is active:
 - **Free Mac Screen Recorder by penguinpecker (MIT License):** Upstream codebase and foundational architecture.
 - **Aperture by Sindre Sorhus (MIT License):** Referenced as an architectural design pattern for integrating ScreenCaptureKit with AVAssetWriter.
 - **Apple macOS SDKs:** ScreenCaptureKit, AVFoundation, VideoToolbox, AppKit, SwiftUI, and Carbon HIToolbox.
+
+## 6. Declared macOS TCC Usage Descriptions & Entitlements Justification
+
+All macOS permission keys declared in `Resources/Info.plist` and `Resources/MacScreenRecord.entitlements` are restricted strictly to local capture and filesystem operations:
+
+| Key / Entitlement | Source File | Plain-English Justification |
+| :--- | :--- | :--- |
+| `NSScreenCaptureUsageDescription` | `Info.plist` | Required by `ScreenCaptureKit` to capture display, window, application, or region video frames locally. |
+| `NSCameraUsageDescription` | `Info.plist` | Required by `AVFoundation` to render the optional local presenter webcam picture-in-picture (PiP) overlay. |
+| `NSMicrophoneUsageDescription` | `Info.plist` | Required by `AVFoundation` to capture optional microphone audio tracks alongside screen video. |
+| `NSAppleEventsUsageDescription` | `Info.plist` | Required to enumerate window metadata for selective single-window and application capture. |
+| `com.apple.security.device.camera` | `MacScreenRecord.entitlements` | Hardened Runtime entitlement enabling local camera hardware access for the PiP overlay when opted in by the user. |
+| `com.apple.security.device.microphone` | `MacScreenRecord.entitlements` | Hardened Runtime entitlement enabling local microphone capture when opted in by the user. |
+| `com.apple.security.device.audio-input` | `MacScreenRecord.entitlements` | Hardened Runtime entitlement enabling audio input stream capture for voiceover and level metering. |
+| `com.apple.security.files.user-selected.read-write` | `MacScreenRecord.entitlements` | Enables writing recorded media and reading custom background images in user-selected local folders via `NSOpenPanel`. |
+| `com.apple.security.files.downloads.read-write` | `MacScreenRecord.entitlements` | Allows saving recordings or GIF exports when the user selects a destination inside `~/Downloads`. |
 
 See [LICENSE](./LICENSE) for the root MIT license terms.

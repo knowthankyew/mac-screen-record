@@ -109,6 +109,16 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     public func show(deviceID: String) throws {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .denied, .restricted:
+            throw NSError(
+                domain: "Webcam",
+                code: 2,
+                userInfo: [NSLocalizedDescriptionKey: "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."]
+            )
+        default:
+            break
+        }
         guard let device = AVCaptureDevice(uniqueID: deviceID) else {
             throw NSError(domain: "Webcam", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Camera not found"])

@@ -48,6 +48,10 @@ fi
 if [ -f "$ROOT/NOTICE.md" ]; then
     cp "$ROOT/NOTICE.md" "$APP_DIR/Contents/Resources/NOTICE.md"
 fi
+if [ -f "$ROOT/Scripts/audit-claims.py" ]; then
+    echo "==> Auditing documentation & privacy claims parity..."
+    python3 "$ROOT/Scripts/audit-claims.py"
+fi
 
 # PkgInfo (legacy but expected)
 printf 'APPL????' > "$APP_DIR/Contents/PkgInfo"

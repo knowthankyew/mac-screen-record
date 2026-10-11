@@ -37,7 +37,8 @@ public final class DeviceManager: ObservableObject {
         pollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 2_500_000_000)
-                self?.refresh()
+                guard let self else { return }
+                self.refresh()
             }
         }
     }
