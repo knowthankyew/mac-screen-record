@@ -41,12 +41,12 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Reusable capture presets with automated startup default loading and migration fallback.
   - Native Intel (`x86_64`) and Apple Silicon (`arm64`) architecture parity.
   - Stable self-signed local identity harness preserving macOS TCC permissions across builds.
-- ✅ **Neural Engine Presenter PiP, Security Guards & Claims Audit (v0.3.0)**:
+- ✅ **Neural Engine Presenter PiP, Security Guards, Unit Tests & CI Gate (v0.3.0)**:
   - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
   - Zero-egress background blur, 5 virtual backdrops, custom background image replacement, cutout silhouette mode, and Quick-Toggle Facecam header workflow (`useForFacecam`).
   - Keystroke overlay with synchronous password masking via `IsSecureEventInputEnabled()`.
   - Global Carbon hotkeys (`⌃⌥⌘R` / `⌃⌥⌘S`) and Menu Bar status controller.
-  - Automated CycloneDX JSON SBOM (`bom.json`), `NOTICE.md` supply chain disclosures, and `Scripts/audit-claims.py` verification gate.
+  - Automated CycloneDX JSON SBOM (`bom.json`), `NOTICE.md` supply chain disclosures, `Scripts/audit-claims.py` verification gate, 12-test `MacScreenRecordTests` unit test suite, and GitHub Actions CI + SLSA build provenance workflow (`.github/workflows/ci.yml`).
 
 ---
 
@@ -59,8 +59,8 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phases 1–6** | **Core Capture, Universal Mac, Neural Engine PiP & Claims Linter** | Foundation (`v0.1.0 – v0.3.0`) | ScreenCaptureKit + VideoToolbox, Intel/ARM64 parity, stable TCC signing, auto-salvage, ANE/Metal PiP, Facecam quick-toggle, CycloneDX SBOM, `Scripts/audit-claims.py` (7-pass CodeRabbit 0-Major baseline) | ✅ **Shipped** |
 | **Phase 7** | **Cryptographic Evidence Integrity (*The Evidence Seal*)** | Portfolio Governance | Post-finalization SHA-256 / SHA-512 checksumming and companion `.evidence.json` tamper-evident metadata manifest | 🟡 **Planned** |
 | **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | 🟡 **Planned** |
-| **Phase 9** | **Automated Supply Chain & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner executing static zero-egress scanner, zero-SPM dependency gate, and CycloneDX 1.5 SBOM attestation on every push/PR | 🟡 **Planned** *(Local Gate Shipped)* |
-| **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Next After 7–9** |
+| **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
+| **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Next After 7–8** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Planned (Phase 10+)** |
 
 ---
@@ -89,15 +89,17 @@ The inherited upstream roadmap included extensive planning for commercial conten
 - **In-App Hotkey Customization**:
   - Allow users to remap hotkeys within the Settings panel using Carbon event modifiers.
 
-### Phase 9: Automated Supply Chain & Zero-Egress CI Gate
-**Objective**: Continuous automated verification that the codebase never introduces remote dependencies or network egress.
+### Phase 9: Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (Shipped)
+**Objective**: Continuous automated verification that the codebase never introduces remote dependencies, regressions, or network egress.
 
-- **Static Zero-Egress CI Linter**:
-  - GitHub Actions runner scanning all Swift source files for forbidden networking primitives (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`, `WebKit`).
-- **Zero-SPM Dependency Gate**:
-  - Build failure if `url:` is detected in `Package.swift`.
-- **Automated CycloneDX SBOM Attestation**:
-  - Continuous validation of `bom.json` schema 1.5 compliance during every release build.
+- **Static Zero-Egress & Claims CI Linter**:
+  - GitHub Actions workflow (`.github/workflows/ci.yml`) executing `Scripts/audit-claims.py` across both `Sources/` and `Tests/` for forbidden networking primitives (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`, `WebKit`, BSD sockets).
+- **Automated Unit Test Suite (`MacScreenRecordTests`)**:
+  - 12 deterministic unit tests across `EncoderAndCaptureTests`, `PresetsAndLibraryTests`, and `PrivacyAndOverlayTests` executed via `swift run MacScreenRecordTests` without requiring full Xcode or TCC hardware permissions.
+- **Zero-SPM Dependency Gate & Grouped Dependabot**:
+  - Build failure if `url:` is detected in `Package.swift`; grouped GitHub Actions maintenance via `.github/dependabot.yml`.
+- **Automated CycloneDX SBOM & SLSA Attestation**:
+  - Continuous validation of `bom.json` schema 1.5 compliance and SLSA build provenance attestation during every `main` build.
 
 ---
 

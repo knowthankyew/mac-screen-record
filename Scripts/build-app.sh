@@ -23,7 +23,7 @@ esac
 
 echo "==> Building Swift package ($CONFIG for $ARCH)..."
 cd "$ROOT"
-swift build -c "$CONFIG" --arch "$ARCH"
+swift build -c "$CONFIG" --arch "$ARCH" --product "$EXEC_NAME"
 
 BIN_PATH="$(swift build -c "$CONFIG" --arch "$ARCH" --show-bin-path)"
 BIN="$BIN_PATH/$EXEC_NAME"

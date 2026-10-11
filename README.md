@@ -395,12 +395,12 @@ See [ROADMAP.md](ROADMAP.md) for the full technical specification and release pl
 - ✅ Phase 4 — Pause/resume with PTS rewriting, keystroke overlay, GIF export, settings panel, library polish
 - ✅ Phase 5 — Intel (`x86_64`) support, stable local code signing for persistent TCC, mid-stream auto-salvage, artifact cleanup, SBOM attestation
 - ✅ Phase 6 — Neural Engine person segmentation PiP (blur, virtual backdrops, custom image, cutout), quick-toggle Facecam profiles, automated claims linter (`Scripts/audit-claims.py`)
+- ✅ [Phase 9](ROADMAP.md#phase-9-automated-supply-chain-unit-tests--zero-egress-ci-gate-shipped) — Automated Supply Chain, Unit Tests (`MacScreenRecordTests`) & Zero-Egress GitHub Actions CI Gate (`.github/workflows/ci.yml`)
 
 ### Planned:
 
 - 🟡 [Phase 7](ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256 manifests, tamper-evident capture context)
 - 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
-- 🟡 [Phase 9](ROADMAP.md#phase-9-automated-supply-chain--zero-egress-ci-gate) — Automated Supply Chain & Zero-Egress CI Gate (GitHub Actions static network primitives scanner, zero-SPM gate)
 - 🔜 [Phase 10](ROADMAP.md#phase-10-post-capture--posthumous-library-lossless-trim) — Post-Capture & Posthumous Library Lossless Trim (trim before save + lossless trim of loaded/library `.mp4`/`.mov`/`.m4v` files)
 - 🔜 [Phase 11](ROADMAP.md#phase-11-streamlined-facecam--pip-improvements) — Streamlined Facecam & PiP Improvements (blurred custom image backdrop, Circle vs. Rounded-Rectangle toggle, system border controls)
 
@@ -440,8 +440,9 @@ contributions:
 Before submitting:
 
 ```bash
-swift build              # must pass with no warnings
-./Scripts/build-app.sh   # must produce a runnable .app
+python3 ./Scripts/audit-claims.py  # must pass zero-egress & claims parity
+swift run MacScreenRecordTests     # must pass all unit tests
+./Scripts/build-app.sh             # must produce a runnable .app
 ```
 
 No GPL code may be copied into this repository. Patterns from MIT-licensed

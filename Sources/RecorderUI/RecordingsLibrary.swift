@@ -146,8 +146,9 @@ public final class RecordingsLibrary: ObservableObject {
         let dir = url.deletingLastPathComponent()
         let baseName = url.deletingPathExtension().lastPathComponent
         let knownArtifactSuffixes = ["-partial", "-fragment", ".tmp", ".part"]
+        let targetStdURL = url.standardizedFileURL
         if primaryDeleted, let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
-            for item in contents where item != url {
+            for item in contents where item.standardizedFileURL != targetStdURL {
                 if Self.supportedExts.contains(item.pathExtension.lowercased()) { continue }
                 let itemName = item.lastPathComponent
                 let itemBase = item.deletingPathExtension().lastPathComponent
@@ -169,7 +170,7 @@ public final class RecordingsLibrary: ObservableObject {
         }
 
         if primaryDeleted {
-            files.removeAll { $0.url == url }
+            files.removeAll { $0.url.standardizedFileURL == targetStdURL }
         }
         return primaryError
     }
@@ -219,7 +220,8 @@ public final class RecordingsLibrary: ObservableObject {
             }
         }
         try FileManager.default.moveItem(at: file.url, to: dest)
-        if let i = files.firstIndex(where: { $0.url == file.url }) {
+        let sourceStdURL = file.url.standardizedFileURL
+        if let i = files.firstIndex(where: { $0.url.standardizedFileURL == sourceStdURL }) {
             files[i] = RecordingFile(
                 url: dest, name: dest.lastPathComponent, createdAt: file.createdAt,
                 sizeBytes: file.sizeBytes, duration: file.duration

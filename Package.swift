@@ -41,5 +41,10 @@ let package = Package(
             dependencies: ["CaptureCore", "DeviceKit", "EncoderKit"],
             path: "Sources/RecorderUI"
         ),
+        .executableTarget(
+            name: "MacScreenRecordTests",
+            dependencies: ["CaptureCore", "DeviceKit", "EncoderKit", "RecorderUI"],
+            path: "Tests/MacScreenRecordTests"
+        ),
     ]
 )

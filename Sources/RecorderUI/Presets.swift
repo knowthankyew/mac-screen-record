@@ -144,13 +144,16 @@ public final class PresetsStore: ObservableObject {
     @Published public private(set) var presets: [Preset] = []
     @Published public private(set) var defaultPresetID: UUID?
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
     private let key = "MacScreenRecord.presets.v1"
     private let legacyKey = "FreeMacScreenRecorder.presets.v1"
     private let defaultKey = "MacScreenRecord.defaultPresetID.v1"
     private let legacyDefaultKey = "FreeMacScreenRecorder.defaultPresetID.v1"
 
-    public init() { load() }
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        load()
+    }
 
     public var defaultPreset: Preset? {
         guard let id = defaultPresetID else { return nil }

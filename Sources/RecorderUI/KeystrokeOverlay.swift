@@ -127,7 +127,7 @@ public final class KeystrokeOverlayController: ObservableObject {
         return prefix + glyph
     }
 
-    private static func specialKeyGlyph(forKeyCode code: Int) -> String? {
+    static func specialKeyGlyph(forKeyCode code: Int) -> String? {
         switch code {
         case 36, 76:   return "↩"     // return / numpad enter
         case 48:       return "⇥"     // tab

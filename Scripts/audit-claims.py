@@ -140,21 +140,28 @@ def check_zero_egress_and_dependencies(root: Path, errors: list[str]) -> None:
     if scan_source_for_egress(benign_code):
         fail(errors, "Zero-egress scanner self-test falsely flagged benign '.connect()' method call")
 
-    sources_dir = root / "Sources"
-    if not sources_dir.is_dir():
-        fail(errors, "Missing Sources/ directory")
-        return
-
     source_exts = {".swift", ".c", ".m", ".mm", ".h", ".hpp", ".cpp"}
-    for src_file in sorted(sources_dir.rglob("*")):
-        if not src_file.is_file() or src_file.suffix not in source_exts:
+    for folder_name in ("Sources", "Tests"):
+        target_dir = root / folder_name
+        if not target_dir.is_dir():
+            fail(errors, f"Missing {folder_name}/ directory")
             continue
-        rel_path = str(src_file.relative_to(root))
-        content = read_text_checked(root, rel_path, errors)
-        if content is None:
-            continue
-        for label in scan_source_for_egress(content):
-            fail(errors, f"Forbidden network/web symbol '{label}' found in {rel_path}")
+        for src_file in sorted(target_dir.rglob("*")):
+            if not src_file.is_file() or src_file.suffix not in source_exts:
+                continue
+            rel_path = str(src_file.relative_to(root))
+            content = read_text_checked(root, rel_path, errors)
+            if content is None:
+                continue
+            for label in scan_source_for_egress(content):
+                fail(errors, f"Forbidden network/web symbol '{label}' found in {rel_path}")
+
+    ci_workflow = read_text_checked(root, ".github/workflows/ci.yml", errors)
+    if ci_workflow is not None:
+        if "audit-claims.py" not in ci_workflow:
+            fail(errors, ".github/workflows/ci.yml does not execute Scripts/audit-claims.py")
+        if "MacScreenRecordTests" not in ci_workflow:
+            fail(errors, ".github/workflows/ci.yml does not execute MacScreenRecordTests unit test suite")
 
 
 def check_hotkey_and_secure_input_parity(root: Path, errors: list[str]) -> None:

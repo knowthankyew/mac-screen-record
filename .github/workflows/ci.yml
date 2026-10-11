@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  validate:
+    name: Build, Audit, Test & Attest (macOS)
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+
+      - name: Verify Zero-Egress & Claims Parity Gate
+        run: python3 ./Scripts/audit-claims.py
+
+      - name: Run Unit Test Suite
+        run: swift run MacScreenRecordTests
+
+      - name: Build Production App Bundle & CycloneDX SBOM (cdxgen-compatible 1.5)
+        run: |
+          SIGN_IDENTITY="-" ./Scripts/build-app.sh release
+          cp dist/bom.json bom.json
+
+      - name: Package Release ZIP & Checksums
+        run: |
+          VERSION="$(defaults read "$(pwd)/Resources/Info.plist" CFBundleShortVersionString)"
+          ditto -c -k --sequesterRsrc --keepParent "dist/Mac Screen Record.app" "dist/Mac-Screen-Record-v${VERSION}.zip"
+          shasum -a 256 "dist/Mac-Screen-Record-v${VERSION}.zip" dist/bom.json > dist/SHA256SUMS
+          cat dist/SHA256SUMS
+
+      - name: Attest Build Provenance (SLSA)
+        uses: actions/attest-build-provenance@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          subject-path: |
+            bom.json
+            dist/Mac-Screen-Record-v*.zip
+
+      - name: Upload Build & SBOM Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: mac-screen-record-release-bundle
+          path: |
+            bom.json
+            dist/bom.json
+            dist/SHA256SUMS
+            dist/Mac-Screen-Record-v*.zip
