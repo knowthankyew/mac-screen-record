@@ -1,5 +1,5 @@
 Most recent local review with findings: 8 stored findings
-Review directory: /Users/cl0rkster/Github/mac-screen-record
+Review directory: mac-screen-record
 Base branch: main
 
 ────────────────────────────────────────────────────────────────────────

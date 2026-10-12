@@ -25,7 +25,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:140Sources/RecorderUI/RecordingsListView.swift:140-149]8;;
+  → Sources/RecorderUI/RecordingsListView.swift:140-149
 
   Allow only one GIF export at a time.
 
@@ -39,7 +39,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:13Sources/EncoderKit/GIFExporter.swift:13-17]8;;
+  → Sources/EncoderKit/GIFExporter.swift:13-17
 
   Validate fps and maxWidth.
 
@@ -50,7 +50,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:198Sources/RecorderUI/RecordingsLibrary.swift:198-199]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:198-199
 
   Do not overwrite an existing GIF without confirmation.
 
@@ -62,7 +62,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:127Sources/RecorderUI/RecordingsLibrary.swift:127]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:127
 
   Mark the path interpolation privacy explicitly.
 
@@ -74,7 +74,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:47Sources/EncoderKit/GIFExporter.swift:47-49]8;;
+  → Sources/EncoderKit/GIFExporter.swift:47-49
 
   Bound the frame count to prevent unbounded export cost.
 
@@ -103,7 +103,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:168Sources/RecorderUI/Presets.swift:168-180]8;;
+  → Sources/RecorderUI/Presets.swift:168-180
 
   Loading the legacy key does not migrate it, and a decode failure keeps a
   stale default.
@@ -119,7 +119,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:555Sources/RecorderUI/RecordingViewModel.swift:555-569]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:555-569
 
   lastRecordingURL is set before the start succeeds.
 
@@ -131,7 +131,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MainView.swift:572Sources/RecorderUI/MainView.swift:572-588]8;;
+  → Sources/RecorderUI/MainView.swift:572-588
 
   updateNSView writes recorderWindow asynchronously on every update.
 
@@ -143,7 +143,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:621Sources/RecorderUI/RecordingViewModel.swift:621-666]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:621-666
 
   The salvage flow sets .error before it stops the session, so the user
   can start a new recording during the salvage.
@@ -171,7 +171,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:257README.md:257-258]8;;
+  → README.md:257-258
 
   Correct the encoding claim.
 
@@ -183,7 +183,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:348README.md:348]8;;
+  → README.md:348
 
   Fix the stale product name in the FAQ.
 
@@ -193,7 +193,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/NOTICE.md:23NOTICE.md:23]8;;
+  → NOTICE.md:23
 
   Soften the "does not bundle networking frameworks" claim.
 
@@ -206,7 +206,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:141README.md:141]8;;
+  → README.md:141
 
   Fix the stale product name in the comparison table header.
 
@@ -226,7 +226,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/coderabbit_findings.txt:1coderabbit_findings.txt:1-733]8;;
+  → coderabbit_findings.txt:1-733
 
   Remove generated CodeRabbit CLI output files from the repository.
 
@@ -241,7 +241,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:15Scripts/build-app.sh:15-21]8;;
+  → Scripts/build-app.sh:15-21
 
   Unsupported ARCH values are not validated, and the architecture is not
   forced for the whole build.
@@ -255,7 +255,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:15Scripts/generate-sbom.py:15-16]8;;
+  → Scripts/generate-sbom.py:15-16
 
   An invalid SOURCE_DATE_EPOCH crashes the script with an unhelpful
   traceback.
@@ -266,7 +266,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamOverlay.swift:155Sources/RecorderUI/WebcamOverlay.swift:155-179]8;;
+  → Sources/RecorderUI/WebcamOverlay.swift:155-179
 
   Run session configuration on sessionQueue.
 
@@ -279,7 +279,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:278README.md:278]8;;
+  → README.md:278
 
   Fix the module count.
 
@@ -290,7 +290,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/ROADMAP.md:65ROADMAP.md:65]8;;
+  → ROADMAP.md:65
 
   Egress attestation cannot be proven by the process itself.
 
@@ -300,7 +300,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:33Scripts/build-app.sh:33-39]8;;
+  → Scripts/build-app.sh:33-39
 
   Reproducibility: the SBOM step ignores SOURCE_DATE_EPOCH unless the
   caller sets it.
@@ -323,7 +323,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/ROADMAP.md:11ROADMAP.md:11]8;;
+  → ROADMAP.md:11
 
   Remove the legal-evidence framing or the unverifiable claims.
 
@@ -336,7 +336,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/RELEASE_NOTES.md:35RELEASE_NOTES.md:35]8;;
+  → RELEASE_NOTES.md:35
 
   Version history conflicts across documents.
 
@@ -350,7 +350,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:51Scripts/build-app.sh:51-56]8;;
+  → Scripts/build-app.sh:51-56
 
   The identity check matches a substring and the legacy identity is silently
   accepted.
@@ -364,7 +364,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:401README.md:401-403]8;;
+  → README.md:401-403
 
   Phase links do not match the Shipped list, and ROADMAP.md differs on
   hotkeys.
@@ -378,7 +378,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:15Scripts/setup-stable-signing.sh:15]8;;
+  → Scripts/setup-stable-signing.sh:15
 
   The idempotency check still matches by substring and silently exits when
   the legacy certificate exists.
@@ -389,7 +389,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:21Scripts/generate-sbom.py:21-22]8;;
+  → Scripts/generate-sbom.py:21-22
 
   Use the published CycloneDX schema identifier.
 

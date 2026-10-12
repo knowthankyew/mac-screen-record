@@ -25,7 +25,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:93Sources/EncoderKit/GIFExporter.swift:93-94]8;;
+  → Sources/EncoderKit/GIFExporter.swift:93-94
 
   Each frame decode is a separate seek with zero tolerance. This is slow for
   long recordings.
@@ -38,7 +38,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:121Sources/RecorderUI/RecordingsLibrary.swift:121-170]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:121-170
 
   A failed delete is silent to the user.
 
@@ -50,7 +50,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:51Sources/EncoderKit/GIFExporter.swift:51-52]8;;
+  → Sources/EncoderKit/GIFExporter.swift:51-52
 
   Frame timing is wrong when the frame count is capped.
 
@@ -77,7 +77,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:117README.md:117]8;;
+  → README.md:117
 
   Fix the conflict between the shipped and planned pause/resume claims.
 
@@ -89,7 +89,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:218Scripts/audit-claims.py:218-241]8;;
+  → Scripts/audit-claims.py:218-241
 
   Compare the SBOM against the bundle copy, not against a possibly stale
   dist/bom.json.
@@ -104,7 +104,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:40Scripts/build-app.sh:40-51]8;;
+  → Scripts/build-app.sh:40-51
 
   Make SBOM generation mandatory.
 
@@ -126,7 +126,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/ROADMAP.md:59ROADMAP.md:59]8;;
+  → ROADMAP.md:59
 
   Change the hashing step order.
 
@@ -137,7 +137,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/RELEASE_NOTES.md:3RELEASE_NOTES.md:3]8;;
+  → RELEASE_NOTES.md:3
 
   Correct the upstream release range.
 
@@ -150,7 +150,7 @@ Writing review comments... 1m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:88Scripts/audit-claims.py:88-103]8;;
+  → Scripts/audit-claims.py:88-103
 
   Security: Security Misconfiguration (CWE-1188)
   Reachability: Internal · Exploitability: Difficult
@@ -165,7 +165,7 @@ Writing review comments... 3m 07s elapsed - still working - 9 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:135Sources/CaptureCore/CaptureSession.swift:135-141]8;;
+  → Sources/CaptureCore/CaptureSession.swift:135-141
 
   Stop the microphone before clearing encoder in the stream-registration
   failure path.

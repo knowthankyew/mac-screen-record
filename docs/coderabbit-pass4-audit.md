@@ -27,7 +27,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/DeviceKit/DeviceManager.swift:37Sources/DeviceKit/DeviceManager.swift:37-42]8;;
+  → Sources/DeviceKit/DeviceManager.swift:37-42
 
   The polling loop never ends if the task is not cancelled, and it keeps the
   manager alive during each iteration.
@@ -50,7 +50,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/GlobalHotkeys.swift:65Sources/RecorderUI/GlobalHotkeys.swift:65]8;;
+  → Sources/RecorderUI/GlobalHotkeys.swift:65
 
   Capture me weakly in the main-queue dispatch.
 
@@ -70,7 +70,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/AppSettings.swift:65Sources/RecorderUI/AppSettings.swift:65-77]8;;
+  → Sources/RecorderUI/AppSettings.swift:65-77
 
   Security: Sensitive Data Exposure (CWE-59)
   Reachability: Internal · Exploitability: Difficult
@@ -98,7 +98,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/NOTICE.md:23NOTICE.md:23]8;;
+  → NOTICE.md:23
 
   Correct the CI enforcement claim.
 
@@ -110,7 +110,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/VideoEncoder.swift:329Sources/EncoderKit/VideoEncoder.swift:329-340]8;;
+  → Sources/EncoderKit/VideoEncoder.swift:329-340
 
   Serialize VideoEncoder lifecycle state on queue.
 
@@ -126,7 +126,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:87Sources/RecorderUI/RecordingsListView.swift:87-89]8;;
+  → Sources/RecorderUI/RecordingsListView.swift:87-89
 
   Remove the duplicate .defaultAction shortcut from the rename Save
   button.
@@ -152,7 +152,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:313Sources/RecorderUI/RecordingViewModel.swift:313-324]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:313-324
 
   Apply the startup default overlays only once per launch.
 
@@ -179,7 +179,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamOverlay.swift:111Sources/RecorderUI/WebcamOverlay.swift:111-140]8;;
+  → Sources/RecorderUI/WebcamOverlay.swift:111-140
 
   Check camera authorization before creating the panel.
 

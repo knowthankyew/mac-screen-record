@@ -25,7 +25,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:141Sources/RecorderUI/RecordingsListView.swift:141-152]8;;
+  → Sources/RecorderUI/RecordingsListView.swift:141-152
 
   Export state is not isolated from view lifecycle and bindings.
 
@@ -41,7 +41,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:89Sources/EncoderKit/GIFExporter.swift:89-98]8;;
+  → Sources/EncoderKit/GIFExporter.swift:89-98
 
   Check for task cancellation in the frame loop.
 
@@ -65,7 +65,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:41Sources/RecorderUI/RecordingsLibrary.swift:41-46]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:41-46
 
   relocate(to:) leaves stale entries visible and can race with reload.
 
@@ -90,7 +90,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:194Sources/RecorderUI/RecordingsLibrary.swift:194-200]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:194-200
 
   Collision loop mishandles an empty extension and the unchanged-name check.
 
@@ -109,7 +109,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:87Sources/RecorderUI/RecordingsListView.swift:87-90]8;;
+  → Sources/RecorderUI/RecordingsListView.swift:87-90
 
   Escape and Cancel can race with the onCommit handler.
 
@@ -121,7 +121,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:84Sources/EncoderKit/GIFExporter.swift:84-85]8;;
+  → Sources/EncoderKit/GIFExporter.swift:84-85
 
   Clamp the GIF frame delay to the GIF-supported minimum.
 
@@ -136,7 +136,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:138Sources/RecorderUI/RecordingsLibrary.swift:138-156]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:138-156
 
   Sidecar cleanup can delete unrelated files.
 
@@ -169,7 +169,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/ClickHighlightOverlay.swift:28Sources/RecorderUI/ClickHighlightOverlay.swift:28-37]8;;
+  → Sources/RecorderUI/ClickHighlightOverlay.swift:28-37
 
   Reorder or rebuild the panels when the screen configuration changes.
 
@@ -182,7 +182,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:184Sources/RecorderUI/Presets.swift:184-197]8;;
+  → Sources/RecorderUI/Presets.swift:184-197
 
   Migrate the legacy default ID even when presets already use the new key.
 
@@ -197,7 +197,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:110Scripts/audit-claims.py:110-114]8;;
+  → Scripts/audit-claims.py:110-114
 
   The egress scan does not cover Package.swift, Scripts/, or C/ObjC
   sources.
@@ -211,7 +211,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:52Scripts/audit-claims.py:52-57]8;;
+  → Scripts/audit-claims.py:52-57
 
   The audit checks the exact source text of other scripts, which makes it
   fragile.
@@ -226,7 +226,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:73Scripts/setup-stable-signing.sh:73-79]8;;
+  → Scripts/setup-stable-signing.sh:73-79
 
   The script marks a self-signed certificate as trustAsRoot for code
   signing.
@@ -240,7 +240,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:25Scripts/generate-sbom.py:25-27]8;;
+  → Scripts/generate-sbom.py:25-27
 
   The SBOM serial number is not deterministic when SOURCE_DATE_EPOCH is
   unset.
@@ -251,7 +251,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:30Scripts/generate-sbom.py:30-31]8;;
+  → Scripts/generate-sbom.py:30-31
 
   The SBOM uses a deprecated tool format and a non-CycloneDX $schema URL.
 
@@ -271,7 +271,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/.coderabbit.yaml:14.coderabbit.yaml:14]8;;
+  → .coderabbit.yaml:14
 
   Draft PR review is enabled.
 
@@ -282,7 +282,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/NOTICE.md:31NOTICE.md:31]8;;
+  → NOTICE.md:31
 
   The notice states that the overlay suppresses and fades out immediately.
 
@@ -295,7 +295,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:43Scripts/build-app.sh:43]8;;
+  → Scripts/build-app.sh:43
 
   The SOURCE_DATE_EPOCH fallback can produce an empty value.
 
@@ -317,7 +317,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:75Scripts/build-app.sh:75-81]8;;
+  → Scripts/build-app.sh:75-81
 
   The --deep flag with --options runtime is deprecated for signing.
 
@@ -327,7 +327,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:132Scripts/audit-claims.py:132-152]8;;
+  → Scripts/audit-claims.py:132-152
 
   The entitlements check requires only that the key text appears in
   NOTICE.md.
@@ -340,7 +340,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:45Scripts/build-app.sh:45-47]8;;
+  → Scripts/build-app.sh:45-47
 
   The SBOM and claims audit run before codesign, and the audit result is not
   tied to the SBOM.
@@ -364,7 +364,7 @@ Writing review comments... 1m 12s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/KeystrokeOverlay.swift:50Sources/RecorderUI/KeystrokeOverlay.swift:50-88]8;;
+  → Sources/RecorderUI/KeystrokeOverlay.swift:50-88
 
   Security: Sensitive Data Exposure (CWE-367)
   Reachability: External · Exploitability: Difficult
@@ -395,7 +395,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:76Scripts/audit-claims.py:76]8;;
+  → Scripts/audit-claims.py:76
 
   Restrict the BSD connect pattern.
 
@@ -408,7 +408,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:65Sources/CaptureCore/CaptureSession.swift:65-77]8;;
+  → Sources/CaptureCore/CaptureSession.swift:65-77
 
   A failed filter build leaves the session stuck in .starting until
   relaunch.
@@ -460,7 +460,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:517Sources/RecorderUI/RecordingViewModel.swift:517-526]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:517-526
 
   loadAvailableContent() replaces an active recording status, and the user
   loses the stop control.
@@ -510,7 +510,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/MacScreenRecord/App.swift:48Sources/MacScreenRecord/App.swift:48-50]8;;
+  → Sources/MacScreenRecord/App.swift:48-50
 
   Quitting during a recording does not finalize the file.
 
@@ -552,7 +552,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MainView.swift:558Sources/RecorderUI/MainView.swift:558-581]8;;
+  → Sources/RecorderUI/MainView.swift:558-581
 
   The Return key can permanently delete files, and the "Move to Trash"
   choice carries over between presentations.
@@ -584,7 +584,7 @@ Writing review comments... 3m 23s elapsed - still working - 21 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:82Sources/CaptureCore/CaptureSession.swift:82-90]8;;
+  → Sources/CaptureCore/CaptureSession.swift:82-90
 
   state is written from the main queue and from the generic executor
   without synchronization.

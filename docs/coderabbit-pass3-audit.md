@@ -27,7 +27,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:24Scripts/generate-sbom.py:24]8;;
+  → Scripts/generate-sbom.py:24
 
   Do not reuse one serial number for every build of a version.
 
@@ -44,7 +44,7 @@ Writing review comments... 3m 01s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:63Scripts/setup-stable-signing.sh:63-66]8;;
+  → Scripts/setup-stable-signing.sh:63-66
 
   Security: Security Misconfiguration (CWE-732)
   Reachability: External · Exploitability: Moderate
@@ -66,7 +66,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:52Scripts/setup-stable-signing.sh:52-57]8;;
+  → Scripts/setup-stable-signing.sh:52-57
 
   Use an openssl implementation that supports pkcs12 -legacy.
 
@@ -80,7 +80,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:143README.md:143]8;;
+  → README.md:143
 
   Refresh or remove the competitor prices.
 
@@ -93,7 +93,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MenuBarController.swift:26Sources/RecorderUI/MenuBarController.swift:26]8;;
+  → Sources/RecorderUI/MenuBarController.swift:26
 
   Rebuild the menu when it opens, not only when status changes.
 
@@ -116,7 +116,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/VideoEncoder.swift:50Sources/EncoderKit/VideoEncoder.swift:50-70]8;;
+  → Sources/EncoderKit/VideoEncoder.swift:50-70
 
   Drop paused samples by timestamp, not by arrival time.
 
@@ -176,7 +176,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:116Sources/RecorderUI/Presets.swift:116-138]8;;
+  → Sources/RecorderUI/Presets.swift:116-138
 
   Make the enum fallback tolerant so one bad value cannot wipe all presets.
 
@@ -211,7 +211,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:547Sources/RecorderUI/RecordingViewModel.swift:547-549]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:547-549
 
   Shift startedAt on resume so the timer leaves out paused time.
 
@@ -232,7 +232,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/AppSettings.swift:63Sources/RecorderUI/AppSettings.swift:63-75]8;;
+  → Sources/RecorderUI/AppSettings.swift:63-75
 
   Security: Security Misconfiguration (CWE-200)
   Reachability: External · Exploitability: Difficult
@@ -274,7 +274,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:248Sources/RecorderUI/RecordingViewModel.swift:248-265]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:248-265
 
   Do not overwrite an active recording status with webcam errors.
 
@@ -314,7 +314,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:150Sources/CaptureCore/CaptureSession.swift:150-158]8;;
+  → Sources/CaptureCore/CaptureSession.swift:150-158
 
   Return the session to a state that start accepts after stop or failure.
 
@@ -350,7 +350,7 @@ Writing review comments... 4m 08s elapsed - still working - 2 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/ROADMAP.md:44ROADMAP.md:44]8;;
+  → ROADMAP.md:44
 
   Reconcile the shipped-version history.
 

@@ -1,4 +1,4 @@
-{"type":"review_context","reviewType":"committed","currentBranch":"main","baseBranch":"main","baseCommit":"e987fef","workingDirectory":"/Users/cl0rkster/Github/mac-screen-record"}
+{"type":"review_context","reviewType":"committed","currentBranch":"main","baseBranch":"main","baseCommit":"e987fef","workingDirectory":"mac-screen-record"}
 {"type":"status","phase":"connecting","status":"connecting_to_review_service"}
 {"type":"status","phase":"setup","status":"setting_up"}
 {"type":"status","phase":"analyzing","status":"summarizing"}

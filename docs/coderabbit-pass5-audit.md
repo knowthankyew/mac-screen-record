@@ -25,7 +25,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/AppSettings.swift:62Sources/RecorderUI/AppSettings.swift:62]8;;
+  → Sources/RecorderUI/AppSettings.swift:62
 
   The init creates the output folder with try?, so a failure is silent.
 
@@ -38,7 +38,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/Presets.swift:229Sources/RecorderUI/Presets.swift:229-234]8;;
+  → Sources/RecorderUI/Presets.swift:229-234
 
   update(_:) can leave two presets marked useForFacecam.
 
@@ -64,7 +64,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamOverlay.swift:111Sources/RecorderUI/WebcamOverlay.swift:111-121]8;;
+  → Sources/RecorderUI/WebcamOverlay.swift:111-121
 
   Request camera access before you start the session when status is
   .notDetermined.
@@ -79,7 +79,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamVideoProcessor.swift:237Sources/RecorderUI/WebcamVideoProcessor.swift:237-251]8;;
+  → Sources/RecorderUI/WebcamVideoProcessor.swift:237-251
 
   Cache the fallback backdrop for .customImage.
 
@@ -91,7 +91,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamMetalView.swift:80Sources/RecorderUI/WebcamMetalView.swift:80-85]8;;
+  → Sources/RecorderUI/WebcamMetalView.swift:80-85
 
   Bound in-flight frames before you acquire currentDrawable.
 
@@ -106,7 +106,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/PermissionsBanner.swift:59Sources/RecorderUI/PermissionsBanner.swift:59-66]8;;
+  → Sources/RecorderUI/PermissionsBanner.swift:59-66
 
   Do not terminate the app when the relaunch fails.
 
@@ -118,7 +118,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MenuBarController.swift:55Sources/RecorderUI/MenuBarController.swift:55]8;;
+  → Sources/RecorderUI/MenuBarController.swift:55
 
   Remove the redundant menu rebuild.
 
@@ -128,7 +128,7 @@ Writing review comments... 1m 19s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Security & Privacy] | 🛡️ Analyzed with Security Review
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/audit-claims.py:71Scripts/audit-claims.py:71-80]8;;
+  → Scripts/audit-claims.py:71-80
 
   Security: Security Misconfiguration (CWE-693)
   Reachability: Internal · Exploitability: Difficult
@@ -144,7 +144,7 @@ Writing review comments... 3m 44s elapsed - still working - 8 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:166Sources/RecorderUI/RecordingsLibrary.swift:166-170]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:166-170
 
   Reject invalid rename input with an error instead of returning silently.
 
@@ -159,7 +159,7 @@ Writing review comments... 3m 44s elapsed - still working - 8 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MainView.swift:76Sources/RecorderUI/MainView.swift:76-79]8;;
+  → Sources/RecorderUI/MainView.swift:76-79
 
   Mark interruptions with an explicit status, not by matching message text.
 

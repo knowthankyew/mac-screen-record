@@ -25,7 +25,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MenuBarController.swift:69Sources/RecorderUI/MenuBarController.swift:69-75]8;;
+  → Sources/RecorderUI/MenuBarController.swift:69-75
 
   Treat the paused state as an active recording in the toggle label.
 
@@ -49,7 +49,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/AppSettings.swift:39Sources/RecorderUI/AppSettings.swift:39-40]8;;
+  → Sources/RecorderUI/AppSettings.swift:39-40
 
   Clamp the persisted FPS value.
 
@@ -69,7 +69,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:51Scripts/build-app.sh:51-54]8;;
+  → Scripts/build-app.sh:51-54
 
   Check for a code-signing identity, not only a certificate.
 
@@ -84,7 +84,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:15Scripts/setup-stable-signing.sh:15]8;;
+  → Scripts/setup-stable-signing.sh:15
 
   The idempotency check skips identities that are present but untrusted.
 
@@ -98,7 +98,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/build-app.sh:63Scripts/build-app.sh:63-68]8;;
+  → Scripts/build-app.sh:63-68
 
   Fail the build when code signing fails.
 
@@ -124,7 +124,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/generate-sbom.py:15Scripts/generate-sbom.py:15-16]8;;
+  → Scripts/generate-sbom.py:15-16
 
   Make the SBOM output reproducible.
 
@@ -150,7 +150,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MenuBarController.swift:16Sources/RecorderUI/MenuBarController.swift:16-22]8;;
+  → Sources/RecorderUI/MenuBarController.swift:16-22
 
   Remove the existing status item before you create a new one.
 
@@ -162,7 +162,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Scripts/setup-stable-signing.sh:2Scripts/setup-stable-signing.sh:2-3]8;;
+  → Scripts/setup-stable-signing.sh:2-3
 
   Update the stale product name in the header comment.
 
@@ -178,7 +178,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:63README.md:63-65]8;;
+  → README.md:63-65
 
   Remove the clean-room claim. This text calls the project a clean-room
   implementation. Line 18 and the acknowledgments describe a hard fork built
@@ -187,7 +187,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:401README.md:401-405]8;;
+  → README.md:401-405
 
   Align the roadmap links with the roadmap headings. ROADMAP.md has no
   Phase 6 or Phase 10 heading. Its Phase 7–9 headings also differ from the
@@ -197,7 +197,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:456README.md:456-457]8;;
+  → README.md:456-457
 
   State the MIT notice requirement accurately. LICENSE requires copies or
   substantial portions to retain its copyright and permission notices.
@@ -210,7 +210,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/RELEASE_NOTES.md:109RELEASE_NOTES.md:109]8;;
+  → RELEASE_NOTES.md:109
 
   Use the current bundle path in the release instructions. The build
   instructions specify dist/Mac Screen Record.app, but this launch command
@@ -224,7 +224,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:218README.md:218-219]8;;
+  → README.md:218-219
 
   Use the current application name and output directory. The quick start
   sends users to ~/Movies/Free Mac Screen Recorder/ and the former
@@ -237,7 +237,7 @@ Writing review comments... 1m 09s elapsed - still working
 
 ────────────────────────────────────────────────────────────────────────
   minor [Maintainability & Code Quality]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/README.md:437README.md:437-438]8;;
+  → README.md:437-438
 
   Remove the external update-check proposal. Checking the latest GitHub
   release tag from the app would require network egress. That conflicts with
@@ -249,7 +249,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:150Sources/RecorderUI/RecordingsLibrary.swift:150]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:150
 
   Keep the recording listed when deletion fails. The primary-file catch logs
   an error, but this line removes its entry regardless. If Trash is
@@ -260,7 +260,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:57Sources/EncoderKit/GIFExporter.swift:57-59]8;;
+  → Sources/EncoderKit/GIFExporter.swift:57-59
 
   Preserve an existing GIF until its replacement succeeds. A second export
   to the same destination deletes the earlier GIF before frame extraction
@@ -273,7 +273,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:162Sources/RecorderUI/RecordingsLibrary.swift:162-166]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:162-166
 
   Treat an unchanged name as a successful no-op. When the user saves the
   current filename, dest == file.url, but moveItem still runs. The
@@ -283,7 +283,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:178Sources/RecorderUI/RecordingsLibrary.swift:178-180]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:178-180
 
   Include completed GIFs in library reloads. exportGIF writes a .gif
   sibling and calls reload(), but reload() filters candidates to mp4,
@@ -294,7 +294,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/GIFExporter.swift:88Sources/EncoderKit/GIFExporter.swift:88-91]8;;
+  → Sources/EncoderKit/GIFExporter.swift:88-91
 
   Fail the export when frame extraction fails. This catch skips a frame but
   retains its declared frame count and continues to finalization. If
@@ -308,7 +308,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsListView.swift:125Sources/RecorderUI/RecordingsListView.swift:125-126]8;;
+  → Sources/RecorderUI/RecordingsListView.swift:125-126
 
   Present recording-action errors to the user. Both new actions send
   failures only to the console, so the view appears to complete the action.
@@ -320,7 +320,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:155Sources/RecorderUI/RecordingsLibrary.swift:155-159]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:155-159
 
   Restrict the new name to one filename component. rename trims whitespace
   but accepts path separators and parent components. A name such as
@@ -333,7 +333,7 @@ Writing review comments... 2m 47s elapsed - still working - 14 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingsLibrary.swift:133Sources/RecorderUI/RecordingsLibrary.swift:133-135]8;;
+  → Sources/RecorderUI/RecordingsLibrary.swift:133-135
 
   Match sidecar filenames exactly. For clip.mov, this prefix check also
   matches an independent file such as clip-part2.mov. Deleting clip.mov
@@ -345,7 +345,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/DeviceKit/DeviceManager.swift:37Sources/DeviceKit/DeviceManager.swift:37-42]8;;
+  → Sources/DeviceKit/DeviceManager.swift:37-42
 
   The 2.5-second poll republishes the device arrays and writes a log line
   every time.
@@ -372,7 +372,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:220Sources/RecorderUI/RecordingViewModel.swift:220-231]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:220-231
 
   While a recording is paused, ⌘⇧R starts a second recording and leaves the
   paused one with no way to stop it.
@@ -410,7 +410,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/RecordingViewModel.swift:173Sources/RecorderUI/RecordingViewModel.swift:173-181]8;;
+  → Sources/RecorderUI/RecordingViewModel.swift:173-181
 
   Startup-preset webcam settings never reach WebcamOverlayController,
   because didSet does not run in init.
@@ -444,7 +444,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/VideoEncoder.swift:50Sources/EncoderKit/VideoEncoder.swift:50-68]8;;
+  → Sources/EncoderKit/VideoEncoder.swift:50-68
 
   The pause gap comes from sample timestamps, not from the clock, so pauses
   are not always removed.
@@ -482,7 +482,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/MainView.swift:320Sources/RecorderUI/MainView.swift:320]8;;
+  → Sources/RecorderUI/MainView.swift:320
 
   The output label is hardcoded, but the output folder is now configurable.
 
@@ -500,7 +500,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/GlobalHotkeys.swift:74Sources/RecorderUI/GlobalHotkeys.swift:74-80]8;;
+  → Sources/RecorderUI/GlobalHotkeys.swift:74-80
 
   A global ⌘⇧S hotkey takes "Save As…" / "Duplicate" away from every other
   app.
@@ -515,7 +515,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   trivial [Performance & Scalability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/WebcamOverlay.swift:117Sources/RecorderUI/WebcamOverlay.swift:117]8;;
+  → Sources/RecorderUI/WebcamOverlay.swift:117
 
   startRunning() and stopRunning() block the main actor.
 
@@ -542,7 +542,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   minor [Data Integrity & Integration]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:104Sources/CaptureCore/CaptureSession.swift:104-107]8;;
+  → Sources/CaptureCore/CaptureSession.swift:104-107
 
   When the microphone fails, the started encoder is dropped without
   cancelling the AVAssetWriter.
@@ -558,7 +558,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/GlobalHotkeys.swift:45Sources/RecorderUI/GlobalHotkeys.swift:45-59]8;;
+  → Sources/RecorderUI/GlobalHotkeys.swift:45-59
 
   Each hotkey handler accepts every kEventHotKeyPressed event and does not
   check the hotkey ID.
@@ -596,7 +596,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Stability & Availability]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/CaptureCore/CaptureSession.swift:79Sources/CaptureCore/CaptureSession.swift:79-85]8;;
+  → Sources/CaptureCore/CaptureSession.swift:79-85
 
   Data race: state is written from encoder and ScreenCaptureKit threads
   without synchronization.
@@ -651,7 +651,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/RecorderUI/KeystrokeOverlay.swift:193Sources/RecorderUI/KeystrokeOverlay.swift:193-206]8;;
+  → Sources/RecorderUI/KeystrokeOverlay.swift:193-206
 
   After the first fade-out, the keystroke chip stays invisible.
 
@@ -688,7 +688,7 @@ Writing review comments... 4m 10s elapsed - still working - 22 findings so far
 
 ────────────────────────────────────────────────────────────────────────
   major [Functional Correctness]
-  → ]8;;vscode://file//Users/cl0rkster/Github/mac-screen-record/Sources/EncoderKit/VideoEncoder.swift:215Sources/EncoderKit/VideoEncoder.swift:215-235]8;;
+  → Sources/EncoderKit/VideoEncoder.swift:215-235
 
   Preserve per-sample audio timing when retiming after a pause.
 
