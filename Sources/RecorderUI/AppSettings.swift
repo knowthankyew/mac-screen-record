@@ -91,7 +91,7 @@ public final class AppSettings: ObservableObject {
         } catch {
             if outputFolder != fallback {
                 self.outputFolder = fallback
-                UserDefaults.standard.set(fallback.path, forKey: Keys.folderPath)
+                d.set(fallback.path, forKey: Keys.folderPath)
                 try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
             }
         }

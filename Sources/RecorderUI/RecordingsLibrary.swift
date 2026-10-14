@@ -269,35 +269,34 @@ public final class RecordingsLibrary: ObservableObject {
         let newEvidenceURL = EvidenceSeal.manifestURL(for: dest)
         var hasEvidenceSeal = false
         if let srcURL = sourceManifestURL {
-            do {
-                try FileManager.default.moveItem(at: srcURL, to: newEvidenceURL)
-                hasEvidenceSeal = true
-                if let data = try? Data(contentsOf: newEvidenceURL),
-                   let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
-                    let updated = EvidenceManifest(
-                        schema: oldManifest.schema,
-                        mediaFile: EvidenceManifest.MediaFile(
-                            fileName: dest.lastPathComponent,
-                            fileSizeBytes: oldManifest.mediaFile.fileSizeBytes,
-                            sha256: oldManifest.mediaFile.sha256,
-                            sha512: oldManifest.mediaFile.sha512
-                        ),
-                        temporalIntegrity: oldManifest.temporalIntegrity,
-                        captureContext: oldManifest.captureContext,
-                        audioTelemetry: oldManifest.audioTelemetry,
-                        presenterAndOverlays: oldManifest.presenterAndOverlays,
-                        provenanceAndGovernance: oldManifest.provenanceAndGovernance
-                    )
-                    let encoder = JSONEncoder()
-                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-                    if let updatedData = try? encoder.encode(updated) {
-                        try? updatedData.write(to: newEvidenceURL, options: .atomic)
-                    }
-                }
-                log.info("Renamed companion evidence seal to \(newEvidenceURL.lastPathComponent, privacy: .public)")
-            } catch {
-                log.error("Failed to rename companion evidence seal: \(error.localizedDescription, privacy: .public)")
+            if newEvidenceURL != srcURL && FileManager.default.fileExists(atPath: newEvidenceURL.path) {
+                try? FileManager.default.removeItem(at: newEvidenceURL)
             }
+            try FileManager.default.moveItem(at: srcURL, to: newEvidenceURL)
+            hasEvidenceSeal = true
+            if let data = try? Data(contentsOf: newEvidenceURL),
+               let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
+                let updated = EvidenceManifest(
+                    schema: oldManifest.schema,
+                    mediaFile: EvidenceManifest.MediaFile(
+                        fileName: dest.lastPathComponent,
+                        fileSizeBytes: oldManifest.mediaFile.fileSizeBytes,
+                        sha256: oldManifest.mediaFile.sha256,
+                        sha512: oldManifest.mediaFile.sha512
+                    ),
+                    temporalIntegrity: oldManifest.temporalIntegrity,
+                    captureContext: oldManifest.captureContext,
+                    audioTelemetry: oldManifest.audioTelemetry,
+                    presenterAndOverlays: oldManifest.presenterAndOverlays,
+                    provenanceAndGovernance: oldManifest.provenanceAndGovernance
+                )
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                if let updatedData = try? encoder.encode(updated) {
+                    try? updatedData.write(to: newEvidenceURL, options: .atomic)
+                }
+            }
+            log.info("Renamed companion evidence seal to \(newEvidenceURL.lastPathComponent, privacy: .public)")
         } else {
             hasEvidenceSeal = FileManager.default.fileExists(atPath: newEvidenceURL.path)
         }

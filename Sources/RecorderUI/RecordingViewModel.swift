@@ -748,7 +748,9 @@ public final class RecordingViewModel: ObservableObject {
                let source,
                let geometry,
                let activeCodec {
-                Task(priority: .utility) { [weak self] in
+                let log = self.log
+                let library = self.library
+                Task.detached(priority: .utility) {
                     do {
                         let manifest = try EvidenceSeal.writeManifest(
                             for: url,
@@ -770,10 +772,10 @@ public final class RecordingViewModel: ObservableObject {
                             keystrokesEnabled: keys,
                             secureInputActive: secInput
                         )
-                        self?.log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
-                        await self?.library.reload()
+                        log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
+                        await library.reload()
                     } catch {
-                        self?.log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
+                        log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             } else {
@@ -865,7 +867,9 @@ public final class RecordingViewModel: ObservableObject {
                    let source,
                    let geometry,
                    let activeCodec {
-                    Task(priority: .utility) { [weak self] in
+                    let log = self.log
+                    let library = self.library
+                    Task.detached(priority: .utility) {
                         do {
                             _ = try EvidenceSeal.writeManifest(
                                 for: savedURL,
@@ -887,9 +891,9 @@ public final class RecordingViewModel: ObservableObject {
                                 keystrokesEnabled: keys,
                                 secureInputActive: secInput
                             )
-                            await self?.library.reload()
+                            await library.reload()
                         } catch {
-                            self?.log.error("Failed to generate salvage evidence seal: \(error.localizedDescription, privacy: .public)")
+                            log.error("Failed to generate salvage evidence seal: \(error.localizedDescription, privacy: .public)")
                         }
                     }
                 }
