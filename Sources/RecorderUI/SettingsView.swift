@@ -5,11 +5,13 @@ import SwiftUI
 
 public struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    public let hotkeys: GlobalHotkeyController?
     @State private var listeningAction: HotkeyAction?
     @State private var keyMonitor: Any?
 
-    public init(settings: AppSettings) {
+    public init(settings: AppSettings, hotkeys: GlobalHotkeyController? = nil) {
         self.settings = settings
+        self.hotkeys = hotkeys
     }
 
     public var body: some View {
@@ -122,6 +124,7 @@ public struct SettingsView: View {
 
     private func startListening(for action: HotkeyAction) {
         stopListening()
+        hotkeys?.suspend()
         listeningAction = action
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
             if event.keyCode == 53 { // Escape
@@ -163,6 +166,9 @@ public struct SettingsView: View {
             NSEvent.removeMonitor(monitor)
             keyMonitor = nil
         }
-        listeningAction = nil
+        if listeningAction != nil {
+            listeningAction = nil
+            hotkeys?.resume()
+        }
     }
 }

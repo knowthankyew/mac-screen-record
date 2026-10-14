@@ -126,6 +126,21 @@ func checkThrowsError<T>(
     throw TestFailure(message: "Expected expression to throw an error, but it succeeded", file: file, line: line)
 }
 
+func checkThrowsAsyncError<T>(
+    _ expression: () async throws -> T,
+    file: String = #filePath,
+    line: Int = #line,
+    _ errorHandler: (Error) throws -> Void = { _ in }
+) async throws {
+    do {
+        _ = try await expression()
+    } catch {
+        try errorHandler(error)
+        return
+    }
+    throw TestFailure(message: "Expected expression to throw an error, but it succeeded", file: file, line: line)
+}
+
 @main
 @MainActor
 struct MacScreenRecordTestRunner {

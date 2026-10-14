@@ -87,16 +87,29 @@ final class HotkeyTests {
         ]
 
         controller.install(bindings: HotkeyBinding.defaultBindings, handlers: handlers)
+        try checkEqual(controller.registeredActions.count, 2)
+        try checkTrue(controller.registeredActions.contains(.startRecording))
+        try checkTrue(controller.registeredActions.contains(.stopRecording))
 
         // Runtime rebinding of specific action
         let newBinding = HotkeyBinding(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey)
-        controller.updateBinding(for: .startRecording, binding: newBinding)
+        let updateResult = controller.updateBinding(for: .startRecording, binding: newBinding)
+        try checkTrue(updateResult, "Rebinding succeeded")
+        try checkTrue(controller.registeredActions.contains(.startRecording))
+
+        // Suspend and resume lifecycle
+        controller.suspend()
+        try checkTrue(controller.registeredActions.isEmpty, "Hotkeys unregistered when suspended")
+        controller.resume()
+        try checkEqual(controller.registeredActions.count, 2, "Hotkeys restored when resumed")
 
         // Rebinding all actions simultaneously
         controller.updateBindings(HotkeyBinding.defaultBindings)
+        try checkEqual(controller.registeredActions.count, 2)
 
         // Cleanup
         controller.uninstall()
+        try checkTrue(controller.registeredActions.isEmpty, "All hotkeys unregistered on uninstall")
         try checkFalse(triggeredStart)
         try checkFalse(triggeredStop)
     }

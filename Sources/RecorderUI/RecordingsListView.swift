@@ -163,10 +163,7 @@ private struct RecordingRow: View {
     }
 
     private func revealEvidenceSeal() {
-        let manifestURL = EvidenceSeal.manifestURL(for: file.url)
-        let legacyURL = file.url.deletingLastPathComponent().appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
-        let targetURL = FileManager.default.fileExists(atPath: manifestURL.path) ? manifestURL : legacyURL
-        if FileManager.default.fileExists(atPath: targetURL.path) {
+        if let targetURL = EvidenceSeal.existingManifestURL(for: file.url) {
             NSWorkspace.shared.activateFileViewerSelecting([targetURL])
         }
     }
@@ -187,10 +184,12 @@ private struct RecordingRow: View {
         let target = file
         let newName = renameText
         renamingID = nil
-        do {
-            try library.rename(target, to: newName)
-        } catch {
-            errorMessage = "Rename failed: \(error.localizedDescription)"
+        Task {
+            do {
+                try await library.rename(target, to: newName)
+            } catch {
+                errorMessage = "Rename failed: \(error.localizedDescription)"
+            }
         }
     }
 

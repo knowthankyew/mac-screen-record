@@ -200,6 +200,11 @@ public final class GlobalHotkeyController: ObservableObject {
 
     public init() {}
 
+    /// Returns the currently active set of successfully registered hotkey actions.
+    public var registeredActions: Set<HotkeyAction> {
+        Set(registeredKeys.keys)
+    }
+
     /// Legacy convenience installer preserving the original start/stop registration signature.
     public func install(start: @escaping @MainActor () -> Void,
                         stop:  @escaping @MainActor () -> Void) {
@@ -222,19 +227,24 @@ public final class GlobalHotkeyController: ObservableObject {
     }
 
     /// Re-binds a specific action to a new key combination at runtime.
-    public func updateBinding(for action: HotkeyAction, binding: HotkeyBinding) {
-        currentBindings[action] = binding
-        registeredKeys[action] = nil
-        if let handler = actionHandlers[action] {
-            let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
-                Task { @MainActor in handler() }
-            }
-            if hotkey.isRegistered {
-                registeredKeys[action] = hotkey
-                log.info("Updated hotkey binding for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
-            } else {
-                log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
-            }
+    /// Returns true if registration succeeded, or false if registration failed (retaining existing binding).
+    @discardableResult
+    public func updateBinding(for action: HotkeyAction, binding: HotkeyBinding) -> Bool {
+        guard let handler = actionHandlers[action] else {
+            currentBindings[action] = binding
+            return true
+        }
+        let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
+            Task { @MainActor in handler() }
+        }
+        if hotkey.isRegistered {
+            registeredKeys[action] = hotkey
+            currentBindings[action] = binding
+            log.info("Updated hotkey binding for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
+            return true
+        } else {
+            log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
+            return false
         }
     }
 
@@ -246,8 +256,11 @@ public final class GlobalHotkeyController: ObservableObject {
     }
 
     /// Rebuilds all active global hotkeys based on currentBindings and actionHandlers.
-    public func rebuildAll() {
+    /// Returns any actions whose Carbon registration could not be established.
+    @discardableResult
+    public func rebuildAll() -> Set<HotkeyAction> {
         registeredKeys.removeAll()
+        var failed = Set<HotkeyAction>()
         for (action, handler) in actionHandlers {
             guard let binding = currentBindings[action] else { continue }
             let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
@@ -256,9 +269,23 @@ public final class GlobalHotkeyController: ObservableObject {
             if hotkey.isRegistered {
                 registeredKeys[action] = hotkey
             } else {
+                failed.insert(action)
                 log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
             }
         }
+        return failed
+    }
+
+    /// Temporarily unregisters all global Carbon hotkeys without clearing action handlers or bindings.
+    public func suspend() {
+        registeredKeys.removeAll()
+        log.info("Universal global hotkeys temporarily suspended")
+    }
+
+    /// Resumes global Carbon hotkeys by rebuilding active registrations.
+    public func resume() {
+        rebuildAll()
+        log.info("Universal global hotkeys resumed")
     }
 
     public func uninstall() {

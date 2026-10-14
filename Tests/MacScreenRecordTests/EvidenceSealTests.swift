@@ -153,7 +153,7 @@ final class EvidenceSealTests {
         try checkFalse(sha.isEmpty, "Retrieved valid SHA-256 hex from library")
 
         // Test rename updates companion file and internal fileName
-        try library.rename(file, to: "RenamedCapture")
+        try await library.rename(file, to: "RenamedCapture")
         let oldCompanion = EvidenceSeal.manifestURL(for: mediaURL)
         try checkFalse(FileManager.default.fileExists(atPath: oldCompanion.path), "Old companion cleaned up")
 

@@ -181,18 +181,18 @@ final class PresetsAndLibraryTests {
 
         // Rename validation checks
         let targetEntry = try unwrap(library.files.first(where: { $0.name == "other.mov" }))
-        try checkThrowsError(try library.rename(targetEntry, to: "   ")) { error in
+        try await checkThrowsAsyncError({ try await library.rename(targetEntry, to: "   ") }) { error in
             try checkEqual(error as? RecordingsLibrary.RenameError, .emptyName)
         }
-        try checkThrowsError(try library.rename(targetEntry, to: ".hidden")) { error in
+        try await checkThrowsAsyncError({ try await library.rename(targetEntry, to: ".hidden") }) { error in
             try checkEqual(error as? RecordingsLibrary.RenameError, .leadingDot)
         }
-        try checkThrowsError(try library.rename(targetEntry, to: "bad/name")) { error in
+        try await checkThrowsAsyncError({ try await library.rename(targetEntry, to: "bad/name") }) { error in
             try checkEqual(error as? RecordingsLibrary.RenameError, .invalidCharacters)
         }
 
         // Valid rename
-        try library.rename(targetEntry, to: "renamed-clip")
+        try await library.rename(targetEntry, to: "renamed-clip")
         try checkTrue(FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("renamed-clip.mov").path))
 
         // Delete primary recording and verify associated -partial.tmp sidecar is removed while renamed-clip.mov remains

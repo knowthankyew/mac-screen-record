@@ -49,11 +49,30 @@ public final class RecordingsLibrary: ObservableObject {
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "RecordingsLibrary")
     private var reloadTask: Task<Void, Never>?
+    private var inFlightSeals: [URL: Task<Void, Never>] = [:]
     private static let supportedExts: Set<String> = ["mp4", "mov", "m4v", "gif"]
 
     public init(folder: URL) {
         self.folder = folder
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    }
+
+    /// Registers a background seal generation task associated with a recording URL.
+    public func registerSealTask(_ task: Task<Void, Never>, for url: URL) {
+        let key = url.standardizedFileURL
+        inFlightSeals[key] = task
+        Task { [weak self] in
+            _ = await task.result
+            self?.inFlightSeals.removeValue(forKey: key)
+        }
+    }
+
+    /// Waits for any in-flight evidence seal hashing task for the given recording URL.
+    public func waitForPendingSeal(for url: URL) async {
+        let key = url.standardizedFileURL
+        if let task = inFlightSeals[key] {
+            _ = await task.result
+        }
     }
 
     /// Point the library at a new folder (e.g. when the user changes the
@@ -85,9 +104,7 @@ public final class RecordingsLibrary: ObservableObject {
         // Lightweight metadata first so the list renders immediately.
         let initial = candidates.map { url -> RecordingFile in
             let attrs = try? url.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
-            let evidenceURL = EvidenceSeal.manifestURL(for: url)
-            let legacyEvidenceURL = url.deletingLastPathComponent().appendingPathComponent("\(url.deletingPathExtension().lastPathComponent).evidence.json")
-            let hasSeal = fm.fileExists(atPath: evidenceURL.path) || fm.fileExists(atPath: legacyEvidenceURL.path)
+            let hasSeal = EvidenceSeal.existingManifestURL(for: url) != nil
             return RecordingFile(
                 url: url,
                 name: url.lastPathComponent,
@@ -144,6 +161,10 @@ public final class RecordingsLibrary: ObservableObject {
     /// Deletes the primary recording file and any matching sidecars or partial fragments.
     @discardableResult
     public func deleteArtifacts(at url: URL, moveToTrash: Bool = true) -> Error? {
+        let key = url.standardizedFileURL
+        inFlightSeals[key]?.cancel()
+        inFlightSeals.removeValue(forKey: key)
+
         let fm = FileManager.default
         var primaryDeleted = false
         var primaryError: Error? = nil
@@ -170,7 +191,7 @@ public final class RecordingsLibrary: ObservableObject {
 
         // Clean up companion evidence seal if present (both full-name and legacy baseName)
         let evidenceURL = EvidenceSeal.manifestURL(for: url)
-        let legacyEvidenceURL = dir.appendingPathComponent("\(baseName).evidence.json")
+        let legacyEvidenceURL = EvidenceSeal.legacyManifestURL(for: url)
         for manifestPath in [evidenceURL, legacyEvidenceURL] {
             if fm.fileExists(atPath: manifestPath.path) {
                 do {
@@ -233,7 +254,7 @@ public final class RecordingsLibrary: ObservableObject {
     }
 
     /// Rename a recording on disk (preserves extension) and refresh the entry.
-    public func rename(_ file: RecordingFile, to newBaseName: String) throws {
+    public func rename(_ file: RecordingFile, to newBaseName: String) async throws {
         let trimmed = newBaseName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw RenameError.emptyName }
         guard !trimmed.hasPrefix(".") else { throw RenameError.leadingDot }
@@ -249,6 +270,9 @@ public final class RecordingsLibrary: ObservableObject {
             return
         }
 
+        // Wait for any in-flight evidence seal hashing task for this file to finish first
+        await waitForPendingSeal(for: file.url)
+
         var dest = parent.appendingPathComponent(targetName)
         let isCaseOnlyRename = targetName.lowercased() == file.url.lastPathComponent.lowercased()
         // If a name collision exists with a different file, append a numeric suffix.
@@ -263,40 +287,42 @@ public final class RecordingsLibrary: ObservableObject {
         let sourceStdURL = file.url.standardizedFileURL
 
         // Rename companion evidence manifest if present and update its internal fileName
-        let oldEvidenceURL = EvidenceSeal.manifestURL(for: file.url)
-        let oldLegacyURL = parent.appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
-        let sourceManifestURL = FileManager.default.fileExists(atPath: oldEvidenceURL.path) ? oldEvidenceURL : (FileManager.default.fileExists(atPath: oldLegacyURL.path) ? oldLegacyURL : nil)
+        let sourceManifestURL = EvidenceSeal.existingManifestURL(for: file.url)
         let newEvidenceURL = EvidenceSeal.manifestURL(for: dest)
         var hasEvidenceSeal = false
         if let srcURL = sourceManifestURL {
             if newEvidenceURL != srcURL && FileManager.default.fileExists(atPath: newEvidenceURL.path) {
-                try? FileManager.default.removeItem(at: newEvidenceURL)
+                try? FileManager.default.trashItem(at: newEvidenceURL, resultingItemURL: nil)
             }
-            try FileManager.default.moveItem(at: srcURL, to: newEvidenceURL)
-            hasEvidenceSeal = true
-            if let data = try? Data(contentsOf: newEvidenceURL),
-               let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
-                let updated = EvidenceManifest(
-                    schema: oldManifest.schema,
-                    mediaFile: EvidenceManifest.MediaFile(
-                        fileName: dest.lastPathComponent,
-                        fileSizeBytes: oldManifest.mediaFile.fileSizeBytes,
-                        sha256: oldManifest.mediaFile.sha256,
-                        sha512: oldManifest.mediaFile.sha512
-                    ),
-                    temporalIntegrity: oldManifest.temporalIntegrity,
-                    captureContext: oldManifest.captureContext,
-                    audioTelemetry: oldManifest.audioTelemetry,
-                    presenterAndOverlays: oldManifest.presenterAndOverlays,
-                    provenanceAndGovernance: oldManifest.provenanceAndGovernance
-                )
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-                if let updatedData = try? encoder.encode(updated) {
-                    try? updatedData.write(to: newEvidenceURL, options: .atomic)
+            do {
+                try FileManager.default.moveItem(at: srcURL, to: newEvidenceURL)
+                hasEvidenceSeal = true
+                if let data = try? Data(contentsOf: newEvidenceURL),
+                   let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
+                    let updated = EvidenceManifest(
+                        schema: oldManifest.schema,
+                        mediaFile: EvidenceManifest.MediaFile(
+                            fileName: dest.lastPathComponent,
+                            fileSizeBytes: oldManifest.mediaFile.fileSizeBytes,
+                            sha256: oldManifest.mediaFile.sha256,
+                            sha512: oldManifest.mediaFile.sha512
+                        ),
+                        temporalIntegrity: oldManifest.temporalIntegrity,
+                        captureContext: oldManifest.captureContext,
+                        audioTelemetry: oldManifest.audioTelemetry,
+                        presenterAndOverlays: oldManifest.presenterAndOverlays,
+                        provenanceAndGovernance: oldManifest.provenanceAndGovernance
+                    )
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                    if let updatedData = try? encoder.encode(updated) {
+                        try? updatedData.write(to: newEvidenceURL, options: .atomic)
+                    }
                 }
+                log.info("Renamed companion evidence seal to \(newEvidenceURL.lastPathComponent, privacy: .public)")
+            } catch {
+                log.error("Failed to rename companion evidence seal: \(error.localizedDescription, privacy: .public)")
             }
-            log.info("Renamed companion evidence seal to \(newEvidenceURL.lastPathComponent, privacy: .public)")
         } else {
             hasEvidenceSeal = FileManager.default.fileExists(atPath: newEvidenceURL.path)
         }
@@ -328,10 +354,8 @@ public final class RecordingsLibrary: ObservableObject {
 
     /// Reads and decodes the companion evidence manifest for a recording if present.
     public func manifest(for file: RecordingFile) -> EvidenceManifest? {
-        let manifestURL = EvidenceSeal.manifestURL(for: file.url)
-        let legacyURL = file.url.deletingLastPathComponent().appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
-        let targetURL = FileManager.default.fileExists(atPath: manifestURL.path) ? manifestURL : legacyURL
-        guard let data = try? Data(contentsOf: targetURL) else { return nil }
+        guard let targetURL = EvidenceSeal.existingManifestURL(for: file.url),
+              let data = try? Data(contentsOf: targetURL) else { return nil }
         return try? JSONDecoder().decode(EvidenceManifest.self, from: data)
     }
 

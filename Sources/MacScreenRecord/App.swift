@@ -20,7 +20,7 @@ struct MacScreenRecordApp: App {
         }
 
         Settings {
-            SettingsView(settings: vm.settings)
+            SettingsView(settings: vm.settings, hotkeys: vm.hotkeys)
         }
     }
 }

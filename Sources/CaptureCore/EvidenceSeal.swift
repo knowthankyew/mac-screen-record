@@ -202,6 +202,7 @@ public enum EvidenceSeal {
         let chunkSize = 64 * 1024
 
         while true {
+            guard !Task.isCancelled else { throw CancellationError() }
             let dataChunk = try autoreleasepool { () -> Data? in
                 guard let data = try handle.read(upToCount: chunkSize), !data.isEmpty else {
                     return nil
@@ -229,6 +230,27 @@ public enum EvidenceSeal {
         let dir = mediaURL.deletingLastPathComponent()
         let fullName = mediaURL.lastPathComponent
         return dir.appendingPathComponent("\(fullName).evidence.json")
+    }
+
+    /// Returns the legacy fallback companion URL for a given recording media file:
+    /// e.g. `/path/to/Record.mp4` -> `/path/to/Record.evidence.json`.
+    public static func legacyManifestURL(for mediaURL: URL) -> URL {
+        let dir = mediaURL.deletingLastPathComponent()
+        let baseName = mediaURL.deletingPathExtension().lastPathComponent
+        return dir.appendingPathComponent("\(baseName).evidence.json")
+    }
+
+    /// Resolves an existing manifest companion URL, preferring the standard name over legacy fallback.
+    public static func existingManifestURL(for mediaURL: URL) -> URL? {
+        let standard = manifestURL(for: mediaURL)
+        if FileManager.default.fileExists(atPath: standard.path) {
+            return standard
+        }
+        let legacy = legacyManifestURL(for: mediaURL)
+        if FileManager.default.fileExists(atPath: legacy.path) {
+            return legacy
+        }
+        return nil
     }
 
     /// Queries the system Mach continuous timebase info.
@@ -261,6 +283,10 @@ public enum EvidenceSeal {
         secureInputActive: Bool,
         appVersion: String = "0.3.0"
     ) throws -> EvidenceManifest {
+        guard !Task.isCancelled else { throw CancellationError() }
+        guard FileManager.default.fileExists(atPath: mediaURL.path) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
         let hashes = try computeHashes(for: mediaURL)
         let timebase = machTimebase()
 
@@ -336,6 +362,10 @@ public enum EvidenceSeal {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(manifest)
+        guard !Task.isCancelled else { throw CancellationError() }
+        guard FileManager.default.fileExists(atPath: mediaURL.path) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
         try data.write(to: manifestURL, options: .atomic)
 
         return manifest

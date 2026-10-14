@@ -700,11 +700,11 @@ public final class RecordingViewModel: ObservableObject {
     }
 
     public func stopRecording() async {
-        let machEnd = mach_continuous_time()
-        let endDate = Date()
         status = .stopping
         do {
             let url = try await session.stop()
+            let machEnd = mach_continuous_time()
+            let endDate = Date()
             self.lastRecordingURL = url
             status = .finished(url)
 
@@ -750,7 +750,7 @@ public final class RecordingViewModel: ObservableObject {
                let activeCodec {
                 let log = self.log
                 let library = self.library
-                Task.detached(priority: .utility) {
+                let sealTask = Task.detached(priority: .utility) {
                     do {
                         let manifest = try EvidenceSeal.writeManifest(
                             for: url,
@@ -774,10 +774,13 @@ public final class RecordingViewModel: ObservableObject {
                         )
                         log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
                         await library.reload()
+                    } catch is CancellationError {
+                        log.info("Evidence seal task cancelled for \(url.lastPathComponent, privacy: .public)")
                     } catch {
                         log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
                     }
                 }
+                library.registerSealTask(sealTask, for: url)
             } else {
                 await library.reload()
             }
@@ -822,9 +825,9 @@ public final class RecordingViewModel: ObservableObject {
             guard let self else { return }
             defer { Task { @MainActor in self.salvageTask = nil } }
             do {
+                let savedURL = try await self.session.stop()
                 let machEnd = mach_continuous_time()
                 let endDate = Date()
-                let savedURL = try await self.session.stop()
                 self.lastRecordingURL = savedURL
 
                 let generateSeal = self.settings.generateEvidenceSeal
@@ -869,7 +872,7 @@ public final class RecordingViewModel: ObservableObject {
                    let activeCodec {
                     let log = self.log
                     let library = self.library
-                    Task.detached(priority: .utility) {
+                    let sealTask = Task.detached(priority: .utility) {
                         do {
                             _ = try EvidenceSeal.writeManifest(
                                 for: savedURL,
@@ -892,10 +895,13 @@ public final class RecordingViewModel: ObservableObject {
                                 secureInputActive: secInput
                             )
                             await library.reload()
+                        } catch is CancellationError {
+                            log.info("Salvage evidence seal task cancelled for \(savedURL.lastPathComponent, privacy: .public)")
                         } catch {
                             log.error("Failed to generate salvage evidence seal: \(error.localizedDescription, privacy: .public)")
                         }
                     }
+                    library.registerSealTask(sealTask, for: savedURL)
                 }
 
                 self.log.info("Salvaged partial recording: \(savedURL.lastPathComponent, privacy: .public)")
