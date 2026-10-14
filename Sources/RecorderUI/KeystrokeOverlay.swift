@@ -156,6 +156,14 @@ public final class KeystrokeOverlayController: ObservableObject {
         case 109:      return "F10"
         case 103:      return "F11"
         case 111:      return "F12"
+        case 105:      return "F13"
+        case 107:      return "F14"
+        case 113:      return "F15"
+        case 106:      return "F16"
+        case 64:       return "F17"
+        case 79:       return "F18"
+        case 80:       return "F19"
+        case 90:       return "F20"
         default:       return nil
         }
     }

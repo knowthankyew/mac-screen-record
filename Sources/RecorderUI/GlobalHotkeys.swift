@@ -43,7 +43,7 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
 
         if let special = KeystrokeOverlayController.specialKeyGlyph(forKeyCode: keyCode) {
             result += special
-        } else if let scalar = UnicodeScalar(keyCodeToAscii(keyCode: keyCode)), Character(scalar).isASCII {
+        } else if let ascii = keyCodeToAscii(keyCode: keyCode), let scalar = UnicodeScalar(ascii), Character(scalar).isASCII {
             result += String(Character(scalar)).uppercased()
         } else {
             result += "Key(\(keyCode))"
@@ -51,7 +51,7 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
         return result
     }
 
-    private func keyCodeToAscii(keyCode: Int) -> UInt32 {
+    private func keyCodeToAscii(keyCode: Int) -> UInt32? {
         switch keyCode {
         case kVK_ANSI_A: return UInt32(Character("A").asciiValue!)
         case kVK_ANSI_B: return UInt32(Character("B").asciiValue!)
@@ -79,7 +79,17 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
         case kVK_ANSI_X: return UInt32(Character("X").asciiValue!)
         case kVK_ANSI_Y: return UInt32(Character("Y").asciiValue!)
         case kVK_ANSI_Z: return UInt32(Character("Z").asciiValue!)
-        default:         return 0
+        case kVK_ANSI_0: return UInt32(Character("0").asciiValue!)
+        case kVK_ANSI_1: return UInt32(Character("1").asciiValue!)
+        case kVK_ANSI_2: return UInt32(Character("2").asciiValue!)
+        case kVK_ANSI_3: return UInt32(Character("3").asciiValue!)
+        case kVK_ANSI_4: return UInt32(Character("4").asciiValue!)
+        case kVK_ANSI_5: return UInt32(Character("5").asciiValue!)
+        case kVK_ANSI_6: return UInt32(Character("6").asciiValue!)
+        case kVK_ANSI_7: return UInt32(Character("7").asciiValue!)
+        case kVK_ANSI_8: return UInt32(Character("8").asciiValue!)
+        case kVK_ANSI_9: return UInt32(Character("9").asciiValue!)
+        default:         return nil
         }
     }
 
