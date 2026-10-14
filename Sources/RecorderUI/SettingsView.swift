@@ -31,6 +31,10 @@ public struct SettingsView: View {
                 Text("Generates tamper-evident SHA-256 and SHA-512 evidence manifests alongside recordings.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Toggle("Review and trim before saving", isOn: $settings.trimBeforeSave)
+                Text("Opens the trim modal immediately after stopping a recording to cut start/end dead air.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Output") {

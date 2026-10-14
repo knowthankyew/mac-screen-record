@@ -63,10 +63,13 @@ public struct MainView: View {
             await vm.applyStartupDefaultOverlays()
         }
         .sheet(isPresented: $showLibrary) {
-            RecordingsListView(library: vm.library)
+            RecordingsListView(library: vm.library, settings: vm.settings)
         }
         .sheet(isPresented: $showDeleteArtifactsSheet) {
             deleteArtifactsSheet
+        }
+        .sheet(item: $vm.activeTrimTarget) { target in
+            VideoTrimModalView(target: target, library: vm.library, settings: vm.settings)
         }
     }
 
@@ -459,6 +462,14 @@ public struct MainView: View {
         HStack(spacing: 12) {
             if case .finished(_) = vm.status {
                 Button("Show in Finder") { vm.revealLastRecording() }
+                if let url = vm.lastRecordingURL, LosslessTrimmer.isSupported(url: url) {
+                    Button {
+                        vm.trimLastRecording()
+                    } label: {
+                        Label("Trim…", systemImage: "scissors")
+                    }
+                    .buttonStyle(.bordered)
+                }
                 if vm.lastRecordingURL != nil {
                     Button("Delete Artifacts…") {
                         showDeleteArtifactsSheet = true

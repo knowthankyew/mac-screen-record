@@ -17,6 +17,7 @@ public final class AppSettings: ObservableObject {
         static let folderPath = "FMSR.defaults.outputFolderPath"
         static let generateEvidenceSeal = "FMSR.defaults.generateEvidenceSeal"
         static let hotkeyBindings = "FMSR.defaults.hotkeyBindings"
+        static let trimBeforeSave = "FMSR.defaults.trimBeforeSave"
     }
 
     private let defaults: UserDefaults
@@ -35,6 +36,9 @@ public final class AppSettings: ObservableObject {
     }
     @Published public var generateEvidenceSeal: Bool {
         didSet { defaults.set(generateEvidenceSeal, forKey: Keys.generateEvidenceSeal) }
+    }
+    @Published public var trimBeforeSave: Bool {
+        didSet { defaults.set(trimBeforeSave, forKey: Keys.trimBeforeSave) }
     }
     @Published public var hotkeyBindings: [HotkeyAction: HotkeyBinding] {
         didSet {
@@ -57,6 +61,7 @@ public final class AppSettings: ObservableObject {
         self.defaultShowsCursor = d.object(forKey: Keys.cursor) as? Bool ?? true
         self.defaultCaptureSystemAudio = d.object(forKey: Keys.systemAudio) as? Bool ?? true
         self.generateEvidenceSeal = d.object(forKey: Keys.generateEvidenceSeal) as? Bool ?? true
+        self.trimBeforeSave = d.object(forKey: Keys.trimBeforeSave) as? Bool ?? false
 
         if let data = d.data(forKey: Keys.hotkeyBindings),
            let decoded = try? JSONDecoder().decode([HotkeyAction: HotkeyBinding].self, from: data) {

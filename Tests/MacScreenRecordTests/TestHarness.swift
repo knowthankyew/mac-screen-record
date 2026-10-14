@@ -247,12 +247,39 @@ struct MacScreenRecordTestRunner {
             }
         }
 
+        let trimSuite = TrimTests()
+        await run("TrimTests", "testLosslessTrimmerSupportedFormats") {
+            try await trimSuite.withLifecycle {
+                try trimSuite.testLosslessTrimmerSupportedFormats()
+            }
+        }
+        await run("TrimTests", "testLosslessTrimmerDefaultTrimmedURL") {
+            try await trimSuite.withLifecycle {
+                try trimSuite.testLosslessTrimmerDefaultTrimmedURL()
+            }
+        }
+        await run("TrimTests", "testLosslessTrimmerTimeRangeValidation") {
+            try await trimSuite.withLifecycle {
+                try await trimSuite.testLosslessTrimmerTimeRangeValidation()
+            }
+        }
+        await run("TrimTests", "testLosslessTrimmerExecutionWithSyntheticMovie") {
+            try await trimSuite.withLifecycle {
+                try await trimSuite.testLosslessTrimmerExecutionWithSyntheticMovie()
+            }
+        }
+        await run("TrimTests", "testRecordingsLibraryTrimIntegration") {
+            try await trimSuite.withLifecycle {
+                try await trimSuite.testRecordingsLibraryTrimIntegration()
+            }
+        }
+
         print("")
         if failed > 0 {
             print("✗ Unit Test Suite FAILED (\(failed) failed, \(passed) passed)")
             Foundation.exit(1)
         } else {
-            print("✓ All \(passed) unit tests passed across 5 test suites.")
+            print("✓ All \(passed) unit tests passed across 6 test suites.")
         }
     }
 }

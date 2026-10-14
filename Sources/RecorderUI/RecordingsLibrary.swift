@@ -353,6 +353,148 @@ public final class RecordingsLibrary: ObservableObject {
         return dest
     }
 
+    /// Destination mode when performing lossless trimming.
+    public enum TrimDestinationMode: Sendable {
+        case saveCopy
+        case replaceOriginal
+    }
+
+    /// Trims a recording file losslessly to the specified start/end timestamps.
+    @discardableResult
+    public func trimRecording(
+        file: RecordingFile,
+        startTime: Double,
+        endTime: Double,
+        mode: TrimDestinationMode
+    ) async throws -> URL {
+        await waitForPendingSeal(for: file.url)
+        let originalManifest = manifest(for: file)
+
+        switch mode {
+        case .saveCopy:
+            let dest = LosslessTrimmer.defaultTrimmedURL(for: file.url)
+            try await LosslessTrimmer.trim(
+                source: file.url,
+                destination: dest,
+                startTime: startTime,
+                endTime: endTime
+            )
+
+            // If original file had an evidence seal, create a valid seal for the trimmed copy
+            if let originalManifest {
+                let checksums = try EvidenceSeal.computeHashes(for: dest)
+                let trimmedDuration = max(0.01, endTime - startTime)
+                let trimmedManifest = EvidenceManifest(
+                    schema: originalManifest.schema,
+                    mediaFile: EvidenceManifest.MediaFile(
+                        fileName: dest.lastPathComponent,
+                        fileSizeBytes: checksums.fileSizeBytes,
+                        sha256: checksums.sha256,
+                        sha512: checksums.sha512
+                    ),
+                    temporalIntegrity: EvidenceManifest.TemporalIntegrity(
+                        startedAtUTC: originalManifest.temporalIntegrity.startedAtUTC,
+                        endedAtUTC: ISO8601DateFormatter().string(from: Date()),
+                        durationSeconds: trimmedDuration,
+                        machContinuousStart: originalManifest.temporalIntegrity.machContinuousStart,
+                        machContinuousEnd: originalManifest.temporalIntegrity.machContinuousEnd,
+                        machTimebaseNumerator: originalManifest.temporalIntegrity.machTimebaseNumerator,
+                        machTimebaseDenominator: originalManifest.temporalIntegrity.machTimebaseDenominator
+                    ),
+                    captureContext: originalManifest.captureContext,
+                    audioTelemetry: originalManifest.audioTelemetry,
+                    presenterAndOverlays: originalManifest.presenterAndOverlays,
+                    provenanceAndGovernance: originalManifest.provenanceAndGovernance
+                )
+                let manifestURL = EvidenceSeal.manifestURL(for: dest)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                if let data = try? encoder.encode(trimmedManifest) {
+                    try? data.write(to: manifestURL, options: Data.WritingOptions.atomic)
+                }
+            }
+
+            await reload()
+            return dest
+
+        case .replaceOriginal:
+            let fm = FileManager.default
+            let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            let tempDest = tempDir.appendingPathComponent("trimmed-\(UUID().uuidString)").appendingPathExtension(file.url.pathExtension)
+
+            try await LosslessTrimmer.trim(
+                source: file.url,
+                destination: tempDest,
+                startTime: startTime,
+                endTime: endTime
+            )
+
+            let targetURL = file.url
+            // Move original to trash
+            deleteArtifacts(at: targetURL, moveToTrash: true)
+
+            // Move trimmed temp file to target destination
+            try fm.moveItem(at: tempDest, to: targetURL)
+
+            if let originalManifest {
+                let checksums = try EvidenceSeal.computeHashes(for: targetURL)
+                let trimmedDuration = max(0.01, endTime - startTime)
+                let trimmedManifest = EvidenceManifest(
+                    schema: originalManifest.schema,
+                    mediaFile: EvidenceManifest.MediaFile(
+                        fileName: targetURL.lastPathComponent,
+                        fileSizeBytes: checksums.fileSizeBytes,
+                        sha256: checksums.sha256,
+                        sha512: checksums.sha512
+                    ),
+                    temporalIntegrity: EvidenceManifest.TemporalIntegrity(
+                        startedAtUTC: originalManifest.temporalIntegrity.startedAtUTC,
+                        endedAtUTC: ISO8601DateFormatter().string(from: Date()),
+                        durationSeconds: trimmedDuration,
+                        machContinuousStart: originalManifest.temporalIntegrity.machContinuousStart,
+                        machContinuousEnd: originalManifest.temporalIntegrity.machContinuousEnd,
+                        machTimebaseNumerator: originalManifest.temporalIntegrity.machTimebaseNumerator,
+                        machTimebaseDenominator: originalManifest.temporalIntegrity.machTimebaseDenominator
+                    ),
+                    captureContext: originalManifest.captureContext,
+                    audioTelemetry: originalManifest.audioTelemetry,
+                    presenterAndOverlays: originalManifest.presenterAndOverlays,
+                    provenanceAndGovernance: originalManifest.provenanceAndGovernance
+                )
+                let manifestURL = EvidenceSeal.manifestURL(for: targetURL)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                if let data = try? encoder.encode(trimmedManifest) {
+                    try? data.write(to: manifestURL, options: Data.WritingOptions.atomic)
+                }
+            }
+
+            await reload()
+            return targetURL
+        }
+    }
+
+    /// Trims an external video file anywhere on disk.
+    @discardableResult
+    public func trimExternalFile(
+        at sourceURL: URL,
+        startTime: Double,
+        endTime: Double,
+        destinationURL: URL? = nil
+    ) async throws -> URL {
+        let dest = destinationURL ?? LosslessTrimmer.defaultTrimmedURL(for: sourceURL)
+        try await LosslessTrimmer.trim(
+            source: sourceURL,
+            destination: dest,
+            startTime: startTime,
+            endTime: endTime
+        )
+        if dest.deletingLastPathComponent().standardizedFileURL == folder.standardizedFileURL {
+            await reload()
+        }
+        return dest
+    }
+
     /// Reads and decodes the companion evidence manifest for a recording if present.
     public func manifest(for file: RecordingFile) -> EvidenceManifest? {
         guard let targetURL = EvidenceSeal.existingManifestURL(for: file.url),

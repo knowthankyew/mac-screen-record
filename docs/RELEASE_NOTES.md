@@ -63,13 +63,25 @@
 #### 4. Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (Phase 9)
 
 * **Automated Unit Test Suite (`MacScreenRecordTests`):**  
-  18 deterministic unit tests across 5 test suites (`EncoderAndCaptureTests`, `PresetsAndLibraryTests`, `PrivacyAndOverlayTests`, `EvidenceSealTests`, `HotkeyTests`) running in ~0.2s without requiring full Xcode or TCC hardware permissions via `swift run MacScreenRecordTests`.
+  23 deterministic unit tests across 6 test suites (`EncoderAndCaptureTests`, `PresetsAndLibraryTests`, `PrivacyAndOverlayTests`, `EvidenceSealTests`, `HotkeyTests`, `TrimTests`) running in ~0.3s without requiring full Xcode or TCC hardware permissions via `swift run MacScreenRecordTests`.
 * **Static Zero-Egress & Claims CI Linter:**  
   `Scripts/audit-claims.py` scans `Sources/` and `Tests/` for forbidden networking frameworks (`Network`, `CFNetwork`, `WebKit`, BSD sockets) and validates hotkey and TCC justification parity against `NOTICE.md`.
 * **Zero-SPM Dependency & Supply Chain Gate:**  
   Zero remote SPM dependencies in `Package.swift`; grouped GitHub Actions dependency updates via `.github/dependabot.yml`.
 * **CycloneDX SBOM & SLSA Build Provenance:**  
   Automated CycloneDX 1.5 JSON SBOM (`bom.json`) generation and SLSA provenance attestation integrated into `.github/workflows/ci.yml`.
+
+#### 5. Post-Capture & Posthumous Library Lossless Trim (Phase 10)
+
+* **Lossless Passthrough Engine (`LosslessTrimmer`):**  
+  Hardware-accelerated, frame-accurate trimming engine using native `AVAssetExportPresetPassthrough` across `.mp4`, `.mov`, and `.m4v` containers (H.264, HEVC, ProRes) with zero re-encoding and zero generation loss.
+* **Interactive Filmstrip & Scrubber Modal (`VideoTrimModalView`):**  
+  Dedicated review and trim modal with asynchronous multi-frame filmstrip generation (`AVAssetImageGenerator`), draggable In/Out handles with live frame scrubbing, real-time timestamp displays, and looping playback preview.
+* **Dual Entry Points:**  
+  * **In-App Trim Before Save:** Optional review modal immediately following recording stop (`settings.trimBeforeSave`), plus one-click "Trim…" access directly from the finish bar.
+  * **Posthumous Library & Disk Trimming:** Row-level scissors action and context menu in the Recordings Library, plus a "Trim Video…" file loader to trim any supported media file from disk.
+* **Dual Save Options with Evidence Integrity:**  
+  Save a new trimmed copy (`_trimmed.mp4`) or replace the original via a macOS Trash-safe workflow, automatically recalculating and updating companion `.evidence.json` manifests when Evidence Seal is enabled.
 
 ---
 

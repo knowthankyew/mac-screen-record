@@ -32,6 +32,19 @@ public final class RecordingViewModel: ObservableObject {
         case error(String)
     }
 
+    public struct TrimTarget: Identifiable, Sendable {
+        public var id: URL { url }
+        public let url: URL
+        public let isPostCaptureReview: Bool
+        public let originalFile: RecordingFile?
+
+        public init(url: URL, isPostCaptureReview: Bool = false, originalFile: RecordingFile? = nil) {
+            self.url = url
+            self.isPostCaptureReview = isPostCaptureReview
+            self.originalFile = originalFile
+        }
+    }
+
     // ── Shareable content ──────────────────────────────────────────────────
     @Published public private(set) var displays: [DisplayInfo] = []
     @Published public private(set) var windows:  [WindowInfo]  = []
@@ -56,6 +69,7 @@ public final class RecordingViewModel: ObservableObject {
 
     @Published public private(set) var status: Status = .idle
     @Published public private(set) var lastRecordingURL: URL?
+    @Published public var activeTrimTarget: TrimTarget? = nil
     @Published public var overlayError: String? = nil
 
     private var outputFolder: URL
@@ -707,6 +721,9 @@ public final class RecordingViewModel: ObservableObject {
             let endDate = Date()
             self.lastRecordingURL = url
             status = .finished(url)
+            if settings.trimBeforeSave && LosslessTrimmer.isSupported(url: url) {
+                self.activeTrimTarget = TrimTarget(url: url, isPostCaptureReview: true, originalFile: nil)
+            }
 
             let generateSeal = settings.generateEvidenceSeal
             let startDate = self.recordingStartDate
@@ -930,6 +947,12 @@ public final class RecordingViewModel: ObservableObject {
         } else if let latest = library.files.first {
             NSWorkspace.shared.activateFileViewerSelecting([latest.url])
         }
+    }
+
+    /// Opens the lossless trim modal for the most recently completed recording.
+    public func trimLastRecording() {
+        guard let url = lastRecordingURL, LosslessTrimmer.isSupported(url: url) else { return }
+        self.activeTrimTarget = TrimTarget(url: url, isPostCaptureReview: true, originalFile: nil)
     }
 
     /// Deletes all artifacts (primary file + any matching temporary/partial fragments) associated with the last recording.

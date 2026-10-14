@@ -6,11 +6,13 @@ import UniformTypeIdentifiers
 
 struct RecordingsListView: View {
     @ObservedObject var library: RecordingsLibrary
+    public var settings: AppSettings = .shared
     @Environment(\.dismiss) private var dismiss
     @State private var renamingID: URL?
     @State private var renameText: String = ""
     @State private var exportingID: URL?
     @State private var exportTask: Task<Void, Never>?
+    @State private var activeTrimTarget: RecordingViewModel.TrimTarget?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -18,6 +20,14 @@ struct RecordingsListView: View {
             HStack {
                 Text("Recordings").font(.title2.bold())
                 Spacer()
+                Button {
+                    openExternalVideoToTrim()
+                } label: {
+                    Label("Trim Video…", systemImage: "scissors")
+                }
+                .buttonStyle(.bordered)
+                .help("Load any .mp4, .mov, or .m4v video from disk to trim losslessly")
+
                 Button {
                     Task { await library.reload() }
                 } label: { Image(systemName: "arrow.clockwise") }
@@ -49,6 +59,7 @@ struct RecordingsListView: View {
                             renameText: $renameText,
                             exportingID: $exportingID,
                             exportTask: $exportTask,
+                            activeTrimTarget: $activeTrimTarget,
                             errorMessage: $errorMessage
                         )
                     }
@@ -57,6 +68,9 @@ struct RecordingsListView: View {
             }
         }
         .frame(minWidth: 540, minHeight: 420)
+        .sheet(item: $activeTrimTarget) { target in
+            VideoTrimModalView(target: target, library: library, settings: settings)
+        }
         .alert("Error", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -71,6 +85,19 @@ struct RecordingsListView: View {
             exportTask = nil
         }
     }
+
+    private func openExternalVideoToTrim() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [UTType.mpeg4Movie, UTType.quickTimeMovie, UTType(filenameExtension: "m4v")].compactMap { $0 }
+        panel.message = "Choose a video to trim losslessly without re-encoding"
+        panel.prompt = "Select Video"
+        if panel.runModal() == .OK, let url = panel.url {
+            activeTrimTarget = RecordingViewModel.TrimTarget(url: url, isPostCaptureReview: false, originalFile: nil)
+        }
+    }
 }
 
 private struct RecordingRow: View {
@@ -80,6 +107,7 @@ private struct RecordingRow: View {
     @Binding var renameText: String
     @Binding var exportingID: URL?
     @Binding var exportTask: Task<Void, Never>?
+    @Binding var activeTrimTarget: RecordingViewModel.TrimTarget?
     @Binding var errorMessage: String?
 
     private var isRenaming: Bool { renamingID == file.url }
@@ -129,6 +157,15 @@ private struct RecordingRow: View {
             }
             Button { library.open(file) }            label: { Image(systemName: "play.circle") }.buttonStyle(.borderless).help("Open")
             Button { library.revealInFinder(file) }  label: { Image(systemName: "folder") }.buttonStyle(.borderless).help("Reveal in Finder")
+            if LosslessTrimmer.isSupported(url: file.url) {
+                Button {
+                    activeTrimTarget = RecordingViewModel.TrimTarget(url: file.url, originalFile: file)
+                } label: {
+                    Image(systemName: "scissors")
+                }
+                .buttonStyle(.borderless)
+                .help("Trim recording losslessly…")
+            }
             Button(role: .destructive) {
                 deleteFile()
             } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Move to Trash")
@@ -138,6 +175,11 @@ private struct RecordingRow: View {
         .contextMenu {
             Button("Open") { library.open(file) }
             Button("Reveal in Finder") { library.revealInFinder(file) }
+            if LosslessTrimmer.isSupported(url: file.url) {
+                Button("Trim Recording…") {
+                    activeTrimTarget = RecordingViewModel.TrimTarget(url: file.url, originalFile: file)
+                }
+            }
             if file.hasEvidenceSeal {
                 Divider()
                 Button("Copy SHA-256 Hash") { copySHA256() }
