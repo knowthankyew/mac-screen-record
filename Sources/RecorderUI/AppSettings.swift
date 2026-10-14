@@ -19,34 +19,37 @@ public final class AppSettings: ObservableObject {
         static let hotkeyBindings = "FMSR.defaults.hotkeyBindings"
     }
 
+    private let defaults: UserDefaults
+
     @Published public var defaultCodec: OutputCodec {
-        didSet { UserDefaults.standard.set(defaultCodec.rawValue, forKey: Keys.codec) }
+        didSet { defaults.set(defaultCodec.rawValue, forKey: Keys.codec) }
     }
     @Published public var defaultFPS: Int {
-        didSet { UserDefaults.standard.set(defaultFPS, forKey: Keys.fps) }
+        didSet { defaults.set(defaultFPS, forKey: Keys.fps) }
     }
     @Published public var defaultShowsCursor: Bool {
-        didSet { UserDefaults.standard.set(defaultShowsCursor, forKey: Keys.cursor) }
+        didSet { defaults.set(defaultShowsCursor, forKey: Keys.cursor) }
     }
     @Published public var defaultCaptureSystemAudio: Bool {
-        didSet { UserDefaults.standard.set(defaultCaptureSystemAudio, forKey: Keys.systemAudio) }
+        didSet { defaults.set(defaultCaptureSystemAudio, forKey: Keys.systemAudio) }
     }
     @Published public var generateEvidenceSeal: Bool {
-        didSet { UserDefaults.standard.set(generateEvidenceSeal, forKey: Keys.generateEvidenceSeal) }
+        didSet { defaults.set(generateEvidenceSeal, forKey: Keys.generateEvidenceSeal) }
     }
     @Published public var hotkeyBindings: [HotkeyAction: HotkeyBinding] {
         didSet {
             if let data = try? JSONEncoder().encode(hotkeyBindings) {
-                UserDefaults.standard.set(data, forKey: Keys.hotkeyBindings)
+                defaults.set(data, forKey: Keys.hotkeyBindings)
             }
         }
     }
     @Published public var outputFolder: URL {
-        didSet { UserDefaults.standard.set(outputFolder.path, forKey: Keys.folderPath) }
+        didSet { defaults.set(outputFolder.path, forKey: Keys.folderPath) }
     }
 
-    public init() {
-        let d = UserDefaults.standard
+    public init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        let d = defaults
         self.defaultCodec = OutputCodec(rawValue: d.string(forKey: Keys.codec) ?? "") ?? .h264
         let storedFPS = d.integer(forKey: Keys.fps)
         self.defaultFPS = storedFPS == 0 ? 60 : min(max(storedFPS, 24), 120)
@@ -131,7 +134,14 @@ public final class AppSettings: ObservableObject {
         hotkeyBindings = HotkeyBinding.defaultBindings
     }
 
-    public func setHotkeyBinding(_ binding: HotkeyBinding, for action: HotkeyAction) {
+    @discardableResult
+    public func setHotkeyBinding(_ binding: HotkeyBinding, for action: HotkeyAction) -> Bool {
+        for (otherAction, otherBinding) in hotkeyBindings where otherAction != action {
+            if otherBinding == binding {
+                return false
+            }
+        }
         hotkeyBindings[action] = binding
+        return true
     }
 }

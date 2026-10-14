@@ -706,27 +706,51 @@ public final class RecordingViewModel: ObservableObject {
         do {
             let url = try await session.stop()
             self.lastRecordingURL = url
+            status = .finished(url)
 
-            if settings.generateEvidenceSeal,
-               let startDate = self.recordingStartDate,
-               let machStart = self.machContinuousStart,
-               let source = self.activeCaptureSource,
-               let geometry = self.activeCaptureGeometry,
-               let activeCodec = self.activeCaptureCodec {
-                let mic = self.activeMicrophoneEnabled ?? false
-                let sysAudio = self.activeSystemAudioEnabled ?? false
-                let micID = self.activeMicrophoneDeviceID
-                let webcam = self.activeWebcamEnabled ?? false
-                let corner = self.activeWebcamCorner
-                let size = self.activeWebcamSize
-                let bg = self.activeWebcamBackgroundMode
-                let clicks = self.activeClickHighlightsEnabled ?? false
-                let keys = self.activeKeystrokesEnabled ?? false
-                let secInput = self.activeSecureInputSuppression ?? false
+            let generateSeal = settings.generateEvidenceSeal
+            let startDate = self.recordingStartDate
+            let machStart = self.machContinuousStart
+            let source = self.activeCaptureSource
+            let geometry = self.activeCaptureGeometry
+            let activeCodec = self.activeCaptureCodec
+            let mic = self.activeMicrophoneEnabled ?? false
+            let sysAudio = self.activeSystemAudioEnabled ?? false
+            let micID = self.activeMicrophoneDeviceID
+            let webcam = self.activeWebcamEnabled ?? false
+            let corner = self.activeWebcamCorner
+            let size = self.activeWebcamSize
+            let bg = self.activeWebcamBackgroundMode
+            let clicks = self.activeClickHighlightsEnabled ?? false
+            let keys = self.activeKeystrokesEnabled ?? false
+            let secInput = self.activeSecureInputSuppression ?? false
 
-                do {
-                    let manifest = try await Task.detached(priority: .utility) {
-                        try EvidenceSeal.writeManifest(
+            // Reset active recording metadata
+            self.recordingStartDate = nil
+            self.machContinuousStart = nil
+            self.activeCaptureSource = nil
+            self.activeCaptureGeometry = nil
+            self.activeCaptureCodec = nil
+            self.activeMicrophoneEnabled = nil
+            self.activeSystemAudioEnabled = nil
+            self.activeMicrophoneDeviceID = nil
+            self.activeWebcamEnabled = nil
+            self.activeWebcamCorner = nil
+            self.activeWebcamSize = nil
+            self.activeWebcamBackgroundMode = nil
+            self.activeClickHighlightsEnabled = nil
+            self.activeKeystrokesEnabled = nil
+            self.activeSecureInputSuppression = nil
+
+            if generateSeal,
+               let startDate,
+               let machStart,
+               let source,
+               let geometry,
+               let activeCodec {
+                Task(priority: .utility) { [weak self] in
+                    do {
+                        let manifest = try EvidenceSeal.writeManifest(
                             for: url,
                             startDate: startDate,
                             endDate: endDate,
@@ -746,15 +770,15 @@ public final class RecordingViewModel: ObservableObject {
                             keystrokesEnabled: keys,
                             secureInputActive: secInput
                         )
-                    }.value
-                    log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
-                } catch {
-                    log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
+                        self?.log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
+                        await self?.library.reload()
+                    } catch {
+                        self?.log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
+                    }
                 }
+            } else {
+                await library.reload()
             }
-
-            status = .finished(url)
-            await library.reload()
         } catch {
             status = .error(error.localizedDescription)
         }
@@ -801,45 +825,73 @@ public final class RecordingViewModel: ObservableObject {
                 let savedURL = try await self.session.stop()
                 self.lastRecordingURL = savedURL
 
-                if self.settings.generateEvidenceSeal,
-                   let startDate = self.recordingStartDate,
-                   let machStart = self.machContinuousStart,
-                   let source = self.activeCaptureSource,
-                   let geometry = self.activeCaptureGeometry,
-                   let activeCodec = self.activeCaptureCodec {
-                    let mic = self.activeMicrophoneEnabled ?? false
-                    let sysAudio = self.activeSystemAudioEnabled ?? false
-                    let micID = self.activeMicrophoneDeviceID
-                    let webcam = self.activeWebcamEnabled ?? false
-                    let corner = self.activeWebcamCorner
-                    let size = self.activeWebcamSize
-                    let bg = self.activeWebcamBackgroundMode
-                    let clicks = self.activeClickHighlightsEnabled ?? false
-                    let keys = self.activeKeystrokesEnabled ?? false
-                    let secInput = self.activeSecureInputSuppression ?? false
+                let generateSeal = self.settings.generateEvidenceSeal
+                let startDate = self.recordingStartDate
+                let machStart = self.machContinuousStart
+                let source = self.activeCaptureSource
+                let geometry = self.activeCaptureGeometry
+                let activeCodec = self.activeCaptureCodec
+                let mic = self.activeMicrophoneEnabled ?? false
+                let sysAudio = self.activeSystemAudioEnabled ?? false
+                let micID = self.activeMicrophoneDeviceID
+                let webcam = self.activeWebcamEnabled ?? false
+                let corner = self.activeWebcamCorner
+                let size = self.activeWebcamSize
+                let bg = self.activeWebcamBackgroundMode
+                let clicks = self.activeClickHighlightsEnabled ?? false
+                let keys = self.activeKeystrokesEnabled ?? false
+                let secInput = self.activeSecureInputSuppression ?? false
 
-                    _ = try? await Task.detached(priority: .utility) {
-                        try EvidenceSeal.writeManifest(
-                            for: savedURL,
-                            startDate: startDate,
-                            endDate: endDate,
-                            machStart: machStart,
-                            machEnd: machEnd,
-                            source: source,
-                            geometry: geometry,
-                            codec: activeCodec,
-                            captureMicrophone: mic,
-                            captureSystemAudio: sysAudio,
-                            microphoneDeviceID: micID,
-                            webcamEnabled: webcam,
-                            webcamCorner: corner,
-                            webcamSize: size,
-                            webcamBackgroundMode: bg,
-                            clickHighlightsEnabled: clicks,
-                            keystrokesEnabled: keys,
-                            secureInputActive: secInput
-                        )
-                    }.value
+                // Reset active recording metadata
+                self.recordingStartDate = nil
+                self.machContinuousStart = nil
+                self.activeCaptureSource = nil
+                self.activeCaptureGeometry = nil
+                self.activeCaptureCodec = nil
+                self.activeMicrophoneEnabled = nil
+                self.activeSystemAudioEnabled = nil
+                self.activeMicrophoneDeviceID = nil
+                self.activeWebcamEnabled = nil
+                self.activeWebcamCorner = nil
+                self.activeWebcamSize = nil
+                self.activeWebcamBackgroundMode = nil
+                self.activeClickHighlightsEnabled = nil
+                self.activeKeystrokesEnabled = nil
+                self.activeSecureInputSuppression = nil
+
+                if generateSeal,
+                   let startDate,
+                   let machStart,
+                   let source,
+                   let geometry,
+                   let activeCodec {
+                    Task(priority: .utility) { [weak self] in
+                        do {
+                            _ = try EvidenceSeal.writeManifest(
+                                for: savedURL,
+                                startDate: startDate,
+                                endDate: endDate,
+                                machStart: machStart,
+                                machEnd: machEnd,
+                                source: source,
+                                geometry: geometry,
+                                codec: activeCodec,
+                                captureMicrophone: mic,
+                                captureSystemAudio: sysAudio,
+                                microphoneDeviceID: micID,
+                                webcamEnabled: webcam,
+                                webcamCorner: corner,
+                                webcamSize: size,
+                                webcamBackgroundMode: bg,
+                                clickHighlightsEnabled: clicks,
+                                keystrokesEnabled: keys,
+                                secureInputActive: secInput
+                            )
+                            await self?.library.reload()
+                        } catch {
+                            self?.log.error("Failed to generate salvage evidence seal: \(error.localizedDescription, privacy: .public)")
+                        }
+                    }
                 }
 
                 self.log.info("Salvaged partial recording: \(savedURL.lastPathComponent, privacy: .public)")

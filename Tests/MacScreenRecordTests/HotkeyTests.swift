@@ -60,15 +60,16 @@ final class HotkeyTests {
         try checkEqual(decoded[.togglePause], customPause)
         try checkEqual(decoded[.startRecording], HotkeyBinding.defaultBinding(for: .startRecording))
 
-        // Verify AppSettings integration
-        let settings = AppSettings.shared
-        let originalBindings = settings.hotkeyBindings
-        defer {
-            settings.hotkeyBindings = originalBindings
-        }
+        // Verify AppSettings integration using isolatedDefaults
+        let settings = AppSettings(defaults: isolatedDefaults)
 
-        settings.setHotkeyBinding(customPause, for: .togglePause)
+        let setResult = settings.setHotkeyBinding(customPause, for: .togglePause)
+        try checkTrue(setResult, "Custom binding successfully registered")
         try checkEqual(settings.hotkeyBindings[.togglePause], customPause)
+
+        // Verify duplicate prevention
+        let duplicateResult = settings.setHotkeyBinding(customPause, for: .startRecording)
+        try checkFalse(duplicateResult, "Duplicate binding assignment prevented")
 
         settings.resetHotkeyBindingsToDefaults()
         try checkEqual(settings.hotkeyBindings[.togglePause], HotkeyBinding.defaultBinding(for: .togglePause))
