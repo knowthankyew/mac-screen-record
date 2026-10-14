@@ -86,13 +86,18 @@ final class HotkeyTests {
             .stopRecording: { triggeredStop = true }
         ]
 
-        controller.install(bindings: HotkeyBinding.defaultBindings, handlers: handlers)
+        let testBindings: [HotkeyAction: HotkeyBinding] = [
+            .startRecording: HotkeyBinding(keyCode: kVK_F18, modifiers: cmdKey | optionKey),
+            .stopRecording: HotkeyBinding(keyCode: kVK_F19, modifiers: cmdKey | optionKey)
+        ]
+
+        controller.install(bindings: testBindings, handlers: handlers)
         try checkEqual(controller.registeredActions.count, 2)
         try checkTrue(controller.registeredActions.contains(.startRecording))
         try checkTrue(controller.registeredActions.contains(.stopRecording))
 
         // Runtime rebinding of specific action
-        let newBinding = HotkeyBinding(keyCode: kVK_ANSI_T, modifiers: cmdKey | optionKey)
+        let newBinding = HotkeyBinding(keyCode: kVK_F17, modifiers: cmdKey | optionKey)
         let updateResult = controller.updateBinding(for: .startRecording, binding: newBinding)
         try checkTrue(updateResult, "Rebinding succeeded")
         try checkTrue(controller.registeredActions.contains(.startRecording))
@@ -104,7 +109,7 @@ final class HotkeyTests {
         try checkEqual(controller.registeredActions.count, 2, "Hotkeys restored when resumed")
 
         // Rebinding all actions simultaneously
-        controller.updateBindings(HotkeyBinding.defaultBindings)
+        controller.updateBindings(testBindings)
         try checkEqual(controller.registeredActions.count, 2)
 
         // Cleanup

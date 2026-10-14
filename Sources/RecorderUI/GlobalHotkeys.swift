@@ -197,6 +197,7 @@ public final class GlobalHotkeyController: ObservableObject {
     private var registeredKeys: [HotkeyAction: GlobalHotkey] = [:]
     private var actionHandlers: [HotkeyAction: ActionHandler] = [:]
     private var currentBindings: [HotkeyAction: HotkeyBinding] = [:]
+    private var isSuspended = false
 
     public init() {}
 
@@ -234,15 +235,39 @@ public final class GlobalHotkeyController: ObservableObject {
             currentBindings[action] = binding
             return true
         }
-        let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
+
+        let previousHotkey = registeredKeys.removeValue(forKey: action)
+        let previousBinding = currentBindings[action]
+
+        if isSuspended {
+            // While suspended, verify Carbon registration validity by creating a temporary hotkey
+            let testHotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
+                Task { @MainActor in handler() }
+            }
+            if testHotkey.isRegistered {
+                currentBindings[action] = binding
+                log.info("Updated hotkey binding (deferred during suspension) for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
+                return true
+            } else {
+                currentBindings[action] = previousBinding
+                log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
+                return false
+            }
+        }
+
+        let newHotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
             Task { @MainActor in handler() }
         }
-        if hotkey.isRegistered {
-            registeredKeys[action] = hotkey
+        if newHotkey.isRegistered {
+            registeredKeys[action] = newHotkey
             currentBindings[action] = binding
             log.info("Updated hotkey binding for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
             return true
         } else {
+            if let previousHotkey {
+                registeredKeys[action] = previousHotkey
+            }
+            currentBindings[action] = previousBinding
             log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
             return false
         }
@@ -260,6 +285,7 @@ public final class GlobalHotkeyController: ObservableObject {
     @discardableResult
     public func rebuildAll() -> Set<HotkeyAction> {
         registeredKeys.removeAll()
+        guard !isSuspended else { return [] }
         var failed = Set<HotkeyAction>()
         for (action, handler) in actionHandlers {
             guard let binding = currentBindings[action] else { continue }
@@ -278,12 +304,14 @@ public final class GlobalHotkeyController: ObservableObject {
 
     /// Temporarily unregisters all global Carbon hotkeys without clearing action handlers or bindings.
     public func suspend() {
+        isSuspended = true
         registeredKeys.removeAll()
         log.info("Universal global hotkeys temporarily suspended")
     }
 
     /// Resumes global Carbon hotkeys by rebuilding active registrations.
     public func resume() {
+        isSuspended = false
         rebuildAll()
         log.info("Universal global hotkeys resumed")
     }

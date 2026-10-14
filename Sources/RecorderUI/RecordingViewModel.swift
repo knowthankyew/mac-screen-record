@@ -723,7 +723,7 @@ public final class RecordingViewModel: ObservableObject {
             let bg = self.activeWebcamBackgroundMode
             let clicks = self.activeClickHighlightsEnabled ?? false
             let keys = self.activeKeystrokesEnabled ?? false
-            let secInput = self.activeSecureInputSuppression ?? false
+            let secInput = (self.activeSecureInputSuppression ?? false) || self.keystrokes.isSecureEventInputActive
 
             // Reset active recording metadata
             self.recordingStartDate = nil
@@ -845,7 +845,7 @@ public final class RecordingViewModel: ObservableObject {
                 let bg = self.activeWebcamBackgroundMode
                 let clicks = self.activeClickHighlightsEnabled ?? false
                 let keys = self.activeKeystrokesEnabled ?? false
-                let secInput = self.activeSecureInputSuppression ?? false
+                let secInput = (self.activeSecureInputSuppression ?? false) || self.keystrokes.isSecureEventInputActive
 
                 // Reset active recording metadata
                 self.recordingStartDate = nil
