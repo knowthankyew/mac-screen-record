@@ -152,9 +152,17 @@ public struct SettingsView: View {
             }
 
             let binding = HotkeyBinding(keyCode: Int(event.keyCode), modifiers: carbonMods)
+            let previous = self.currentBinding(for: action)
             guard self.settings.setHotkeyBinding(binding, for: action) else {
                 NSSound.beep()
                 return nil // Duplicate shortcut already in use by another action
+            }
+            if let hotkeys = self.hotkeys {
+                guard hotkeys.updateBinding(for: action, binding: binding) else {
+                    NSSound.beep()
+                    self.settings.setHotkeyBinding(previous, for: action)
+                    return nil // System registration failed
+                }
             }
             self.stopListening()
             return nil

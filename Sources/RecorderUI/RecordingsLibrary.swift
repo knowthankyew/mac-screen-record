@@ -291,7 +291,8 @@ public final class RecordingsLibrary: ObservableObject {
         let newEvidenceURL = EvidenceSeal.manifestURL(for: dest)
         var hasEvidenceSeal = false
         if let srcURL = sourceManifestURL {
-            if newEvidenceURL != srcURL && FileManager.default.fileExists(atPath: newEvidenceURL.path) {
+            let isSameFile = newEvidenceURL.standardizedFileURL.path.caseInsensitiveCompare(srcURL.standardizedFileURL.path) == .orderedSame
+            if !isSameFile && FileManager.default.fileExists(atPath: newEvidenceURL.path) {
                 try? FileManager.default.trashItem(at: newEvidenceURL, resultingItemURL: nil)
             }
             do {
