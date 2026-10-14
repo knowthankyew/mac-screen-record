@@ -387,7 +387,7 @@ and saved presets live alongside.
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for the full technical specification and release plan.
+See [ROADMAP.md](docs/ROADMAP.md) for the full technical specification and release plan.
 
 ### Shipped:
 
@@ -397,16 +397,16 @@ See [ROADMAP.md](ROADMAP.md) for the full technical specification and release pl
 - ✅ Phase 4 — Pause/resume with PTS rewriting, keystroke overlay, GIF export, settings panel, library polish
 - ✅ Phase 5 — Intel (`x86_64`) support, stable local code signing for persistent TCC, mid-stream auto-salvage, artifact cleanup, SBOM attestation
 - ✅ Phase 6 — Neural Engine person segmentation PiP (blur, virtual backdrops, custom image, cutout), quick-toggle Facecam profiles, automated claims linter (`Scripts/audit-claims.py`)
-- ✅ [Phase 9](ROADMAP.md#phase-9-automated-supply-chain-unit-tests--zero-egress-ci-gate-shipped) — Automated Supply Chain, Unit Tests (`MacScreenRecordTests`) & Zero-Egress GitHub Actions CI Gate (`.github/workflows/ci.yml`)
+- ✅ [Phase 7](docs/ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal--shipped) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256/512 streaming checksums, `knowthankyew:evidence:v1` manifests)
+- ✅ [Phase 8](docs/ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish--shipped) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
+- ✅ [Phase 9](docs/ROADMAP.md#phase-9-automated-supply-chain-unit-tests--zero-egress-ci-gate--shipped) — Automated Supply Chain, Unit Tests (`MacScreenRecordTests`) & Zero-Egress GitHub Actions CI Gate (`.github/workflows/ci.yml`)
 
 ### Planned:
 
-- 🟡 [Phase 7](ROADMAP.md#phase-7-cryptographic-evidence-integrity-the-evidence-seal) — Cryptographic Evidence Integrity (The Evidence Seal, SHA-256 manifests, tamper-evident capture context)
-- 🟡 [Phase 8](ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
-- 🔜 [Phase 10](ROADMAP.md#phase-10-post-capture--posthumous-library-lossless-trim) — Post-Capture & Posthumous Library Lossless Trim (trim before save + lossless trim of loaded/library `.mp4`/`.mov`/`.m4v` files)
-- 🔜 [Phase 11](ROADMAP.md#phase-11-streamlined-facecam--pip-improvements) — Streamlined Facecam & PiP Improvements (blurred custom image backdrop, Circle vs. Rounded-Rectangle toggle, system border controls)
+- 🔜 [Phase 10](docs/ROADMAP.md#phase-10-post-capture--posthumous-library-lossless-trim) — Post-Capture & Posthumous Library Lossless Trim (trim before save + lossless trim of loaded/library `.mp4`/`.mov`/`.m4v` files)
+- 🔜 [Phase 11](docs/ROADMAP.md#phase-11-streamlined-facecam--pip-improvements) — Streamlined Facecam & PiP Improvements (blurred custom image backdrop, Circle vs. Rounded-Rectangle toggle, system border controls)
 
-Want a feature on this list to move from 🟡 to ✅? Open an issue or a PR.
+Want a feature on this list to move from 🔜 to ✅? Open an issue or a PR.
 
 ---
 

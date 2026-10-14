@@ -41,12 +41,22 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Reusable capture presets with automated startup default loading and migration fallback.
   - Native Intel (`x86_64`) and Apple Silicon (`arm64`) architecture parity.
   - Stable self-signed local identity harness preserving macOS TCC permissions across builds.
-- ✅ **Neural Engine Presenter PiP, Security Guards, Unit Tests & CI Gate (v0.3.0)**:
+- ✅ **Neural Engine Presenter PiP, Security Guards & Claims Linter (v0.3.0) — Phase 6**:
   - Apple Neural Engine on-device person segmentation (`VNGeneratePersonSegmentationRequest`) with real-time Metal rendering.
   - Zero-egress background blur, 5 virtual backdrops, custom background image replacement, cutout silhouette mode, and Quick-Toggle Facecam header workflow (`useForFacecam`).
   - Keystroke overlay with synchronous password masking via `IsSecureEventInputEnabled()`.
   - Global Carbon hotkeys (`⌃⌥⌘R` / `⌃⌥⌘S`) and Menu Bar status controller.
-  - Automated CycloneDX JSON SBOM (`bom.json`), `NOTICE.md` supply chain disclosures, `Scripts/audit-claims.py` verification gate, 12-test `MacScreenRecordTests` unit test suite, and GitHub Actions CI + SLSA build provenance workflow (`.github/workflows/ci.yml`).
+  - Automated CycloneDX JSON SBOM (`bom.json`), `NOTICE.md` supply chain disclosures, and `Scripts/audit-claims.py` verification gate.
+- ✅ **Cryptographic Evidence Integrity (*The Evidence Seal*) (v0.3.0) — Phase 7**:
+  - Immediate post-recording streaming SHA-256 and SHA-512 cryptographic hashing using native `CryptoKit` with $O(1)$ memory usage.
+  - Deterministic `.evidence.json` companion metadata manifest conforming to `knowthankyew:evidence:v1` (temporal integrity via `mach_continuous_time`, capture context, audio telemetry, sealed badge in library, 1-click clipboard copy, and trash/delete lifecycle synchronization).
+- ✅ **Universal Keyboard Control & Workflow Polish (v0.3.0) — Phase 8**:
+  - Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume with PTS rewriting, `⌃⌥P` Facecam toggle, `⌃⌥K` keystrokes toggle).
+  - In-app hotkey customization table in Settings with key capture, modifier translation, Carbon handler suspension/resume, `UserDefaults` persistence, and "Reset Hotkeys to Defaults".
+- ✅ **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (v0.3.0) — Phase 9**:
+  - 18 deterministic unit tests across 5 test suites (`MacScreenRecordTests`) running in 0.2s without TCC hardware permissions.
+  - Static zero-egress scanner and claims linter (`Scripts/audit-claims.py`) checking zero network imports, hotkeys, and TCC table parity.
+  - GitHub Actions CI workflow (`.github/workflows/ci.yml`), CycloneDX 1.5 JSON SBOM (`bom.json`), and SLSA build provenance attestation.
 
 ---
 
@@ -60,12 +70,12 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phase 7** | **Cryptographic Evidence Integrity (*The Evidence Seal*)** | Portfolio Governance | Post-finalization SHA-256 / SHA-512 streaming checksumming and companion `.evidence.json` tamper-evident metadata manifest conforming to `knowthankyew:evidence:v1` | ✅ **Shipped** |
 | **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | ✅ **Shipped** |
 | **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
-| **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Next After 7–8** |
+| **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Up Next (Active)** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Planned (Phase 10+)** |
 
 ---
 
-### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal) (Shipped)
+### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal) ✅ Shipped
 **Objective**: Provide verifiable local checksums and recording metadata manifests for regulatory filings and documentation workflows.
 
 - **Cryptographic Checksumming**:
@@ -78,7 +88,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
     - **Integrity Seal**: SHA-256 and SHA-512 checksums and file byte size for reproducible local verification.
     - **Library Lifecycle & UI**: Automatic companion `.evidence.json` cleanup on delete/trash, rename synchronization, visual "Sealed" badge in `RecordingsListView`, and 1-click SHA-256 clipboard copy.
 
-### Phase 8: Universal Keyboard Control & Workflow Polish (Shipped)
+### Phase 8: Universal Keyboard Control & Workflow Polish ✅ Shipped
 **Objective**: Fast, tactile, zero-permission hotkey controls for seamless evidence capture without mouse interference.
 
 - **Expanded Global Hotkey Suite**:
@@ -90,7 +100,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 - **In-App Hotkey Customization**:
   - Full in-app shortcut remapping table in Settings with key capture, Carbon modifier translation, `UserDefaults` persistence, and "Reset Hotkeys to Defaults" capability.
 
-### Phase 9: Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (Shipped)
+### Phase 9: Automated Supply Chain, Unit Tests & Zero-Egress CI Gate ✅ Shipped
 **Objective**: Continuous automated verification that the codebase never introduces remote dependencies, regressions, or network egress.
 
 - **Static Zero-Egress & Claims CI Linter**:

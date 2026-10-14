@@ -13,7 +13,7 @@
 
 ### What's New in 0.3.0
 
-#### Real-Time Neural Engine Webcam PIP Effects
+#### 1. Real-Time Neural Engine Webcam PIP Effects (Phase 6)
 
 * **Apple Neural Engine Person Segmentation:**  
   Integrated Apple’s native `VNGeneratePersonSegmentationRequest` (Vision framework) for real-time person segmentation running on the Apple Neural Engine (ANE) and GPU. Completely on-device and zero-egress.
@@ -29,6 +29,47 @@
   Loom-style background removal where only the presenter's silhouette floats freely on screen.
 * **Toggleable Border Ring:**  
   Customizable border ring styling with support for borderless floating cutouts.
+* **Quick-Toggle Facecam Workflow:**  
+  Added `useForFacecam` preset configuration to automatically initialize presenter camera overlays alongside standard screen capture presets.
+
+#### 2. Cryptographic Evidence Integrity — The Evidence Seal (Phase 7)
+
+* **Streaming Cryptographic Hashing ($O(1)$ RAM):**  
+  Immediately upon recording termination, compute streaming SHA-256 and SHA-512 cryptographic checksums via Apple `CryptoKit` in 64 KB buffers, ensuring zero memory spikes even on 4K multi-hour recordings.
+* **Standardized Evidence Manifest (`.evidence.json`):**  
+  Automatically generates a companion `.evidence.json` manifest conforming to schema `knowthankyew:evidence:v1` containing:
+  * **Temporal Integrity:** Start and end timestamps tracked monotonically via `mach_continuous_time` and Mach timebase info.
+  * **Capture Context:** Target display resolution, color space, active window titles, FPS, and container/codec format.
+  * **Audio Telemetry:** Verification of active audio input channels, sample rates, microphone device IDs, and system audio loopback state.
+  * **Integrity Seal:** SHA-256 and SHA-512 cryptographic hashes and exact file byte size for reproducible, tamper-evident verification.
+* **Recordings Library Integration:**  
+  Visual "Sealed" badge in `RecordingsListView`, 1-click SHA-256 clipboard copy, and synchronized rename/trash/delete lifecycles.
+* **In-Flight Task Coordination:**  
+  Safe asynchronous task tracking ensuring hash generation completes before file operations (such as reveal or delete) can take place.
+
+#### 3. Universal Keyboard Control & In-App Remapping (Phase 8)
+
+* **Expanded Global Carbon Hotkey Suite:**  
+  * `⌃⌥⌘R`: Start recording.
+  * `⌃⌥⌘S`: Stop recording.
+  * `⌥Space`: Non-destructive pause / resume with presentation timestamp (PTS) rewriting.
+  * `⌃⌥P`: Quick toggle Facecam presenter overlay.
+  * `⌃⌥K`: Quick toggle keystroke indicator overlay.
+* **In-App Hotkey Customization:**  
+  Full in-app shortcut remapping table in Settings with dynamic key capture, modifier combination validation, instant live binding updates, and "Reset Hotkeys to Defaults".
+* **Carbon Suspension & Test Isolation:**  
+  Clean suspension and resumption of Carbon event handlers during in-app shortcut capture to eliminate key-trapping conflicts, with complete hotkey stubbing under test harnesses (`isTestHarnessActive`).
+
+#### 4. Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (Phase 9)
+
+* **Automated Unit Test Suite (`MacScreenRecordTests`):**  
+  18 deterministic unit tests across 5 test suites (`EncoderAndCaptureTests`, `PresetsAndLibraryTests`, `PrivacyAndOverlayTests`, `EvidenceSealTests`, `HotkeyTests`) running in ~0.2s without requiring full Xcode or TCC hardware permissions via `swift run MacScreenRecordTests`.
+* **Static Zero-Egress & Claims CI Linter:**  
+  `Scripts/audit-claims.py` scans `Sources/` and `Tests/` for forbidden networking frameworks (`Network`, `CFNetwork`, `WebKit`, BSD sockets) and validates hotkey and TCC justification parity against `NOTICE.md`.
+* **Zero-SPM Dependency & Supply Chain Gate:**  
+  Zero remote SPM dependencies in `Package.swift`; grouped GitHub Actions dependency updates via `.github/dependabot.yml`.
+* **CycloneDX SBOM & SLSA Build Provenance:**  
+  Automated CycloneDX 1.5 JSON SBOM (`bom.json`) generation and SLSA provenance attestation integrated into `.github/workflows/ci.yml`.
 
 ---
 

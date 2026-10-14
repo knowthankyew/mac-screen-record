@@ -15,6 +15,8 @@ xcuserdata/
 .idea/
 /coderabbit_findings.txt
 /coderabbit_review.md
+/docs/coderabbit_findings.txt
+/docs/coderabbit_review.md
 
 # Agent Steering & Local Specs
 .kiro/

@@ -61,19 +61,21 @@ def check_version_and_branding_parity(root: Path, errors: list[str]) -> str:
     if bundle_id != "com.macscreenrecord.app":
         fail(errors, f"CFBundleIdentifier in Info.plist expected 'com.macscreenrecord.app', got '{bundle_id}'")
 
-    release_notes = read_text_checked(root, "RELEASE_NOTES.md", errors)
+    release_notes_path = "docs/RELEASE_NOTES.md" if (root / "docs/RELEASE_NOTES.md").is_file() else "RELEASE_NOTES.md"
+    release_notes = read_text_checked(root, release_notes_path, errors)
     if release_notes is not None:
         if f"## Mac Screen Record {version}" not in release_notes:
-            fail(errors, f"RELEASE_NOTES.md missing heading '## Mac Screen Record {version}'")
+            fail(errors, f"{release_notes_path} missing heading '## Mac Screen Record {version}'")
         if f"`v{version}`" not in release_notes:
-            fail(errors, f"RELEASE_NOTES.md missing version tag '`v{version}`'")
+            fail(errors, f"{release_notes_path} missing version tag '`v{version}`'")
 
-    roadmap = read_text_checked(root, "ROADMAP.md", errors)
+    roadmap_path = "docs/ROADMAP.md" if (root / "docs/ROADMAP.md").is_file() else "ROADMAP.md"
+    roadmap = read_text_checked(root, roadmap_path, errors)
     if roadmap is not None:
         if f"(v0.1.0 – v{version})" not in roadmap:
-            fail(errors, f"ROADMAP.md milestone header does not match '(v0.1.0 – v{version})'")
+            fail(errors, f"{roadmap_path} milestone header does not match '(v0.1.0 – v{version})'")
         if f"(v{version})" not in roadmap:
-            fail(errors, f"ROADMAP.md missing shipped milestone entry for '(v{version})'")
+            fail(errors, f"{roadmap_path} missing shipped milestone entry for '(v{version})'")
 
     build_script = read_text_checked(root, "Scripts/build-app.sh", errors)
     if build_script is not None:
@@ -172,7 +174,8 @@ def check_hotkey_and_secure_input_parity(root: Path, errors: list[str]) -> None:
         if "keyCode: kVK_ANSI_R" not in hotkeys_swift or "keyCode: kVK_ANSI_S" not in hotkeys_swift:
             fail(errors, "GlobalHotkeys.swift missing expected kVK_ANSI_R or kVK_ANSI_S bindings")
 
-    for doc_name in ("README.md", "ROADMAP.md"):
+    roadmap_path = "docs/ROADMAP.md" if (root / "docs/ROADMAP.md").is_file() else "ROADMAP.md"
+    for doc_name in ("README.md", roadmap_path):
         doc_text = read_text_checked(root, doc_name, errors)
         if doc_text is None:
             continue
