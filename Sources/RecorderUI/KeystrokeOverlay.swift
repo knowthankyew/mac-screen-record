@@ -29,6 +29,11 @@ public final class KeystrokeOverlayController: ObservableObject {
         return CGWindowID(w.windowNumber)
     }
 
+    /// True if any application has activated SecureEventInput mode to suppress keylogging (e.g. password fields).
+    public var isSecureEventInputActive: Bool {
+        IsSecureEventInputEnabled()
+    }
+
     public func show() {
         guard !isVisible else { return }
         let panel = KeystrokePanel()
@@ -127,7 +132,7 @@ public final class KeystrokeOverlayController: ObservableObject {
         return prefix + glyph
     }
 
-    static func specialKeyGlyph(forKeyCode code: Int) -> String? {
+    nonisolated static func specialKeyGlyph(forKeyCode code: Int) -> String? {
         switch code {
         case 36, 76:   return "↩"     // return / numpad enter
         case 48:       return "⇥"     // tab

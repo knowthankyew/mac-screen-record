@@ -1,3 +1,5 @@
+import AppKit
+import CaptureCore
 import EncoderKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -99,14 +101,31 @@ private struct RecordingRow: View {
                     }
                 } else {
                     Text(file.name).font(.body).lineLimit(1)
-                    Text("\(file.createdAt.formatted(date: .abbreviated, time: .shortened))  ·  \(file.formattedSize)  ·  \(file.formattedDuration)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        Text("\(file.createdAt.formatted(date: .abbreviated, time: .shortened))  ·  \(file.formattedSize)  ·  \(file.formattedDuration)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        if file.hasEvidenceSeal {
+                            HStack(spacing: 2) {
+                                Image(systemName: "checkmark.seal.fill")
+                                    .foregroundStyle(.green)
+                                    .font(.system(size: 10))
+                                Text("Sealed")
+                                    .font(.caption2.bold())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
             }
             Spacer()
             if isExporting {
                 ProgressView().scaleEffect(0.6)
+            }
+            if file.hasEvidenceSeal {
+                Button { copySHA256() } label: { Image(systemName: "checkmark.seal") }
+                    .buttonStyle(.borderless)
+                    .help("Copy SHA-256 Checksum")
             }
             Button { library.open(file) }            label: { Image(systemName: "play.circle") }.buttonStyle(.borderless).help("Open")
             Button { library.revealInFinder(file) }  label: { Image(systemName: "folder") }.buttonStyle(.borderless).help("Reveal in Finder")
@@ -119,6 +138,11 @@ private struct RecordingRow: View {
         .contextMenu {
             Button("Open") { library.open(file) }
             Button("Reveal in Finder") { library.revealInFinder(file) }
+            if file.hasEvidenceSeal {
+                Divider()
+                Button("Copy SHA-256 Hash") { copySHA256() }
+                Button("Reveal Evidence Manifest (.evidence.json)") { revealEvidenceSeal() }
+            }
             Divider()
             Button("Rename…") { startRename() }
             if file.url.pathExtension.lowercased() != "gif" {
@@ -127,6 +151,21 @@ private struct RecordingRow: View {
             }
             Divider()
             Button("Move to Trash", role: .destructive) { deleteFile() }
+        }
+    }
+
+    private func copySHA256() {
+        if let sha = library.sha256Hex(for: file) {
+            let pb = NSPasteboard.general
+            pb.clearContents()
+            pb.setString(sha, forType: .string)
+        }
+    }
+
+    private func revealEvidenceSeal() {
+        let manifestURL = EvidenceSeal.manifestURL(for: file.url)
+        if FileManager.default.fileExists(atPath: manifestURL.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([manifestURL])
         }
     }
 

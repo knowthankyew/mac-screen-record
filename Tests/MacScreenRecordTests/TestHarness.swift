@@ -198,12 +198,46 @@ struct MacScreenRecordTestRunner {
             try privacySuite.testWebcamBackgroundPresetProceduralImageGeneration()
         }
 
+        let evidenceSuite = EvidenceSealTests()
+        await run("EvidenceSealTests", "testStreamingHashKnownVectors") {
+            try await evidenceSuite.withLifecycle {
+                try evidenceSuite.testStreamingHashKnownVectors()
+            }
+        }
+        await run("EvidenceSealTests", "testEvidenceManifestEncodingDecodingAndSchemaCompliance") {
+            try await evidenceSuite.withLifecycle {
+                try evidenceSuite.testEvidenceManifestEncodingDecodingAndSchemaCompliance()
+            }
+        }
+        await run("EvidenceSealTests", "testCompanionManifestLifecycleInLibrary") {
+            try await evidenceSuite.withLifecycle {
+                try await evidenceSuite.testCompanionManifestLifecycleInLibrary()
+            }
+        }
+
+        let hotkeySuite = HotkeyTests()
+        await run("HotkeyTests", "testDefaultHotkeyBindingsAndDisplayStrings") {
+            try await hotkeySuite.withLifecycle {
+                try hotkeySuite.testDefaultHotkeyBindingsAndDisplayStrings()
+            }
+        }
+        await run("HotkeyTests", "testHotkeyBindingCustomizationAndPersistence") {
+            try await hotkeySuite.withLifecycle {
+                try hotkeySuite.testHotkeyBindingCustomizationAndPersistence()
+            }
+        }
+        await run("HotkeyTests", "testGlobalHotkeyControllerLifecycle") {
+            try await hotkeySuite.withLifecycle {
+                try hotkeySuite.testGlobalHotkeyControllerLifecycle()
+            }
+        }
+
         print("")
         if failed > 0 {
             print("✗ Unit Test Suite FAILED (\(failed) failed, \(passed) passed)")
             Foundation.exit(1)
         } else {
-            print("✓ All \(passed) unit tests passed across 3 test suites.")
+            print("✓ All \(passed) unit tests passed across 5 test suites.")
         }
     }
 }

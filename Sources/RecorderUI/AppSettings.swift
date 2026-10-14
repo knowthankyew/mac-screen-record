@@ -15,6 +15,8 @@ public final class AppSettings: ObservableObject {
         static let cursor = "FMSR.defaults.cursor"
         static let systemAudio = "FMSR.defaults.systemAudio"
         static let folderPath = "FMSR.defaults.outputFolderPath"
+        static let generateEvidenceSeal = "FMSR.defaults.generateEvidenceSeal"
+        static let hotkeyBindings = "FMSR.defaults.hotkeyBindings"
     }
 
     @Published public var defaultCodec: OutputCodec {
@@ -29,6 +31,16 @@ public final class AppSettings: ObservableObject {
     @Published public var defaultCaptureSystemAudio: Bool {
         didSet { UserDefaults.standard.set(defaultCaptureSystemAudio, forKey: Keys.systemAudio) }
     }
+    @Published public var generateEvidenceSeal: Bool {
+        didSet { UserDefaults.standard.set(generateEvidenceSeal, forKey: Keys.generateEvidenceSeal) }
+    }
+    @Published public var hotkeyBindings: [HotkeyAction: HotkeyBinding] {
+        didSet {
+            if let data = try? JSONEncoder().encode(hotkeyBindings) {
+                UserDefaults.standard.set(data, forKey: Keys.hotkeyBindings)
+            }
+        }
+    }
     @Published public var outputFolder: URL {
         didSet { UserDefaults.standard.set(outputFolder.path, forKey: Keys.folderPath) }
     }
@@ -41,6 +53,18 @@ public final class AppSettings: ObservableObject {
         // Provide explicit default so missing key isn't read as `false`.
         self.defaultShowsCursor = d.object(forKey: Keys.cursor) as? Bool ?? true
         self.defaultCaptureSystemAudio = d.object(forKey: Keys.systemAudio) as? Bool ?? true
+        self.generateEvidenceSeal = d.object(forKey: Keys.generateEvidenceSeal) as? Bool ?? true
+
+        if let data = d.data(forKey: Keys.hotkeyBindings),
+           let decoded = try? JSONDecoder().decode([HotkeyAction: HotkeyBinding].self, from: data) {
+            var merged = HotkeyBinding.defaultBindings
+            for (action, binding) in decoded {
+                merged[action] = binding
+            }
+            self.hotkeyBindings = merged
+        } else {
+            self.hotkeyBindings = HotkeyBinding.defaultBindings
+        }
 
         let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
                     ?? FileManager.default.homeDirectoryForCurrentUser
@@ -101,5 +125,13 @@ public final class AppSettings: ObservableObject {
                 NSSound.beep()
             }
         }
+    }
+
+    public func resetHotkeyBindingsToDefaults() {
+        hotkeyBindings = HotkeyBinding.defaultBindings
+    }
+
+    public func setHotkeyBinding(_ binding: HotkeyBinding, for action: HotkeyAction) {
+        hotkeyBindings[action] = binding
     }
 }

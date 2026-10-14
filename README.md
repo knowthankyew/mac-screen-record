@@ -121,16 +121,17 @@ and is **fully open-source under MIT**, this is for you.
 - 🎭 **Named presets** — save and instantly recall configurations with live UI sync
 - 📚 **Recordings library** — browse past recordings with date, size, duration
 - 🔄 **Rename**, **drag-out** to Finder/Slack/Mail, **delete to Trash**
-- ⌨️ **Global hotkeys**: ⌃⌥⌘R to start, ⌃⌥⌘S to stop — works from any app without conflicting with system Save As or browser reloads
+- ⌨️ **Universal global hotkeys**: Zero-permission system-wide Carbon shortcuts (⌃⌥⌘R to start, ⌃⌥⌘S to stop, ⌥Space to pause/resume, ⌃⌥P to toggle Facecam, ⌃⌥K to toggle keystroke overlay) with in-app shortcut customization in Settings
 - 📍 **Menu bar status item** — quick toggle and error status without opening the main window
-- ⚙️ **Settings panel** — configure output folder, defaults, and inspect privacy guarantees
+- ⚙️ **Settings panel** — configure output folder, defaults, keyboard remapping, and inspect privacy guarantees
 
 ### Privacy, Supply Chain & Footprint
 
+- 🛡️ **Cryptographic Evidence Seal (`.evidence.json`)** — hardware-accelerated streaming SHA-256 / SHA-512 checksums, monotonic Mach timestamps, and environmental integrity manifests conforming to `knowthankyew:evidence:v1`
 - 🛡️ **100% local zero-egress** — no networking code, no analytics, no telemetry, no cloud upload
 - 🔒 **In-app privacy verification** — inspect live zero-egress governance claims in Settings
-- 🔐 **Password masking** — keystroke overlay automatically hides during sensitive/secure input fields
-- 📦 **CycloneDX SBOM** — automated CycloneDX v1.5 JSON Software Bill of Materials embedded in the app bundle
+- 🔐 **Password masking** — keystroke overlay automatically hides during sensitive/secure input fields (`IsSecureEventInputEnabled()`)
+- 📦 **CycloneDX SBOM & SLSA provenance** — automated CycloneDX v1.5 JSON Software Bill of Materials and build provenance attestation
 - 🚫 No watermark, no time limit, no sign-in
 - 📦 Tiny binary written entirely in Swift with zero external dependencies
 

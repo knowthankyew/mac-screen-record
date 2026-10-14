@@ -73,8 +73,26 @@ public final class RecordingViewModel: ObservableObject {
     private var settingsCancellable: AnyCancellable?
     private var presetsCancellable: AnyCancellable?
     private var permissionsCancellable: AnyCancellable?
+    private var hotkeyCancellable: AnyCancellable?
     public weak var recorderWindow: NSWindow?
     private var salvageTask: Task<Void, Never>?
+
+    // ── Evidence Seal Metadata State ─────────────────────────────────────────
+    private var recordingStartDate: Date?
+    private var machContinuousStart: UInt64?
+    private var activeCaptureSource: CaptureSource?
+    private var activeCaptureGeometry: CaptureGeometry?
+    private var activeCaptureCodec: OutputCodec?
+    private var activeMicrophoneEnabled: Bool?
+    private var activeSystemAudioEnabled: Bool?
+    private var activeMicrophoneDeviceID: String?
+    private var activeWebcamEnabled: Bool?
+    private var activeWebcamCorner: String?
+    private var activeWebcamSize: String?
+    private var activeWebcamBackgroundMode: String?
+    private var activeClickHighlightsEnabled: Bool?
+    private var activeKeystrokesEnabled: Bool?
+    private var activeSecureInputSuppression: Bool?
 
     @Published public var webcamEnabled: Bool = false
     @Published public var selectedWebcamDeviceID: String?
@@ -225,26 +243,49 @@ public final class RecordingViewModel: ObservableObject {
                 self?.handleRecordingFailure(errorMessage)
             }
         }
+
+        // Synchronize hotkey bindings dynamically when customized in Settings
+        self.hotkeyCancellable = settings.$hotkeyBindings
+            .dropFirst()
+            .sink { [weak self] bindings in
+                self?.hotkeys.updateBindings(bindings)
+            }
     }
 
     /// Install global hotkeys after the app is ready. Called from App.
     public func installGlobalHotkeys() {
-        hotkeys.install(
-            start: { [weak self] in Task { @MainActor in
+        let handlers: [HotkeyAction: @MainActor () -> Void] = [
+            .startRecording: { [weak self] in
                 guard let self else { return }
                 switch self.status {
                 case .recording, .paused, .stopping: return
-                default: await self.startRecording()
+                default:
+                    Task { @MainActor in await self.startRecording() }
                 }
-            }},
-            stop: { [weak self] in Task { @MainActor in
+            },
+            .stopRecording: { [weak self] in
                 guard let self else { return }
                 switch self.status {
-                case .recording, .paused: await self.stopRecording()
+                case .recording, .paused:
+                    Task { @MainActor in await self.stopRecording() }
                 default: break
                 }
-            }}
-        )
+            },
+            .togglePause: { [weak self] in
+                guard let self else { return }
+                self.togglePause()
+            },
+            .toggleFacecam: { [weak self] in
+                guard let self else { return }
+                self.triggerFacecamToggleAction()
+            },
+            .toggleKeystrokes: { [weak self] in
+                guard let self else { return }
+                self.toggleKeystrokes()
+            }
+        ]
+
+        hotkeys.install(bindings: settings.hotkeyBindings, handlers: handlers)
     }
 
     public func toggleWebcam() async {
@@ -620,6 +661,9 @@ public final class RecordingViewModel: ObservableObject {
         if clickHighlightsEnabled { exceptions.append(contentsOf: clickHighlights.windowIDs) }
         if keystrokesEnabled, let id = keystrokes.windowID { exceptions.append(id) }
 
+        let machStart = mach_continuous_time()
+        let startDate = Date()
+
         do {
             try await session.start(
                 source: source,
@@ -628,7 +672,22 @@ public final class RecordingViewModel: ObservableObject {
                 exceptingWindowIDs: exceptions
             )
             self.lastRecordingURL = url
-            status = .recording(startedAt: Date())
+            self.recordingStartDate = startDate
+            self.machContinuousStart = machStart
+            self.activeCaptureSource = source
+            self.activeCaptureGeometry = geometry
+            self.activeCaptureCodec = codec
+            self.activeMicrophoneEnabled = captureMicrophone && selectedMicID != nil
+            self.activeSystemAudioEnabled = captureSystemAudio
+            self.activeMicrophoneDeviceID = captureMicrophone ? selectedMicID : nil
+            self.activeWebcamEnabled = webcamEnabled
+            self.activeWebcamCorner = webcamCorner.displayName
+            self.activeWebcamSize = webcamSize.displayName
+            self.activeWebcamBackgroundMode = webcamBackgroundMode.displayName
+            self.activeClickHighlightsEnabled = clickHighlightsEnabled
+            self.activeKeystrokesEnabled = keystrokesEnabled
+            self.activeSecureInputSuppression = keystrokes.isSecureEventInputActive
+            status = .recording(startedAt: startDate)
         } catch let captureError as CaptureSession.CaptureError {
             status = .error(captureError.errorDescription ?? "Recording failed.")
         } catch {
@@ -641,10 +700,46 @@ public final class RecordingViewModel: ObservableObject {
     }
 
     public func stopRecording() async {
+        let machEnd = mach_continuous_time()
+        let endDate = Date()
         status = .stopping
         do {
             let url = try await session.stop()
             self.lastRecordingURL = url
+
+            if settings.generateEvidenceSeal,
+               let startDate = self.recordingStartDate,
+               let machStart = self.machContinuousStart,
+               let source = self.activeCaptureSource,
+               let geometry = self.activeCaptureGeometry,
+               let activeCodec = self.activeCaptureCodec {
+                do {
+                    let manifest = try EvidenceSeal.writeManifest(
+                        for: url,
+                        startDate: startDate,
+                        endDate: endDate,
+                        machStart: machStart,
+                        machEnd: machEnd,
+                        source: source,
+                        geometry: geometry,
+                        codec: activeCodec,
+                        captureMicrophone: self.activeMicrophoneEnabled ?? false,
+                        captureSystemAudio: self.activeSystemAudioEnabled ?? false,
+                        microphoneDeviceID: self.activeMicrophoneDeviceID,
+                        webcamEnabled: self.activeWebcamEnabled ?? false,
+                        webcamCorner: self.activeWebcamCorner,
+                        webcamSize: self.activeWebcamSize,
+                        webcamBackgroundMode: self.activeWebcamBackgroundMode,
+                        clickHighlightsEnabled: self.activeClickHighlightsEnabled ?? false,
+                        keystrokesEnabled: self.activeKeystrokesEnabled ?? false,
+                        secureInputActive: self.activeSecureInputSuppression ?? false
+                    )
+                    log.info("Evidence seal written for \(url.lastPathComponent, privacy: .public): SHA-256 \(manifest.mediaFile.sha256, privacy: .public)")
+                } catch {
+                    log.error("Failed to generate evidence seal: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+
             status = .finished(url)
             await library.reload()
         } catch {
@@ -689,7 +784,38 @@ public final class RecordingViewModel: ObservableObject {
             defer { Task { @MainActor in self.salvageTask = nil } }
             do {
                 let savedURL = try await self.session.stop()
+                let machEnd = mach_continuous_time()
+                let endDate = Date()
                 self.lastRecordingURL = savedURL
+
+                if self.settings.generateEvidenceSeal,
+                   let startDate = self.recordingStartDate,
+                   let machStart = self.machContinuousStart,
+                   let source = self.activeCaptureSource,
+                   let geometry = self.activeCaptureGeometry,
+                   let activeCodec = self.activeCaptureCodec {
+                    _ = try? EvidenceSeal.writeManifest(
+                        for: savedURL,
+                        startDate: startDate,
+                        endDate: endDate,
+                        machStart: machStart,
+                        machEnd: machEnd,
+                        source: source,
+                        geometry: geometry,
+                        codec: activeCodec,
+                        captureMicrophone: self.activeMicrophoneEnabled ?? false,
+                        captureSystemAudio: self.activeSystemAudioEnabled ?? false,
+                        microphoneDeviceID: self.activeMicrophoneDeviceID,
+                        webcamEnabled: self.activeWebcamEnabled ?? false,
+                        webcamCorner: self.activeWebcamCorner,
+                        webcamSize: self.activeWebcamSize,
+                        webcamBackgroundMode: self.activeWebcamBackgroundMode,
+                        clickHighlightsEnabled: self.activeClickHighlightsEnabled ?? false,
+                        keystrokesEnabled: self.activeKeystrokesEnabled ?? false,
+                        secureInputActive: self.activeSecureInputSuppression ?? false
+                    )
+                }
+
                 self.log.info("Salvaged partial recording: \(savedURL.lastPathComponent, privacy: .public)")
                 self.status = .interrupted(
                     message: "⚠️ Recording failed: \(message). Partial video saved as \(savedURL.lastPathComponent).",

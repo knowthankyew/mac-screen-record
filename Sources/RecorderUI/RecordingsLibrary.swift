@@ -1,5 +1,6 @@
 import AVFoundation
 import AppKit
+import CaptureCore
 import Combine
 import EncoderKit
 import Foundation
@@ -12,6 +13,23 @@ public struct RecordingFile: Identifiable, Hashable, Sendable {
     public let createdAt: Date
     public let sizeBytes: Int64
     public let duration: Double?       // seconds, nil if not yet known
+    public let hasEvidenceSeal: Bool
+
+    public init(
+        url: URL,
+        name: String,
+        createdAt: Date,
+        sizeBytes: Int64,
+        duration: Double?,
+        hasEvidenceSeal: Bool = false
+    ) {
+        self.url = url
+        self.name = name
+        self.createdAt = createdAt
+        self.sizeBytes = sizeBytes
+        self.duration = duration
+        self.hasEvidenceSeal = hasEvidenceSeal
+    }
 
     public var formattedSize: String {
         ByteCountFormatter.string(fromByteCount: sizeBytes, countStyle: .file)
@@ -67,12 +85,15 @@ public final class RecordingsLibrary: ObservableObject {
         // Lightweight metadata first so the list renders immediately.
         let initial = candidates.map { url -> RecordingFile in
             let attrs = try? url.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
+            let evidenceURL = EvidenceSeal.manifestURL(for: url)
+            let hasSeal = fm.fileExists(atPath: evidenceURL.path)
             return RecordingFile(
                 url: url,
                 name: url.lastPathComponent,
                 createdAt: attrs?.creationDate ?? Date.distantPast,
                 sizeBytes: Int64(attrs?.fileSize ?? 0),
-                duration: nil
+                duration: nil,
+                hasEvidenceSeal: hasSeal
             )
         }
         .sorted { $0.createdAt > $1.createdAt }
@@ -97,7 +118,8 @@ public final class RecordingsLibrary: ObservableObject {
                     let f = files[idx]
                     files[idx] = RecordingFile(
                         url: f.url, name: f.name, createdAt: f.createdAt,
-                        sizeBytes: f.sizeBytes, duration: secs
+                        sizeBytes: f.sizeBytes, duration: secs,
+                        hasEvidenceSeal: f.hasEvidenceSeal
                     )
                 }
             }
@@ -140,6 +162,21 @@ public final class RecordingsLibrary: ObservableObject {
             }
         } else {
             primaryDeleted = true
+        }
+
+        // Clean up companion evidence seal if present
+        let evidenceURL = EvidenceSeal.manifestURL(for: url)
+        if fm.fileExists(atPath: evidenceURL.path) {
+            do {
+                if moveToTrash {
+                    try fm.trashItem(at: evidenceURL, resultingItemURL: nil)
+                } else {
+                    try fm.removeItem(at: evidenceURL)
+                }
+                log.info("Deleted companion evidence seal: \(evidenceURL.lastPathComponent, privacy: .public)")
+            } catch {
+                log.error("Failed to delete companion evidence seal at \(evidenceURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
         }
 
         // Clean up only known partial fragment and temporary sidecars with exact baseName matching
@@ -221,10 +258,50 @@ public final class RecordingsLibrary: ObservableObject {
         }
         try FileManager.default.moveItem(at: file.url, to: dest)
         let sourceStdURL = file.url.standardizedFileURL
+
+        // Rename companion evidence manifest if present and update its internal fileName
+        let oldEvidenceURL = EvidenceSeal.manifestURL(for: file.url)
+        let newEvidenceURL = EvidenceSeal.manifestURL(for: dest)
+        var hasEvidenceSeal = false
+        if FileManager.default.fileExists(atPath: oldEvidenceURL.path) {
+            do {
+                try FileManager.default.moveItem(at: oldEvidenceURL, to: newEvidenceURL)
+                hasEvidenceSeal = true
+                if let data = try? Data(contentsOf: newEvidenceURL),
+                   let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
+                    let updated = EvidenceManifest(
+                        schema: oldManifest.schema,
+                        mediaFile: EvidenceManifest.MediaFile(
+                            fileName: dest.lastPathComponent,
+                            fileSizeBytes: oldManifest.mediaFile.fileSizeBytes,
+                            sha256: oldManifest.mediaFile.sha256,
+                            sha512: oldManifest.mediaFile.sha512
+                        ),
+                        temporalIntegrity: oldManifest.temporalIntegrity,
+                        captureContext: oldManifest.captureContext,
+                        audioTelemetry: oldManifest.audioTelemetry,
+                        presenterAndOverlays: oldManifest.presenterAndOverlays,
+                        provenanceAndGovernance: oldManifest.provenanceAndGovernance
+                    )
+                    let encoder = JSONEncoder()
+                    encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+                    if let updatedData = try? encoder.encode(updated) {
+                        try? updatedData.write(to: newEvidenceURL, options: .atomic)
+                    }
+                }
+                log.info("Renamed companion evidence seal to \(newEvidenceURL.lastPathComponent, privacy: .public)")
+            } catch {
+                log.error("Failed to rename companion evidence seal: \(error.localizedDescription, privacy: .public)")
+            }
+        } else {
+            hasEvidenceSeal = FileManager.default.fileExists(atPath: newEvidenceURL.path)
+        }
+
         if let i = files.firstIndex(where: { $0.url.standardizedFileURL == sourceStdURL }) {
             files[i] = RecordingFile(
                 url: dest, name: dest.lastPathComponent, createdAt: file.createdAt,
-                sizeBytes: file.sizeBytes, duration: file.duration
+                sizeBytes: file.sizeBytes, duration: file.duration,
+                hasEvidenceSeal: hasEvidenceSeal
             )
         }
     }
@@ -243,5 +320,17 @@ public final class RecordingsLibrary: ObservableObject {
         try await GIFExporter.export(source: file.url, destination: dest, options: options)
         await reload()
         return dest
+    }
+
+    /// Reads and decodes the companion evidence manifest for a recording if present.
+    public func manifest(for file: RecordingFile) -> EvidenceManifest? {
+        let manifestURL = EvidenceSeal.manifestURL(for: file.url)
+        guard let data = try? Data(contentsOf: manifestURL) else { return nil }
+        return try? JSONDecoder().decode(EvidenceManifest.self, from: data)
+    }
+
+    /// Returns the SHA-256 hex digest string from the companion evidence manifest if present.
+    public func sha256Hex(for file: RecordingFile) -> String? {
+        manifest(for: file)?.mediaFile.sha256
     }
 }

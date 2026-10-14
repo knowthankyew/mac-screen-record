@@ -57,27 +57,28 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | Phase | Milestone | Track | Scope & Deliverables | Status |
 | :--- | :--- | :--- | :--- | :---: |
 | **Phases 1–6** | **Core Capture, Universal Mac, Neural Engine PiP & Claims Linter** | Foundation (`v0.1.0 – v0.3.0`) | ScreenCaptureKit + VideoToolbox, Intel/ARM64 parity, stable TCC signing, auto-salvage, ANE/Metal PiP, Facecam quick-toggle, CycloneDX SBOM, `Scripts/audit-claims.py` (7-pass CodeRabbit 0-Major baseline) | ✅ **Shipped** |
-| **Phase 7** | **Cryptographic Evidence Integrity (*The Evidence Seal*)** | Portfolio Governance | Post-finalization SHA-256 / SHA-512 checksumming and companion `.evidence.json` tamper-evident metadata manifest | 🟡 **Planned** |
-| **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | 🟡 **Planned** |
+| **Phase 7** | **Cryptographic Evidence Integrity (*The Evidence Seal*)** | Portfolio Governance | Post-finalization SHA-256 / SHA-512 streaming checksumming and companion `.evidence.json` tamper-evident metadata manifest conforming to `knowthankyew:evidence:v1` | ✅ **Shipped** |
+| **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | ✅ **Shipped** |
 | **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | 🔜 **Next After 7–8** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Planned (Phase 10+)** |
 
 ---
 
-### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal)
+### Phase 7: Cryptographic Evidence Integrity (The Evidence Seal) (Shipped)
 **Objective**: Provide verifiable local checksums and recording metadata manifests for regulatory filings and documentation workflows.
 
 - **Cryptographic Checksumming**:
-  - Immediately upon recording termination, compute SHA-256 and SHA-512 cryptographic hashes of the saved media container after `AVAssetWriter.finishWriting()` completes and the file handle is closed.
+  - Immediately upon recording termination, compute streaming SHA-256 and SHA-512 cryptographic hashes using native `CryptoKit` in 64 KB buffers to maintain $O(1)$ memory usage.
 - **Deterministic Evidence Manifest (`.evidence.json`)**:
-  - Generate an optional companion metadata manifest alongside the output file (e.g., `Record_2026-10-09_12-00-00.mp4` + `Record_2026-10-09_12-00-00.evidence.json`):
-    - **Temporal Integrity**: Precise start and end UTC timestamps tracked monotonically via `mach_continuous_time`.
-    - **Capture Context**: Target display resolution, color space, active window titles, and application bundle identifiers.
-    - **Audio Telemetry**: Verification of active audio input channels, sample rates, and system audio loopback state.
-    - **Integrity Seal**: SHA-256 checksum and file byte size for reproducible local verification and external timestamp authority countersigning.
+  - Generate an optional companion metadata manifest alongside the output file conforming to `knowthankyew:evidence:v1`:
+    - **Temporal Integrity**: Precise start and end UTC timestamps tracked monotonically via `mach_continuous_time` and Mach timebase info.
+    - **Capture Context**: Target display resolution, color space, active window titles, FPS, and codec.
+    - **Audio Telemetry**: Verification of active audio input channels, sample rates, microphone device IDs, and system audio loopback state.
+    - **Integrity Seal**: SHA-256 and SHA-512 checksums and file byte size for reproducible local verification.
+    - **Library Lifecycle & UI**: Automatic companion `.evidence.json` cleanup on delete/trash, rename synchronization, visual "Sealed" badge in `RecordingsListView`, and 1-click SHA-256 clipboard copy.
 
-### Phase 8: Universal Keyboard Control & Workflow Polish
+### Phase 8: Universal Keyboard Control & Workflow Polish (Shipped)
 **Objective**: Fast, tactile, zero-permission hotkey controls for seamless evidence capture without mouse interference.
 
 - **Expanded Global Hotkey Suite**:
@@ -87,7 +88,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - `⌃⌥P`: Quick toggle Facecam presenter overlay.
   - `⌃⌥K`: Quick toggle keystroke indicator.
 - **In-App Hotkey Customization**:
-  - Allow users to remap hotkeys within the Settings panel using Carbon event modifiers.
+  - Full in-app shortcut remapping table in Settings with key capture, Carbon modifier translation, `UserDefaults` persistence, and "Reset Hotkeys to Defaults" capability.
 
 ### Phase 9: Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (Shipped)
 **Objective**: Continuous automated verification that the codebase never introduces remote dependencies, regressions, or network egress.
@@ -95,7 +96,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 - **Static Zero-Egress & Claims CI Linter**:
   - GitHub Actions workflow (`.github/workflows/ci.yml`) executing `Scripts/audit-claims.py` across both `Sources/` and `Tests/` for forbidden networking primitives (`URLSession`, `Network.framework`, `NSURLConnection`, `CFNetwork`, `WebKit`, BSD sockets).
 - **Automated Unit Test Suite (`MacScreenRecordTests`)**:
-  - 12 deterministic unit tests across `EncoderAndCaptureTests`, `PresetsAndLibraryTests`, and `PrivacyAndOverlayTests` executed via `swift run MacScreenRecordTests` without requiring full Xcode or TCC hardware permissions.
+  - 18 deterministic unit tests across 5 test suites (`EncoderAndCaptureTests`, `PresetsAndLibraryTests`, `PrivacyAndOverlayTests`, `EvidenceSealTests`, `HotkeyTests`) executed via `swift run MacScreenRecordTests` without requiring full Xcode or TCC hardware permissions.
 - **Zero-SPM Dependency Gate & Grouped Dependabot**:
   - Build failure if `url:` is detected in `Package.swift`; grouped GitHub Actions maintenance via `.github/dependabot.yml`.
 - **Automated CycloneDX SBOM & SLSA Attestation**:

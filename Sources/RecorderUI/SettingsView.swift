@@ -1,8 +1,12 @@
+import AppKit
+import Carbon.HIToolbox
 import EncoderKit
 import SwiftUI
 
 public struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @State private var listeningAction: HotkeyAction?
+    @State private var keyMonitor: Any?
 
     public init(settings: AppSettings) {
         self.settings = settings
@@ -21,6 +25,10 @@ public struct SettingsView: View {
                 }
                 Toggle("Show cursor", isOn: $settings.defaultShowsCursor)
                 Toggle("Capture system audio", isOn: $settings.defaultCaptureSystemAudio)
+                Toggle("Generate cryptographic evidence seal (.evidence.json)", isOn: $settings.generateEvidenceSeal)
+                Text("Generates tamper-evident SHA-256 and SHA-512 evidence manifests alongside recordings.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Output") {
@@ -39,9 +47,40 @@ public struct SettingsView: View {
             }
 
             Section("Hotkeys") {
-                LabeledContent("Start recording", value: "⌃⌥⌘R")
-                LabeledContent("Stop recording",  value: "⌃⌥⌘S")
-                Text("Hotkeys are system-wide. Rebinding from inside the app is on the roadmap.")
+                ForEach(HotkeyAction.allCases) { action in
+                    HStack {
+                        Text(action.displayName)
+                        Spacer()
+                        if listeningAction == action {
+                            HStack(spacing: 6) {
+                                Text("Press keys…")
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.accentColor.opacity(0.15))
+                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                Button("Cancel") { stopListening() }
+                                    .buttonStyle(.borderless)
+                            }
+                        } else {
+                            Button(currentBinding(for: action).displayString) {
+                                startListening(for: action)
+                            }
+                            .help("Click to remap shortcut (Esc to cancel)")
+                        }
+                    }
+                }
+
+                HStack {
+                    Spacer()
+                    Button("Reset Hotkeys to Defaults") {
+                        stopListening()
+                        settings.resetHotkeyBindingsToDefaults()
+                    }
+                    .font(.caption)
+                }
+
+                Text("Global Carbon hotkeys operate system-wide with zero accessibility permissions. Defaults: Start: ⌃⌥⌘R, Stop: ⌃⌥⌘S, Pause/Resume: ⌥Space, Facecam: ⌃⌥P, Keystrokes: ⌃⌥K.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -53,6 +92,7 @@ public struct SettingsView: View {
                 LabeledContent("Telemetry", value: "Disabled (Local OSLog Only)")
                 LabeledContent("Third-Party Packages", value: "\(claims.thirdPartyDependenciesCount) Dependencies")
                 LabeledContent("Password Masking", value: claims.secureInputSuppressionEnabled ? "Guarded (SecureEventInput)" : "Standard")
+                LabeledContent("Evidence Integrity", value: settings.generateEvidenceSeal ? "SHA-256 + SHA-512 Sealed" : "Disabled")
                 Text("Conforms to the knowthankyew Zero-Egress specification. No video, audio, keystroke, or telemetry data ever leaves this Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -69,7 +109,44 @@ public struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 480, minHeight: 520)
+        .frame(minWidth: 480, minHeight: 560)
         .padding(.bottom, 12)
+        .onDisappear {
+            stopListening()
+        }
+    }
+
+    private func currentBinding(for action: HotkeyAction) -> HotkeyBinding {
+        settings.hotkeyBindings[action] ?? HotkeyBinding.defaultBinding(for: action)
+    }
+
+    private func startListening(for action: HotkeyAction) {
+        stopListening()
+        listeningAction = action
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            if event.keyCode == 53 { // Escape
+                self.stopListening()
+                return nil
+            }
+            var carbonMods = 0
+            let flags = event.modifierFlags
+            if flags.contains(.control) { carbonMods |= controlKey }
+            if flags.contains(.option)  { carbonMods |= optionKey }
+            if flags.contains(.shift)   { carbonMods |= shiftKey }
+            if flags.contains(.command) { carbonMods |= cmdKey }
+
+            let binding = HotkeyBinding(keyCode: Int(event.keyCode), modifiers: carbonMods)
+            self.settings.setHotkeyBinding(binding, for: action)
+            self.stopListening()
+            return nil
+        }
+    }
+
+    private func stopListening() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
+        listeningAction = nil
     }
 }
