@@ -164,8 +164,10 @@ private struct RecordingRow: View {
 
     private func revealEvidenceSeal() {
         let manifestURL = EvidenceSeal.manifestURL(for: file.url)
-        if FileManager.default.fileExists(atPath: manifestURL.path) {
-            NSWorkspace.shared.activateFileViewerSelecting([manifestURL])
+        let legacyURL = file.url.deletingLastPathComponent().appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
+        let targetURL = FileManager.default.fileExists(atPath: manifestURL.path) ? manifestURL : legacyURL
+        if FileManager.default.fileExists(atPath: targetURL.path) {
+            NSWorkspace.shared.activateFileViewerSelecting([targetURL])
         }
     }
 

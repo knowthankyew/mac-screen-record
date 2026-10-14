@@ -202,11 +202,16 @@ public enum EvidenceSeal {
         let chunkSize = 64 * 1024
 
         while true {
-            let data = handle.readData(ofLength: chunkSize)
-            if data.isEmpty { break }
+            let dataChunk = try autoreleasepool { () -> Data? in
+                guard let data = try handle.read(upToCount: chunkSize), !data.isEmpty else {
+                    return nil
+                }
+                sha256.update(data: data)
+                sha512.update(data: data)
+                return data
+            }
+            guard let data = dataChunk else { break }
             totalBytes += Int64(data.count)
-            sha256.update(data: data)
-            sha512.update(data: data)
         }
 
         let sha256Digest = sha256.finalize()
@@ -219,11 +224,11 @@ public enum EvidenceSeal {
     }
 
     /// Returns the standard companion URL for a given recording media file:
-    /// e.g. `/path/to/Record.mp4` -> `/path/to/Record.evidence.json`.
+    /// e.g. `/path/to/Record.mp4` -> `/path/to/Record.mp4.evidence.json`.
     public static func manifestURL(for mediaURL: URL) -> URL {
         let dir = mediaURL.deletingLastPathComponent()
-        let base = mediaURL.deletingPathExtension().lastPathComponent
-        return dir.appendingPathComponent("\(base).evidence.json")
+        let fullName = mediaURL.lastPathComponent
+        return dir.appendingPathComponent("\(fullName).evidence.json")
     }
 
     /// Queries the system Mach continuous timebase info.

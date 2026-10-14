@@ -261,15 +261,16 @@ All video encoding is handled by Apple's VideoToolbox framework, utilizing hardw
 
 ## Keyboard shortcuts
 
-| Action               | Shortcut |
-|----------------------|----------|
-| Start recording      | ⌃⌥⌘R (system-wide) |
-| Stop recording       | ⌃⌥⌘S (system-wide) |
-| Quit app             | ⌘Q       |
+| Action               | Shortcut | Scope |
+|----------------------|----------|-------|
+| Start recording      | ⌃⌥⌘R     | System-wide (configurable) |
+| Stop recording       | ⌃⌥⌘S     | System-wide (configurable) |
+| Pause / Resume       | ⌥Space   | System-wide (configurable) |
+| Toggle Facecam (PiP) | ⌃⌥P      | System-wide (configurable) |
+| Toggle Keystrokes    | ⌃⌥K      | System-wide (configurable) |
+| Quit app             | ⌘Q       | In-app |
 
-The system-wide hotkeys are registered through the Carbon
-`RegisterEventHotKey` API, which does **not** require Accessibility or Input
-Monitoring permission.
+All system-wide hotkeys are registered through the Carbon `RegisterEventHotKey` API, which does **not** require Accessibility or Input Monitoring permissions. All hotkeys can be customized or reset to defaults in **Settings → Hotkeys**.
 
 ---
 

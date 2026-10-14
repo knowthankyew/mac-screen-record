@@ -115,6 +115,7 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
 public final class GlobalHotkey {
     public typealias Handler = () -> Void
 
+    public private(set) var isRegistered: Bool = false
     private let handler: Handler
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
@@ -143,8 +144,12 @@ public final class GlobalHotkey {
             0,
             &ref
         )
-        guard regStatus == noErr else { return }
+        guard regStatus == noErr else {
+            self.isRegistered = false
+            return
+        }
         self.hotKeyRef = ref
+        self.isRegistered = true
 
         var spec = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
@@ -221,10 +226,15 @@ public final class GlobalHotkeyController: ObservableObject {
         currentBindings[action] = binding
         registeredKeys[action] = nil
         if let handler = actionHandlers[action] {
-            registeredKeys[action] = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
+            let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
                 Task { @MainActor in handler() }
             }
-            log.info("Updated hotkey binding for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
+            if hotkey.isRegistered {
+                registeredKeys[action] = hotkey
+                log.info("Updated hotkey binding for \(action.rawValue, privacy: .public): \(binding.displayString, privacy: .public)")
+            } else {
+                log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
+            }
         }
     }
 
@@ -240,8 +250,13 @@ public final class GlobalHotkeyController: ObservableObject {
         registeredKeys.removeAll()
         for (action, handler) in actionHandlers {
             guard let binding = currentBindings[action] else { continue }
-            registeredKeys[action] = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
+            let hotkey = GlobalHotkey(keyCode: binding.keyCode, modifiers: binding.modifiers) {
                 Task { @MainActor in handler() }
+            }
+            if hotkey.isRegistered {
+                registeredKeys[action] = hotkey
+            } else {
+                log.error("Failed to register global hotkey for \(action.rawValue, privacy: .public) with shortcut \(binding.displayString, privacy: .public)")
             }
         }
     }

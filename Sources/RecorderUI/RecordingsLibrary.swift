@@ -86,7 +86,8 @@ public final class RecordingsLibrary: ObservableObject {
         let initial = candidates.map { url -> RecordingFile in
             let attrs = try? url.resourceValues(forKeys: [.creationDateKey, .fileSizeKey])
             let evidenceURL = EvidenceSeal.manifestURL(for: url)
-            let hasSeal = fm.fileExists(atPath: evidenceURL.path)
+            let legacyEvidenceURL = url.deletingLastPathComponent().appendingPathComponent("\(url.deletingPathExtension().lastPathComponent).evidence.json")
+            let hasSeal = fm.fileExists(atPath: evidenceURL.path) || fm.fileExists(atPath: legacyEvidenceURL.path)
             return RecordingFile(
                 url: url,
                 name: url.lastPathComponent,
@@ -164,24 +165,26 @@ public final class RecordingsLibrary: ObservableObject {
             primaryDeleted = true
         }
 
-        // Clean up companion evidence seal if present
-        let evidenceURL = EvidenceSeal.manifestURL(for: url)
-        if fm.fileExists(atPath: evidenceURL.path) {
-            do {
-                if moveToTrash {
-                    try fm.trashItem(at: evidenceURL, resultingItemURL: nil)
-                } else {
-                    try fm.removeItem(at: evidenceURL)
-                }
-                log.info("Deleted companion evidence seal: \(evidenceURL.lastPathComponent, privacy: .public)")
-            } catch {
-                log.error("Failed to delete companion evidence seal at \(evidenceURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            }
-        }
-
-        // Clean up only known partial fragment and temporary sidecars with exact baseName matching
         let dir = url.deletingLastPathComponent()
         let baseName = url.deletingPathExtension().lastPathComponent
+
+        // Clean up companion evidence seal if present (both full-name and legacy baseName)
+        let evidenceURL = EvidenceSeal.manifestURL(for: url)
+        let legacyEvidenceURL = dir.appendingPathComponent("\(baseName).evidence.json")
+        for manifestPath in [evidenceURL, legacyEvidenceURL] {
+            if fm.fileExists(atPath: manifestPath.path) {
+                do {
+                    if moveToTrash {
+                        try fm.trashItem(at: manifestPath, resultingItemURL: nil)
+                    } else {
+                        try fm.removeItem(at: manifestPath)
+                    }
+                    log.info("Deleted companion evidence seal: \(manifestPath.lastPathComponent, privacy: .public)")
+                } catch {
+                    log.error("Failed to delete companion evidence seal at \(manifestPath.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }
         let knownArtifactSuffixes = ["-partial", "-fragment", ".tmp", ".part"]
         let targetStdURL = url.standardizedFileURL
         if primaryDeleted, let contents = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
@@ -261,11 +264,13 @@ public final class RecordingsLibrary: ObservableObject {
 
         // Rename companion evidence manifest if present and update its internal fileName
         let oldEvidenceURL = EvidenceSeal.manifestURL(for: file.url)
+        let oldLegacyURL = parent.appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
+        let sourceManifestURL = FileManager.default.fileExists(atPath: oldEvidenceURL.path) ? oldEvidenceURL : (FileManager.default.fileExists(atPath: oldLegacyURL.path) ? oldLegacyURL : nil)
         let newEvidenceURL = EvidenceSeal.manifestURL(for: dest)
         var hasEvidenceSeal = false
-        if FileManager.default.fileExists(atPath: oldEvidenceURL.path) {
+        if let srcURL = sourceManifestURL {
             do {
-                try FileManager.default.moveItem(at: oldEvidenceURL, to: newEvidenceURL)
+                try FileManager.default.moveItem(at: srcURL, to: newEvidenceURL)
                 hasEvidenceSeal = true
                 if let data = try? Data(contentsOf: newEvidenceURL),
                    let oldManifest = try? JSONDecoder().decode(EvidenceManifest.self, from: data) {
@@ -325,7 +330,9 @@ public final class RecordingsLibrary: ObservableObject {
     /// Reads and decodes the companion evidence manifest for a recording if present.
     public func manifest(for file: RecordingFile) -> EvidenceManifest? {
         let manifestURL = EvidenceSeal.manifestURL(for: file.url)
-        guard let data = try? Data(contentsOf: manifestURL) else { return nil }
+        let legacyURL = file.url.deletingLastPathComponent().appendingPathComponent("\(file.url.deletingPathExtension().lastPathComponent).evidence.json")
+        let targetURL = FileManager.default.fileExists(atPath: manifestURL.path) ? manifestURL : legacyURL
+        guard let data = try? Data(contentsOf: targetURL) else { return nil }
         return try? JSONDecoder().decode(EvidenceManifest.self, from: data)
     }
 
