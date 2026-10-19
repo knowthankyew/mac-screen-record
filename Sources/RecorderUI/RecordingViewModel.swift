@@ -216,10 +216,23 @@ public final class RecordingViewModel: ObservableObject {
             webcam.videoClipURL = webcamVideoClipURL
         }
     }
-    @Published public var webcamBrandingOverlayURL: URL? = nil {
+    @Published public var showPresenterLayoutModal: Bool = false
+    @Published public var backdropEnabled: Bool = false {
         didSet {
-            guard oldValue != webcamBrandingOverlayURL else { return }
-            webcam.brandingOverlayURL = webcamBrandingOverlayURL
+            guard oldValue != backdropEnabled else { return }
+            webcam.backdropOverlay.isEnabled = backdropEnabled
+        }
+    }
+    @Published public var backdropImageURL: URL? = nil {
+        didSet {
+            guard oldValue != backdropImageURL else { return }
+            webcam.backdropOverlay.imageURL = backdropImageURL
+        }
+    }
+    @Published public var backdropIsGrouped: Bool = true {
+        didSet {
+            guard oldValue != backdropIsGrouped else { return }
+            webcam.backdropOverlay.isGrouped = backdropIsGrouped
         }
     }
     @Published public var clickHighlightsEnabled: Bool = false
@@ -261,7 +274,11 @@ public final class RecordingViewModel: ObservableObject {
             || (active.webcamSourceType != nil && active.webcamSourceType != webcamSourceType)
             || (active.webcamSourceType != nil && active.webcamStaticImageURL != webcamStaticImageURL?.path)
             || (active.webcamSourceType != nil && active.webcamVideoClipURL != webcamVideoClipURL?.path)
-            || (active.webcamSourceType != nil && active.webcamBrandingOverlayURL != webcamBrandingOverlayURL?.path)
+            || (active.backdropEnabled != nil && active.backdropEnabled != backdropEnabled)
+            || (active.backdropImageURL != nil && active.backdropImageURL != backdropImageURL?.path)
+            || (active.backdropIsGrouped != nil && active.backdropIsGrouped != backdropIsGrouped)
+            || (active.pipNormalizedX.map { abs($0 - Double(webcam.pipNormalizedPosition.x)) > 0.005 } ?? false)
+            || (active.pipNormalizedY.map { abs($0 - Double(webcam.pipNormalizedPosition.y)) > 0.005 } ?? false)
     }
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "ViewModel")
@@ -337,8 +354,24 @@ public final class RecordingViewModel: ObservableObject {
             if let st = defaultP.webcamSourceType {
                 self.webcamStaticImageURL = defaultP.webcamStaticImageURL.map { URL(fileURLWithPath: $0) }
                 self.webcamVideoClipURL = defaultP.webcamVideoClipURL.map { URL(fileURLWithPath: $0) }
-                self.webcamBrandingOverlayURL = defaultP.webcamBrandingOverlayURL.map { URL(fileURLWithPath: $0) }
                 self.webcamSourceType = st
+            }
+            if let bEnabled = defaultP.backdropEnabled {
+                self.backdropEnabled = bEnabled
+            }
+            if let bURL = defaultP.backdropImageURL {
+                self.backdropImageURL = URL(fileURLWithPath: bURL)
+            }
+            if let bGrouped = defaultP.backdropIsGrouped {
+                self.backdropIsGrouped = bGrouped
+            }
+            if let rx = defaultP.backdropRelativeX, let ry = defaultP.backdropRelativeY,
+               let rw = defaultP.backdropRelativeWidth, let rh = defaultP.backdropRelativeHeight {
+                self.webcam.backdropOverlay.relativeRect = CGRect(x: rx, y: ry, width: rw, height: rh)
+            }
+            if let fx = defaultP.backdropFreeformNormalizedX, let fy = defaultP.backdropFreeformNormalizedY,
+               let fw = defaultP.backdropFreeformNormalizedWidth, let fh = defaultP.backdropFreeformNormalizedHeight {
+                self.webcam.backdropOverlay.freeformNormalizedRect = CGRect(x: fx, y: fy, width: fw, height: fh)
             }
             // Note: overlay activation (webcam, click highlights, keystrokes) is safely deferred
             // to applyStartupDefaultOverlays(), called when the view appears.
@@ -346,6 +379,9 @@ public final class RecordingViewModel: ObservableObject {
 
         // didSet observers do not fire during init; sync the overlay controller explicitly.
         webcam.corner = webcamCorner
+        if let defaultP = presets.defaultPreset, (defaultP.pipNormalizedX != nil || defaultP.webcamCorner != nil) {
+            webcam.pipNormalizedPosition = defaultP.effectivePipNormalizedPosition
+        }
         webcam.size = webcamSize
         webcam.shape = webcamShape
         webcam.aspectRatio = webcamAspectRatio
@@ -360,7 +396,9 @@ public final class RecordingViewModel: ObservableObject {
         webcam.sourceType = webcamSourceType
         webcam.staticImageURL = webcamStaticImageURL
         webcam.videoClipURL = webcamVideoClipURL
-        webcam.brandingOverlayURL = webcamBrandingOverlayURL
+        webcam.backdropOverlay.isEnabled = backdropEnabled
+        webcam.backdropOverlay.imageURL = backdropImageURL
+        webcam.backdropOverlay.isGrouped = backdropIsGrouped
 
         // Reload library if the user changes the output folder.
         self.settingsCancellable = settings.$outputFolder
@@ -555,13 +593,14 @@ public final class RecordingViewModel: ObservableObject {
         self.webcamVideoClipURL = nil
     }
 
-    public func pickWebcamBrandingOverlay() {
-        guard let url = webcam.pickBrandingOverlay() else { return }
-        self.webcamBrandingOverlayURL = url
+    public func pickBackdropImage() {
+        guard let url = webcam.pickBackdropImage() else { return }
+        self.backdropImageURL = url
+        self.backdropEnabled = true
     }
 
-    public func clearWebcamBrandingOverlay() {
-        self.webcamBrandingOverlayURL = nil
+    public func clearBackdropImage() {
+        self.backdropImageURL = nil
     }
 
     public func toggleClickHighlights() {
@@ -635,7 +674,19 @@ public final class RecordingViewModel: ObservableObject {
             webcamSourceType: webcamSourceType,
             webcamStaticImageURL: webcamStaticImageURL?.path,
             webcamVideoClipURL: webcamVideoClipURL?.path,
-            webcamBrandingOverlayURL: webcamBrandingOverlayURL?.path
+            pipNormalizedX: Double(webcam.pipNormalizedPosition.x),
+            pipNormalizedY: Double(webcam.pipNormalizedPosition.y),
+            backdropEnabled: backdropEnabled,
+            backdropImageURL: backdropImageURL?.path,
+            backdropIsGrouped: backdropIsGrouped,
+            backdropRelativeX: Double(webcam.backdropOverlay.relativeRect.origin.x),
+            backdropRelativeY: Double(webcam.backdropOverlay.relativeRect.origin.y),
+            backdropRelativeWidth: Double(webcam.backdropOverlay.relativeRect.width),
+            backdropRelativeHeight: Double(webcam.backdropOverlay.relativeRect.height),
+            backdropFreeformNormalizedX: Double(webcam.backdropOverlay.freeformNormalizedRect.origin.x),
+            backdropFreeformNormalizedY: Double(webcam.backdropOverlay.freeformNormalizedRect.origin.y),
+            backdropFreeformNormalizedWidth: Double(webcam.backdropOverlay.freeformNormalizedRect.width),
+            backdropFreeformNormalizedHeight: Double(webcam.backdropOverlay.freeformNormalizedRect.height)
         )
     }
 
@@ -700,6 +751,10 @@ public final class RecordingViewModel: ObservableObject {
         if let corner = preset.webcamCorner {
             self.webcamCorner = corner
         }
+        // Apply after corner: corner.didSet snaps the PiP position.
+        if preset.pipNormalizedX != nil || preset.webcamCorner != nil {
+            webcam.pipNormalizedPosition = preset.effectivePipNormalizedPosition
+        }
         if let size = preset.webcamSize {
             self.webcamSize = size
         }
@@ -730,8 +785,31 @@ public final class RecordingViewModel: ObservableObject {
         if let st = preset.webcamSourceType {
             self.webcamStaticImageURL = preset.webcamStaticImageURL.map { URL(fileURLWithPath: $0) }
             self.webcamVideoClipURL = preset.webcamVideoClipURL.map { URL(fileURLWithPath: $0) }
-            self.webcamBrandingOverlayURL = preset.webcamBrandingOverlayURL.map { URL(fileURLWithPath: $0) }
             self.webcamSourceType = st
+        }
+        if let bEnabled = preset.backdropEnabled {
+            self.backdropEnabled = bEnabled
+            webcam.backdropOverlay.isEnabled = bEnabled
+        }
+        if let bURLStr = preset.backdropImageURL {
+            let u = URL(fileURLWithPath: bURLStr)
+            self.backdropImageURL = u
+            webcam.backdropOverlay.imageURL = u
+        } else if preset.backdropEnabled == false {
+            self.backdropImageURL = nil
+            webcam.backdropOverlay.imageURL = nil
+        }
+        if let grouped = preset.backdropIsGrouped {
+            self.backdropIsGrouped = grouped
+            webcam.backdropOverlay.isGrouped = grouped
+        }
+        if let rx = preset.backdropRelativeX, let ry = preset.backdropRelativeY,
+           let rw = preset.backdropRelativeWidth, let rh = preset.backdropRelativeHeight {
+            webcam.backdropOverlay.relativeRect = CGRect(x: rx, y: ry, width: rw, height: rh)
+        }
+        if let fx = preset.backdropFreeformNormalizedX, let fy = preset.backdropFreeformNormalizedY,
+           let fw = preset.backdropFreeformNormalizedWidth, let fh = preset.backdropFreeformNormalizedHeight {
+            webcam.backdropOverlay.freeformNormalizedRect = CGRect(x: fx, y: fy, width: fw, height: fh)
         }
 
         if preset.clickHighlightsEnabled != clickHighlightsEnabled {
@@ -932,6 +1010,7 @@ public final class RecordingViewModel: ObservableObject {
         // recording (display/region modes only — see CaptureSession.buildFilter).
         var exceptions: [CGWindowID] = []
         if webcamEnabled, let id = webcam.windowID { exceptions.append(id) }
+        if webcamEnabled, let backdropID = webcam.backdropWindowID { exceptions.append(backdropID) }
         if clickHighlightsEnabled { exceptions.append(contentsOf: clickHighlights.windowIDs) }
         if keystrokesEnabled, let id = keystrokes.windowID { exceptions.append(id) }
 

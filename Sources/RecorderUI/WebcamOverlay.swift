@@ -18,6 +18,15 @@ public enum WebcamCorner: String, Codable, CaseIterable, Identifiable, Sendable 
         case .bottomRight: return "Bottom Right"
         }
     }
+
+    public var normalizedPoint: CGPoint {
+        switch self {
+        case .topLeft:     return CGPoint(x: 0.0, y: 1.0)
+        case .topRight:    return CGPoint(x: 1.0, y: 1.0)
+        case .bottomLeft:  return CGPoint(x: 0.0, y: 0.0)
+        case .bottomRight: return CGPoint(x: 1.0, y: 0.0)
+        }
+    }
 }
 
 /// One of three preset sizes for the webcam picture-in-picture window.
@@ -90,15 +99,38 @@ public final class WebcamOverlayController: ObservableObject {
             if sourceType == .videoClip { updateSource() }
         }
     }
-    @Published public var brandingOverlayURL: URL? = nil {
-        didSet {
-            guard oldValue != brandingOverlayURL else { return }
-            videoProcessor.brandingOverlayURL = brandingOverlayURL
-            refreshStaticFrameIfNeeded()
+    public let backdropOverlay = PresenterBackdropOverlay()
+
+    public var backdropEnabled: Bool {
+        get { backdropOverlay.isEnabled }
+        set {
+            backdropOverlay.isEnabled = newValue
+            if newValue, let p = window {
+                backdropOverlay.show(targetScreen: p.screen, pipFrame: p.frame, relativeTo: p)
+            }
         }
     }
+
+    public var backdropImageURL: URL? {
+        get { backdropOverlay.imageURL }
+        set {
+            backdropOverlay.imageURL = newValue
+            if backdropOverlay.isEnabled, let p = window {
+                backdropOverlay.show(targetScreen: p.screen, pipFrame: p.frame, relativeTo: p)
+            }
+        }
+    }
+
+    private var isTrackingUserMove = false
+    @Published public var pipNormalizedPosition: CGPoint = CGPoint(x: 1.0, y: 0.0) {
+        didSet {
+            guard !isTrackingUserMove else { return }
+            reposition()
+        }
+    }
+
     @Published public var corner: WebcamCorner = .bottomRight {
-        didSet { reposition() }
+        didSet { snapTo(corner: corner) }
     }
     @Published public var size: WebcamSize = .medium {
         didSet { reposition() }
@@ -211,7 +243,6 @@ public final class WebcamOverlayController: ObservableObject {
         videoProcessor.blurCustomImage = blurCustomImage
         videoProcessor.backgroundPreset = backgroundPreset
         videoProcessor.customImageURL = customImageURL
-        videoProcessor.brandingOverlayURL = brandingOverlayURL
         videoProcessor.aspectRatio = shape.supportsAspectRatio ? aspectRatio : .square
         videoProcessor.onAssetLoaded = { [weak self] in
             DispatchQueue.main.async {
@@ -224,6 +255,11 @@ public final class WebcamOverlayController: ObservableObject {
     public var windowID: CGWindowID? {
         guard let w = window else { return nil }
         return CGWindowID(w.windowNumber)
+    }
+
+    /// CGWindowID of the resizable backdrop plate panel.
+    public var backdropWindowID: CGWindowID? {
+        backdropOverlay.windowID
     }
 
     public func show(deviceID: String) async throws {
@@ -265,7 +301,10 @@ public final class WebcamOverlayController: ObservableObject {
             self.window = panel
         }
         reposition()
-        window?.orderFront(nil)
+        if let panel = window {
+            panel.orderFront(nil)
+            backdropOverlay.show(targetScreen: panel.screen, pipFrame: panel.frame, relativeTo: panel)
+        }
         isVisible = true
         videoProcessor.acceptedSource = sourceType
 
@@ -296,6 +335,7 @@ public final class WebcamOverlayController: ObservableObject {
         mediaLoopPlayer?.stop()
         mediaLoopPlayer = nil
         clearCanvas()
+        backdropOverlay.hide()
         window?.orderOut(nil)
         isVisible = false
     }
@@ -468,14 +508,14 @@ public final class WebcamOverlayController: ObservableObject {
         return nil
     }
 
-    /// Prompts the user to select an alpha-channel transparent image (PNG) for branding/frame overlay.
-    public func pickBrandingOverlay() -> URL? {
+    /// Prompts the user to select an image (PNG, JPG, etc.) for the presenter backdrop plate.
+    public func pickBackdropImage() -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.png, .image]
-        panel.message = "Choose a transparent branding or frame overlay image (PNG)"
+        panel.message = "Choose a backdrop image (PNG, JPG, etc.)"
         panel.prompt = "Select"
         if panel.runModal() == .OK, let url = panel.url {
             return url
@@ -537,11 +577,35 @@ public final class WebcamOverlayController: ObservableObject {
         let overlay = PassthroughView(frame: host.bounds)
         overlay.autoresizingMask = [.width, .height]
         overlay.wantsLayer = true
+        overlay.layer?.zPosition = 1000
         host.addSubview(overlay, positioned: .above, relativeTo: metal)
 
         self.metalView = metal
         self.overlayView = overlay
         self.videoProcessor.renderView = metal
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self = self, let p = self.window, let screen = p.screen else { return }
+                let frame = p.frame
+                let vFrame = screen.visibleFrame
+                let margin: CGFloat = 24
+                let minX = vFrame.minX + margin
+                let maxX = max(minX, vFrame.maxX - frame.width - margin)
+                let minY = vFrame.minY + margin
+                let maxY = max(minY, vFrame.maxY - frame.height - margin)
+                let normX = (maxX > minX) ? max(0, min(1, (frame.minX - minX) / (maxX - minX))) : 1.0
+                let normY = (maxY > minY) ? max(0, min(1, (frame.minY - minY) / (maxY - minY))) : 0.0
+                self.isTrackingUserMove = true
+                self.pipNormalizedPosition = CGPoint(x: normX, y: normY)
+                self.isTrackingUserMove = false
+                self.backdropOverlay.updatePiPFrame(frame, on: screen)
+            }
+        }
 
         updateHostStyling(host: host, size: currentDimensions)
         panel.contentView = host
@@ -567,9 +631,11 @@ public final class WebcamOverlayController: ObservableObject {
             border.fillColor = nil
             border.lineJoin = .round
             border.lineCap = .round
+            border.zPosition = 1000
             self.borderShapeLayer = border
             overlayView?.layer?.addSublayer(border)
         }
+        borderShapeLayer?.zPosition = 1000
         borderShapeLayer?.frame = bounds
         let inset = (showBorder && borderWidth > 0) ? borderWidth / 2 : 0
         borderShapeLayer?.path = shape.path(in: bounds.insetBy(dx: inset, dy: inset))
@@ -589,7 +655,15 @@ public final class WebcamOverlayController: ObservableObject {
         window?.invalidateShadow()
     }
 
-    private func reposition() {
+    public func snapTo(corner: WebcamCorner) {
+        pipNormalizedPosition = corner.normalizedPoint
+    }
+
+    public func snapTo(position: PresenterSnapPosition) {
+        pipNormalizedPosition = position.normalizedPoint
+    }
+
+    public func reposition() {
         guard let panel = window,
               let targetScreen = (targetDisplayID.flatMap { id in
                   NSScreen.screens.first(where: {
@@ -601,30 +675,15 @@ public final class WebcamOverlayController: ObservableObject {
         let target = currentDimensions
         let visibleFrame = targetScreen.visibleFrame
         let margin: CGFloat = 24
-        let origin: NSPoint
-        switch corner {
-        case .topLeft:
-            origin = NSPoint(
-                x: visibleFrame.minX + margin,
-                y: visibleFrame.maxY - target.height - margin
-            )
-        case .topRight:
-            origin = NSPoint(
-                x: visibleFrame.maxX - target.width - margin,
-                y: visibleFrame.maxY - target.height - margin
-            )
-        case .bottomLeft:
-            origin = NSPoint(
-                x: visibleFrame.minX + margin,
-                y: visibleFrame.minY + margin
-            )
-        case .bottomRight:
-            origin = NSPoint(
-                x: visibleFrame.maxX - target.width - margin,
-                y: visibleFrame.minY + margin
-            )
-        }
-        panel.setFrame(NSRect(origin: origin, size: target), display: true, animate: false)
+        let minX = visibleFrame.minX + margin
+        let maxX = max(minX, visibleFrame.maxX - target.width - margin)
+        let minY = visibleFrame.minY + margin
+        let maxY = max(minY, visibleFrame.maxY - target.height - margin)
+
+        let posX = minX + max(0, min(1, pipNormalizedPosition.x)) * (maxX - minX)
+        let posY = minY + max(0, min(1, pipNormalizedPosition.y)) * (maxY - minY)
+        let newPipFrame = NSRect(x: posX, y: posY, width: target.width, height: target.height)
+        panel.setFrame(newPipFrame, display: true, animate: false)
 
         if let host = panel.contentView {
             host.frame = NSRect(origin: .zero, size: target)
@@ -632,6 +691,8 @@ public final class WebcamOverlayController: ObservableObject {
             overlayView?.frame = host.bounds
             updateHostStyling(host: host, size: target)
         }
+
+        backdropOverlay.updatePiPFrame(newPipFrame, on: targetScreen)
     }
 }
 

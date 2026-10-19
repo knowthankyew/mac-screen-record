@@ -374,16 +374,8 @@ final class PrivacyAndOverlayTests {
         func get() -> T { lock.lock(); defer { lock.unlock() }; return val }
     }
 
-    func testWebcamVideoProcessorProcessImageAndBrandingOverlay() throws {
+    func testWebcamVideoProcessorProcessImageAndMediaSwitching() throws {
         let processor = WebcamVideoProcessor()
-        try checkNil(processor.brandingOverlayURL)
-
-        let testBrandingURL = URL(fileURLWithPath: "/tmp/test-branding.png")
-        processor.brandingOverlayURL = testBrandingURL
-        try checkEqual(processor.brandingOverlayURL, testBrandingURL)
-
-        processor.brandingOverlayURL = nil
-        try checkNil(processor.brandingOverlayURL)
 
         // Negative check: when acceptedSource is .camera, processImage drops the frame
         let deliveredFrames = Box<[CIImage]>([])
@@ -425,6 +417,98 @@ final class PrivacyAndOverlayTests {
         if let rendered = renderedOpt {
             try checkTrue(rendered.extent.width > 0 && rendered.extent.height > 0, "Rendered frame must have valid dimensions")
         }
+    }
+
+    func testPresenterBackdropOverlayAndSnapPositions() throws {
+        let overlay = PresenterBackdropOverlay()
+        try checkFalse(overlay.isEnabled)
+        try checkNil(overlay.imageURL)
+        try checkTrue(overlay.isGrouped)
+
+        overlay.isEnabled = true
+        overlay.isGrouped = false
+        try checkTrue(overlay.isEnabled)
+        try checkFalse(overlay.isGrouped)
+
+        let testURL = URL(fileURLWithPath: "/tmp/backdrop.png")
+        overlay.imageURL = testURL
+        try checkEqual(overlay.imageURL, testURL)
+
+        overlay.relativeRect = CGRect(x: -40, y: -30, width: 300, height: 280)
+        try checkEqual(overlay.relativeRect.origin.x, -40)
+        try checkEqual(overlay.relativeRect.width, 300)
+
+        // Verify all snap positions map to valid normalized points (0...1)
+        for pos in PresenterSnapPosition.allCases {
+            let pt = pos.normalizedPoint
+            try checkTrue(pt.x >= 0.0 && pt.x <= 1.0, "Snap \(pos) X must be in 0...1")
+            try checkTrue(pt.y >= 0.0 && pt.y <= 1.0, "Snap \(pos) Y must be in 0...1")
+        }
+        try checkEqual(PresenterSnapPosition.bottomRight.normalizedPoint, CGPoint(x: 1.0, y: 0.0))
+        try checkEqual(PresenterSnapPosition.topLeft.normalizedPoint, CGPoint(x: 0.0, y: 1.0))
+        try checkEqual(PresenterSnapPosition.center.normalizedPoint, CGPoint(x: 0.5, y: 0.5))
+    }
+
+    func testPresetPresenterBackdropAndNormalizedLayoutPersistence() throws {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let preset = Preset(
+            name: "Staging Test Profile",
+            sourceKindRaw: "display",
+            codec: .hevc,
+            fps: 60,
+            showsCursor: true,
+            captureSystemAudio: false,
+            captureMicrophone: false,
+            customWidth: nil,
+            customHeight: nil,
+            webcamEnabled: true,
+            pipNormalizedX: 0.85,
+            pipNormalizedY: 0.15,
+            backdropEnabled: true,
+            backdropImageURL: "/tmp/custom-plate.png",
+            backdropIsGrouped: true,
+            backdropRelativeX: -35.0,
+            backdropRelativeY: -25.0,
+            backdropRelativeWidth: 280.0,
+            backdropRelativeHeight: 260.0
+        )
+
+        let data = try encoder.encode(preset)
+        let decoded = try decoder.decode(Preset.self, from: data)
+
+        try checkEqual(decoded.pipNormalizedX, 0.85)
+        try checkEqual(decoded.pipNormalizedY, 0.15)
+        try checkEqual(decoded.backdropEnabled, true)
+        try checkEqual(decoded.backdropImageURL, "/tmp/custom-plate.png")
+        try checkEqual(decoded.backdropIsGrouped, true)
+        try checkEqual(decoded.backdropRelativeX, -35.0)
+        try checkEqual(decoded.backdropRelativeY, -25.0)
+        try checkEqual(decoded.backdropRelativeWidth, 280.0)
+        try checkEqual(decoded.backdropRelativeHeight, 260.0)
+
+        // Backward compatibility: legacy preset with webcamCorner falls back to normalizedPoint
+        let legacyJSON = """
+        {
+            "id": "\(UUID().uuidString)",
+            "name": "Legacy Preset",
+            "sourceKindRaw": "display",
+            "codec": "hevc",
+            "fps": 30,
+            "showsCursor": true,
+            "captureSystemAudio": false,
+            "captureMicrophone": false,
+            "webcamEnabled": true,
+            "webcamCorner": "topLeft"
+        }
+        """.data(using: .utf8)!
+
+        let decodedLegacy = try decoder.decode(Preset.self, from: legacyJSON)
+        try checkNil(decodedLegacy.pipNormalizedX)
+        try checkNil(decodedLegacy.pipNormalizedY)
+        try checkEqual(decodedLegacy.effectivePipNormalizedPosition, CGPoint(x: 0.0, y: 1.0))
+        try checkNil(decodedLegacy.backdropEnabled)
     }
 }
 

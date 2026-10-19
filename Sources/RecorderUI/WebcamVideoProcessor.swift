@@ -22,7 +22,6 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         var blurCustomImage: Bool = false
         var backgroundPreset: WebcamBackgroundPreset = .warmStudio
         var customImageURL: URL? = nil
-        var brandingOverlayURL: URL? = nil
         var mirrored: Bool = true
         var aspectRatio: WebcamAspectRatio = .square
     }
@@ -47,8 +46,6 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     private var lastPreparedCustomImageSize: CGSize = .zero
     private var lastPreparedBlurCustomImage: Bool = false
     private var lastPreparedBlurStrength: WebcamBlurStrength = .balanced
-    private var cachedBrandingImage: CIImage?
-    private var cachedBrandingImageURL: URL?
     private var cachedPresetImage: CIImage?
     private var lastCachedPreset: WebcamBackgroundPreset?
     private var lastCachedPresetSize: CGSize = .zero
@@ -97,11 +94,6 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     public var customImageURL: URL? {
         get { lock.lock(); defer { lock.unlock() }; return config.customImageURL }
         set { setCustomImageURL(newValue) }
-    }
-
-    public var brandingOverlayURL: URL? {
-        get { lock.lock(); defer { lock.unlock() }; return config.brandingOverlayURL }
-        set { setBrandingOverlayURL(newValue) }
     }
 
     public var mirrored: Bool {
@@ -159,36 +151,6 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
                 self.cachedCustomImage = loaded
                 self.cachedCustomImageURL = targetURL
                 self.cachedPreparedCustomImage = nil
-            }
-            self.lock.unlock()
-            self.onAssetLoaded?()
-        }
-    }
-
-    /// Updates the transparent branding overlay URL and triggers eager asynchronous loading.
-    public func setBrandingOverlayURL(_ url: URL?) {
-        lock.lock()
-        guard config.brandingOverlayURL != url else {
-            lock.unlock()
-            return
-        }
-        config.brandingOverlayURL = url
-        cachedBrandingImage = nil
-        cachedBrandingImageURL = nil
-        lock.unlock()
-
-        guard let targetURL = url else { return }
-
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self else { return }
-            guard let loaded = CIImage(contentsOf: targetURL, options: [.applyOrientationProperty: true]) else {
-                self.log.error("Failed to load branding overlay image from \(targetURL.lastPathComponent, privacy: .public)")
-                return
-            }
-            self.lock.lock()
-            if self.config.brandingOverlayURL == targetURL {
-                self.cachedBrandingImage = loaded
-                self.cachedBrandingImageURL = targetURL
             }
             self.lock.unlock()
             self.onAssetLoaded?()
@@ -281,7 +243,6 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             snapConfig.mirrored = false
         }
         let snapCustomImage = self.cachedCustomImage
-        let snapBrandingImage = self.cachedBrandingImage
         lock.unlock()
 
         let cropRect = Self.centeredCropRect(source: sourceExtent.size, ratio: snapConfig.aspectRatio.ratio)
@@ -323,18 +284,12 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             } catch {
                 log.error("Person segmentation failed: \(error.localizedDescription, privacy: .public)")
                 finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
-                if let snapBranding = snapBrandingImage {
-                    finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
-                }
                 deliverFrame(finalImage)
                 return
             }
 
             guard let maskPixelBuffer = segmentationRequest.results?.first?.pixelBuffer else {
                 finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
-                if let snapBranding = snapBrandingImage {
-                    finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
-                }
                 deliverFrame(finalImage)
                 return
             }
@@ -367,36 +322,12 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             finalImage = applyMirror(image: composited, width: finalCropWidth, mirrored: snapConfig.mirrored)
         }
 
-        // Composite transparent branding overlay (if configured) on top of the mirrored presenter feed
-        if let snapBranding = snapBrandingImage {
-            finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
-        }
-
         deliverFrame(finalImage)
     }
 
     private func deliverFrame(_ finalImage: CIImage) {
         renderView?.update(image: finalImage)
         onFrameProcessed?(finalImage)
-    }
-
-    private func applyBrandingOverlay(image: CIImage, overlay: CIImage, size: CGSize) -> CIImage {
-        let extent = overlay.extent
-        guard extent.width > 0 && extent.height > 0 && size.width > 0 && size.height > 0 else {
-            return image
-        }
-        let scale = min(size.width / extent.width, size.height / extent.height)
-        let scaled = overlay
-            .transformed(by: CGAffineTransform(translationX: -extent.origin.x, y: -extent.origin.y))
-            .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-        let offsetX = max(0, (size.width - scaled.extent.width) / 2.0)
-        let offsetY = max(0, (size.height - scaled.extent.height) / 2.0)
-        let positioned = scaled.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
-
-        let filter = CIFilter.sourceOverCompositing()
-        filter.inputImage = positioned
-        filter.backgroundImage = image
-        return filter.outputImage ?? image
     }
 
     // MARK: - Helpers

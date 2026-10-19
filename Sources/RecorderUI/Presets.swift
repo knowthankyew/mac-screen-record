@@ -34,6 +34,19 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
     public var webcamStaticImageURL: String?
     public var webcamVideoClipURL: String?
     public var webcamBrandingOverlayURL: String?
+    public var pipNormalizedX: Double?
+    public var pipNormalizedY: Double?
+    public var backdropEnabled: Bool?
+    public var backdropImageURL: String?
+    public var backdropIsGrouped: Bool?
+    public var backdropRelativeX: Double?
+    public var backdropRelativeY: Double?
+    public var backdropRelativeWidth: Double?
+    public var backdropRelativeHeight: Double?
+    public var backdropFreeformNormalizedX: Double?
+    public var backdropFreeformNormalizedY: Double?
+    public var backdropFreeformNormalizedWidth: Double?
+    public var backdropFreeformNormalizedHeight: Double?
 
     public init(
         id: UUID = UUID(),
@@ -63,7 +76,20 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         webcamSourceType: WebcamSourceType? = nil,
         webcamStaticImageURL: String? = nil,
         webcamVideoClipURL: String? = nil,
-        webcamBrandingOverlayURL: String? = nil
+        webcamBrandingOverlayURL: String? = nil,
+        pipNormalizedX: Double? = nil,
+        pipNormalizedY: Double? = nil,
+        backdropEnabled: Bool? = nil,
+        backdropImageURL: String? = nil,
+        backdropIsGrouped: Bool? = nil,
+        backdropRelativeX: Double? = nil,
+        backdropRelativeY: Double? = nil,
+        backdropRelativeWidth: Double? = nil,
+        backdropRelativeHeight: Double? = nil,
+        backdropFreeformNormalizedX: Double? = nil,
+        backdropFreeformNormalizedY: Double? = nil,
+        backdropFreeformNormalizedWidth: Double? = nil,
+        backdropFreeformNormalizedHeight: Double? = nil
     ) {
         self.id = id; self.name = name
         self.sourceKindRaw = sourceKindRaw
@@ -90,6 +116,19 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.webcamStaticImageURL = webcamStaticImageURL
         self.webcamVideoClipURL = webcamVideoClipURL
         self.webcamBrandingOverlayURL = webcamBrandingOverlayURL
+        self.pipNormalizedX = pipNormalizedX
+        self.pipNormalizedY = pipNormalizedY
+        self.backdropEnabled = backdropEnabled
+        self.backdropImageURL = backdropImageURL
+        self.backdropIsGrouped = backdropIsGrouped
+        self.backdropRelativeX = backdropRelativeX
+        self.backdropRelativeY = backdropRelativeY
+        self.backdropRelativeWidth = backdropRelativeWidth
+        self.backdropRelativeHeight = backdropRelativeHeight
+        self.backdropFreeformNormalizedX = backdropFreeformNormalizedX
+        self.backdropFreeformNormalizedY = backdropFreeformNormalizedY
+        self.backdropFreeformNormalizedWidth = backdropFreeformNormalizedWidth
+        self.backdropFreeformNormalizedHeight = backdropFreeformNormalizedHeight
     }
 
     enum CodingKeys: String, CodingKey {
@@ -104,6 +143,10 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         case webcamShapeRaw, webcamAspectRatioRaw
         case webcamSourceType, webcamSourceTypeRaw
         case webcamStaticImageURL, webcamVideoClipURL, webcamBrandingOverlayURL
+        case pipNormalizedX, pipNormalizedY
+        case backdropEnabled, backdropImageURL, backdropIsGrouped
+        case backdropRelativeX, backdropRelativeY, backdropRelativeWidth, backdropRelativeHeight
+        case backdropFreeformNormalizedX, backdropFreeformNormalizedY, backdropFreeformNormalizedWidth, backdropFreeformNormalizedHeight
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -146,6 +189,19 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         try container.encodeIfPresent(webcamStaticImageURL, forKey: .webcamStaticImageURL)
         try container.encodeIfPresent(webcamVideoClipURL, forKey: .webcamVideoClipURL)
         try container.encodeIfPresent(webcamBrandingOverlayURL, forKey: .webcamBrandingOverlayURL)
+        try container.encodeIfPresent(pipNormalizedX, forKey: .pipNormalizedX)
+        try container.encodeIfPresent(pipNormalizedY, forKey: .pipNormalizedY)
+        try container.encodeIfPresent(backdropEnabled, forKey: .backdropEnabled)
+        try container.encodeIfPresent(backdropImageURL, forKey: .backdropImageURL)
+        try container.encodeIfPresent(backdropIsGrouped, forKey: .backdropIsGrouped)
+        try container.encodeIfPresent(backdropRelativeX, forKey: .backdropRelativeX)
+        try container.encodeIfPresent(backdropRelativeY, forKey: .backdropRelativeY)
+        try container.encodeIfPresent(backdropRelativeWidth, forKey: .backdropRelativeWidth)
+        try container.encodeIfPresent(backdropRelativeHeight, forKey: .backdropRelativeHeight)
+        try container.encodeIfPresent(backdropFreeformNormalizedX, forKey: .backdropFreeformNormalizedX)
+        try container.encodeIfPresent(backdropFreeformNormalizedY, forKey: .backdropFreeformNormalizedY)
+        try container.encodeIfPresent(backdropFreeformNormalizedWidth, forKey: .backdropFreeformNormalizedWidth)
+        try container.encodeIfPresent(backdropFreeformNormalizedHeight, forKey: .backdropFreeformNormalizedHeight)
     }
 
     public init(from decoder: Decoder) throws {
@@ -231,6 +287,31 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.webcamStaticImageURL = try? container.decodeIfPresent(String.self, forKey: .webcamStaticImageURL)
         self.webcamVideoClipURL = try? container.decodeIfPresent(String.self, forKey: .webcamVideoClipURL)
         self.webcamBrandingOverlayURL = try? container.decodeIfPresent(String.self, forKey: .webcamBrandingOverlayURL)
+
+        self.pipNormalizedX = try? container.decodeIfPresent(Double.self, forKey: .pipNormalizedX)
+        self.pipNormalizedY = try? container.decodeIfPresent(Double.self, forKey: .pipNormalizedY)
+
+        self.backdropEnabled = try? container.decodeIfPresent(Bool.self, forKey: .backdropEnabled)
+        self.backdropImageURL = try? container.decodeIfPresent(String.self, forKey: .backdropImageURL)
+        self.backdropIsGrouped = try? container.decodeIfPresent(Bool.self, forKey: .backdropIsGrouped)
+        self.backdropRelativeX = try? container.decodeIfPresent(Double.self, forKey: .backdropRelativeX)
+        self.backdropRelativeY = try? container.decodeIfPresent(Double.self, forKey: .backdropRelativeY)
+        self.backdropRelativeWidth = try? container.decodeIfPresent(Double.self, forKey: .backdropRelativeWidth)
+        self.backdropRelativeHeight = try? container.decodeIfPresent(Double.self, forKey: .backdropRelativeHeight)
+        self.backdropFreeformNormalizedX = try? container.decodeIfPresent(Double.self, forKey: .backdropFreeformNormalizedX)
+        self.backdropFreeformNormalizedY = try? container.decodeIfPresent(Double.self, forKey: .backdropFreeformNormalizedY)
+        self.backdropFreeformNormalizedWidth = try? container.decodeIfPresent(Double.self, forKey: .backdropFreeformNormalizedWidth)
+        self.backdropFreeformNormalizedHeight = try? container.decodeIfPresent(Double.self, forKey: .backdropFreeformNormalizedHeight)
+    }
+
+    public var effectivePipNormalizedPosition: CGPoint {
+        if let x = pipNormalizedX, let y = pipNormalizedY {
+            return CGPoint(x: x, y: y)
+        } else if let corner = webcamCorner {
+            return corner.normalizedPoint
+        } else {
+            return CGPoint(x: 1.0, y: 0.0)
+        }
     }
 }
 

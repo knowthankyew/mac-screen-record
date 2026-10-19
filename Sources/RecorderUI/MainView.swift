@@ -88,6 +88,9 @@ public struct MainView: View {
                 }
             )
         }
+        .sheet(isPresented: $vm.showPresenterLayoutModal) {
+            PresenterLayoutModalView(vm: vm)
+        }
     }
 
     @ViewBuilder
@@ -359,11 +362,24 @@ public struct MainView: View {
                     )
                 }
 
-                Picker("Position", selection: $vm.webcamCorner) {
-                    ForEach(WebcamCorner.allCases) { c in
-                        Text(c.displayName).tag(c)
+                Button {
+                    vm.showPresenterLayoutModal = true
+                } label: {
+                    HStack {
+                        Label("Customize Layout & Staging…", systemImage: "rectangle.inset.filled.and.person.filled")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
+                .disabled(vm.isCapturing)
+                if vm.isCapturing {
+                    Text("Layout staging cannot be edited mid-recording.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Picker("Size", selection: $vm.webcamSize) {
                     ForEach(WebcamSize.allCases) { s in
                         Text(s.displayName).tag(s)
@@ -393,13 +409,18 @@ public struct MainView: View {
 
                 webcamBackgroundOptions
 
-                fileChooserRow(
-                    "Branding overlay",
-                    url: vm.webcamBrandingOverlayURL,
-                    chooseTitle: "Choose PNG…",
-                    pick: vm.pickWebcamBrandingOverlay,
-                    clear: vm.clearWebcamBrandingOverlay
-                )
+                Toggle("Presenter backdrop plate", isOn: $vm.backdropEnabled)
+                    .disabled(vm.isCapturing)
+                if vm.backdropEnabled {
+                    fileChooserRow(
+                        "Backdrop plate",
+                        url: vm.backdropImageURL,
+                        chooseTitle: "Choose Image…",
+                        pick: vm.pickBackdropImage,
+                        clear: vm.clearBackdropImage
+                    )
+                    .disabled(vm.isCapturing)
+                }
 
                 Toggle("Show border ring", isOn: $vm.webcamShowBorder)
                 if vm.webcamShowBorder {

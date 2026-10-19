@@ -236,8 +236,14 @@ struct MacScreenRecordTestRunner {
         await run("PrivacyAndOverlayTests", "testPresetWebcamSourceAndBrandingPersistence") {
             try privacySuite.testPresetWebcamSourceAndBrandingPersistence()
         }
-        await run("PrivacyAndOverlayTests", "testWebcamVideoProcessorProcessImageAndBrandingOverlay") {
-            try privacySuite.testWebcamVideoProcessorProcessImageAndBrandingOverlay()
+        await run("PrivacyAndOverlayTests", "testWebcamVideoProcessorProcessImageAndMediaSwitching") {
+            try privacySuite.testWebcamVideoProcessorProcessImageAndMediaSwitching()
+        }
+        await run("PrivacyAndOverlayTests", "testPresenterBackdropOverlayAndSnapPositions") {
+            try privacySuite.testPresenterBackdropOverlayAndSnapPositions()
+        }
+        await run("PrivacyAndOverlayTests", "testPresetPresenterBackdropAndNormalizedLayoutPersistence") {
+            try privacySuite.testPresetPresenterBackdropAndNormalizedLayoutPersistence()
         }
 
         let evidenceSuite = EvidenceSealTests()
