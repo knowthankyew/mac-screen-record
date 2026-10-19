@@ -832,7 +832,7 @@ public final class RecordingViewModel: ObservableObject {
     public func burnRecording() async {
         let isActive: Bool = {
             switch status {
-            case .recording, .paused, .stopping: return true
+            case .recording, .paused: return true
             default: return false
             }
         }()

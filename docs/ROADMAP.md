@@ -168,5 +168,5 @@ The inherited upstream roadmap included extensive planning for commercial conten
     - Directly unlinks partial video artifacts from disk (bypassing `~/.Trash` to eliminate residual storage leaks).
     - Aborts pending Evidence Seal checksum workers, wipes volatile in-memory keystroke buffers, and resets audio level monitors.
 - **In-Flight Telemetry & Quick Toggles**:
-  - Real-time audio telemetry status: microphone level indicator, active mic mute/unmute status, and system audio loopback verification.
+  - Read-only capture telemetry: selected microphone device (active/disabled), system audio capture state, and active capture target.
   - In-flight overlay toggles: Quick toggle Facecam presenter PiP (`⌃⌥P`), keystroke overlay (`⌃⌥K`), and mouse click highlights.
