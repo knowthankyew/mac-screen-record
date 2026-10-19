@@ -763,6 +763,7 @@ public final class RecordingViewModel: ObservableObject {
             let endDate = Date()
             self.lastRecordingURL = url
             status = .finished(url)
+            restoreWindowIfNeeded()
             if (forceTrimReview || settings.trimBeforeSave) && LosslessTrimmer.isSupported(url: url) {
                 self.activeTrimTarget = TrimTarget(url: url, isPostCaptureReview: true, originalFile: nil)
             }
@@ -843,7 +844,6 @@ public final class RecordingViewModel: ObservableObject {
             } else {
                 await library.reload()
             }
-            restoreWindowIfNeeded()
         } catch {
             restoreWindowIfNeeded()
             status = .error(error.localizedDescription)
@@ -1097,6 +1097,20 @@ public final class RecordingViewModel: ObservableObject {
         if self.lastRecordingURL == url {
             self.lastRecordingURL = nil
         }
+        switch status {
+        case .finished, .error, .interrupted:
+            status = displays.isEmpty ? .idle : .ready
+        default:
+            break
+        }
+    }
+
+    /// Discards artifacts for a specific reviewed recording URL, safely resetting view model
+    /// status and lastRecordingURL only if that recording is still the active finished session.
+    public func discardReviewedRecording(at url: URL) {
+        library.deleteArtifacts(at: url, moveToTrash: true)
+        guard lastRecordingURL?.standardizedFileURL == url.standardizedFileURL else { return }
+        lastRecordingURL = nil
         switch status {
         case .finished, .error, .interrupted:
             status = displays.isEmpty ? .idle : .ready

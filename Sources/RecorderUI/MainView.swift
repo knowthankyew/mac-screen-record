@@ -77,7 +77,7 @@ public struct MainView: View {
                     vm.updateFinishedRecording(savedURL)
                 },
                 onDiscard: {
-                    vm.deleteLastRecordingArtifacts(moveToTrash: true)
+                    vm.discardReviewedRecording(at: target.url)
                 }
             )
         }

@@ -212,13 +212,21 @@ final class MenuBarAndSessionCompanionTests {
         vm.updateFinishedRecording(anotherURL)
         try checkEqual(vm.status, .recording(startedAt: now), "updateFinishedRecording preserves active recording state")
 
-        // Discard test: discarding artifacts resets status and clears lastRecordingURL
+        // Discard test: discarding reviewed recording resets status and clears lastRecordingURL
         let discardVM = RecordingViewModel(settings: settings)
         discardVM.updateFinishedRecording(testURL)
         try checkEqual(discardVM.status, .finished(testURL), "status is .finished prior to discard")
-        discardVM.deleteLastRecordingArtifacts(moveToTrash: false)
+        discardVM.discardReviewedRecording(at: testURL)
         try checkNil(discardVM.lastRecordingURL, "lastRecordingURL is cleared on discard")
         try checkTrue(discardVM.status == .ready || discardVM.status == .idle, "status is reset from .finished on discard")
+
+        // Concurrency guard: discarding a stale reviewed recording must NOT clobber active session
+        discardVM.setStatusForTesting(.recording(startedAt: now))
+        let activeURL = URL(fileURLWithPath: "/tmp/Active_Recording.mp4")
+        discardVM.setLastRecordingURLForTesting(activeURL)
+        discardVM.discardReviewedRecording(at: testURL)
+        try checkEqual(discardVM.lastRecordingURL, activeURL, "stale discard preserves active lastRecordingURL")
+        try checkEqual(discardVM.status, .recording(startedAt: now), "stale discard preserves active recording status")
     }
 
     // MARK: - Helpers

@@ -150,12 +150,12 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - **Notch-Safe Real Estate**: Preserves critical menu bar width on modern MacBook displays (M-series camera notches), strictly respecting macOS Human Interface Guidelines.
 - **Live Status Bar Timer & State Indicator**:
   - Real-time elapsed recording duration rendered directly in the macOS menu bar:
-    - **Active**: Red recording indicator with monotonically tracked elapsed time formatted as `MM:SS` (or `HH:MM:SS` past one hour, e.g. `02:45` or `01:02:45`).
+    - **Active**: Red recording indicator with wall-clock elapsed time (excluding paused intervals) formatted as `MM:SS` (or `HH:MM:SS` past one hour, e.g. `02:45` or `01:02:45`).
     - **Paused**: Pause glyph with frozen presentation timestamp duration (e.g. `02:00 (Paused)`).
   - Tooltip displaying active capture target (display resolution or application window title), hardware encoding profile, and elapsed time.
 - **First-Class Pause / Resume Controls**:
   - Prominent, context-aware toggle in the dropdown: **"Pause Recording (⌥Space)"** / **"Resume Recording (⌥Space)"**.
-  - Synchronous coordination with `CaptureSession` presentation timestamp (PTS) rewriting to guarantee seamless, artifact-free pauses without audio/video drift.
+  - Drives the same `CaptureSession` pause/resume path, which excises paused intervals via presentation timestamp (PTS) rewriting.
 - **Distraction-Free Desktop Capture**:
   - Optional setting to automatically minimize or hide the main Mac Screen Record window upon capture start.
   - Because the ephemeral menu bar HUD provides live duration feedback, pause controls, and termination actions, the main recorder window never clutters screen captures or full-desktop evidence recordings.
