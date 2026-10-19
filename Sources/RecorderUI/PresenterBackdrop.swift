@@ -45,6 +45,10 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
     }
 
     @Published public var isGrouped: Bool = true {
+        willSet {
+            guard isGrouped != newValue else { return }
+            synchronizeGroupingTransition(toGrouped: newValue)
+        }
         didSet {
             guard oldValue != isGrouped else { return }
             updateFrame()
@@ -85,6 +89,7 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
     private weak var pipPanel: NSWindow?
     private var isUpdatingFrame: Bool = false
     private var isTrackingBackdropMove: Bool = false
+    private var isTransitioningGrouping: Bool = false
     private var moveObserverToken: (any NSObjectProtocol)?
 
     public init() {}
@@ -134,6 +139,7 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
     }
 
     public func updateFrame() {
+        guard !isTransitioningGrouping else { return }
         guard let panel = window, isEnabled else { return }
         let screen = currentTargetScreen ?? NSScreen.main ?? NSScreen.screens.first
         guard let screen else { return }
@@ -159,6 +165,38 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
         panel.pipWindow = pipPanel
         if let pipWin = pipPanel, pipWin.isVisible {
             panel.order(.below, relativeTo: pipWin.windowNumber)
+        }
+    }
+
+    private func synchronizeGroupingTransition(toGrouped: Bool) {
+        guard !isTransitioningGrouping else { return }
+        isTransitioningGrouping = true
+        defer { isTransitioningGrouping = false }
+
+        let screen = currentTargetScreen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else { return }
+        let vFrame = screen.visibleFrame
+
+        guard currentPiPFrame.width > 0 && currentPiPFrame.height > 0 else { return }
+
+        if toGrouped {
+            let currentBackdrop = PresenterBackdropGeometry.freeformScreenRect(
+                visibleFrame: vFrame,
+                freeformNormalizedRect: freeformNormalizedRect
+            )
+            self.relativeRect = PresenterBackdropGeometry.computeRelativeRect(
+                backdropScreenRect: currentBackdrop,
+                pipScreenRect: currentPiPFrame
+            )
+        } else {
+            let currentBackdrop = PresenterBackdropGeometry.groupedScreenRect(
+                pipScreenRect: currentPiPFrame,
+                relativeRect: relativeRect
+            )
+            self.freeformNormalizedRect = PresenterBackdropGeometry.computeFreeformNormalizedRect(
+                backdropScreenRect: currentBackdrop,
+                visibleFrame: vFrame
+            )
         }
     }
 
@@ -427,6 +465,35 @@ public enum PresenterBackdropGeometry {
             y: visibleFrame.minY + freeformNormalizedRect.origin.y * visibleFrame.height,
             width: max(minSize, freeformNormalizedRect.width * visibleFrame.width),
             height: max(minSize, freeformNormalizedRect.height * visibleFrame.height)
+        )
+    }
+
+    /// Computes the relative offset and dimensions for grouped mode given absolute backdrop and PiP screen rects.
+    public static func computeRelativeRect(
+        backdropScreenRect: CGRect,
+        pipScreenRect: CGRect,
+        minSize: CGFloat = minimumSize
+    ) -> CGRect {
+        CGRect(
+            x: backdropScreenRect.origin.x - pipScreenRect.origin.x,
+            y: backdropScreenRect.origin.y - pipScreenRect.origin.y,
+            width: max(minSize, backdropScreenRect.width),
+            height: max(minSize, backdropScreenRect.height)
+        )
+    }
+
+    /// Computes the normalized rect (0...1) relative to visibleFrame for freeform mode given an absolute backdrop screen rect.
+    public static func computeFreeformNormalizedRect(
+        backdropScreenRect: CGRect,
+        visibleFrame: CGRect
+    ) -> CGRect {
+        let safeW = max(1.0, visibleFrame.width)
+        let safeH = max(1.0, visibleFrame.height)
+        return CGRect(
+            x: (backdropScreenRect.origin.x - visibleFrame.minX) / safeW,
+            y: (backdropScreenRect.origin.y - visibleFrame.minY) / safeH,
+            width: backdropScreenRect.width / safeW,
+            height: backdropScreenRect.height / safeH
         )
     }
 }

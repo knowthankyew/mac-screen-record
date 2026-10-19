@@ -728,5 +728,82 @@ final class PrivacyAndOverlayTests {
         )
         try checkEqual(zeroBodyDrag, bleedingRect, "Zero translation body drag must not jump bleeding rect")
     }
+
+    func testPresenterBackdropGroupingTransitionPreservesLayout() throws {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let vFrame = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let overlay = PresenterBackdropOverlay()
+
+        // 1. Initial ungrouped setup: PiP at (vFrame.minX + 600, vFrame.minY + 200, 200, 200)
+        let pipRect1 = NSRect(x: vFrame.minX + 600, y: vFrame.minY + 200, width: 200, height: 200)
+        overlay.updatePiPFrame(pipRect1, on: screen)
+        overlay.isGrouped = false
+
+        // User independently positions backdrop at (vFrame.minX + 500, vFrame.minY + 150, 400, 300)
+        let customBackdropRect = CGRect(x: vFrame.minX + 500, y: vFrame.minY + 150, width: 400, height: 300)
+        overlay.freeformNormalizedRect = PresenterBackdropGeometry.computeFreeformNormalizedRect(
+            backdropScreenRect: customBackdropRect,
+            visibleFrame: vFrame
+        )
+
+        let initialBackdropFreeform = PresenterBackdropGeometry.freeformScreenRect(
+            visibleFrame: vFrame,
+            freeformNormalizedRect: overlay.freeformNormalizedRect
+        )
+        try checkEqual(Float(initialBackdropFreeform.origin.x), Float(vFrame.minX + 500.0), accuracy: 0.01)
+        try checkEqual(Float(initialBackdropFreeform.origin.y), Float(vFrame.minY + 150.0), accuracy: 0.01)
+        try checkEqual(Float(initialBackdropFreeform.width), 400.0, accuracy: 0.01)
+        try checkEqual(Float(initialBackdropFreeform.height), 300.0, accuracy: 0.01)
+
+        // 2. User checks "Grouped with Camera"
+        overlay.isGrouped = true
+
+        // Relative rect must be saved and computed accurately relative to PiP
+        try checkEqual(Float(overlay.relativeRect.origin.x), -100.0, accuracy: 0.01, "Relative X = 500 - 600 = -100")
+        try checkEqual(Float(overlay.relativeRect.origin.y), -50.0, accuracy: 0.01, "Relative Y = 150 - 200 = -50")
+        try checkEqual(Float(overlay.relativeRect.width), 400.0, accuracy: 0.01)
+        try checkEqual(Float(overlay.relativeRect.height), 300.0, accuracy: 0.01)
+
+        let groupedBackdrop = PresenterBackdropGeometry.groupedScreenRect(
+            pipScreenRect: pipRect1,
+            relativeRect: overlay.relativeRect
+        )
+        try checkEqual(Float(groupedBackdrop.origin.x), Float(initialBackdropFreeform.origin.x), accuracy: 0.01, "Grouped backdrop origin.x matches ungrouped")
+        try checkEqual(Float(groupedBackdrop.origin.y), Float(initialBackdropFreeform.origin.y), accuracy: 0.01, "Grouped backdrop origin.y matches ungrouped")
+        try checkEqual(Float(groupedBackdrop.width), Float(initialBackdropFreeform.width), accuracy: 0.01)
+        try checkEqual(Float(groupedBackdrop.height), Float(initialBackdropFreeform.height), accuracy: 0.01)
+
+        // 3. User moves the grouped presenter unit
+        let pipRect2 = NSRect(x: vFrame.minX + 300, y: vFrame.minY + 400, width: 200, height: 200)
+        overlay.updatePiPFrame(pipRect2, on: screen)
+        let movedGroupedBackdrop = PresenterBackdropGeometry.groupedScreenRect(
+            pipScreenRect: pipRect2,
+            relativeRect: overlay.relativeRect
+        )
+        try checkEqual(Float(movedGroupedBackdrop.origin.x), Float(vFrame.minX + 200.0), accuracy: 0.01)
+        try checkEqual(Float(movedGroupedBackdrop.origin.y), Float(vFrame.minY + 350.0), accuracy: 0.01)
+
+        // 4. User unchecks "Grouped" to adjust independently
+        overlay.isGrouped = false
+
+        let unGroupedBackdrop = PresenterBackdropGeometry.freeformScreenRect(
+            visibleFrame: vFrame,
+            freeformNormalizedRect: overlay.freeformNormalizedRect
+        )
+        try checkEqual(Float(unGroupedBackdrop.origin.x), Float(movedGroupedBackdrop.origin.x), accuracy: 0.01, "Ungrouping preserves current position on screen")
+        try checkEqual(Float(unGroupedBackdrop.origin.y), Float(movedGroupedBackdrop.origin.y), accuracy: 0.01)
+        try checkEqual(Float(unGroupedBackdrop.width), Float(movedGroupedBackdrop.width), accuracy: 0.01)
+        try checkEqual(Float(unGroupedBackdrop.height), Float(movedGroupedBackdrop.height), accuracy: 0.01)
+
+        // 5. Moving PiP now does not move the ungrouped backdrop
+        let pipRect3 = NSRect(x: vFrame.minX + 100, y: vFrame.minY + 100, width: 200, height: 200)
+        overlay.updatePiPFrame(pipRect3, on: screen)
+        let independentBackdrop = PresenterBackdropGeometry.freeformScreenRect(
+            visibleFrame: vFrame,
+            freeformNormalizedRect: overlay.freeformNormalizedRect
+        )
+        try checkEqual(Float(independentBackdrop.origin.x), Float(vFrame.minX + 200.0), accuracy: 0.01, "Independent backdrop does not move when PiP moves")
+        try checkEqual(Float(independentBackdrop.origin.y), Float(vFrame.minY + 350.0), accuracy: 0.01)
+    }
 }
 

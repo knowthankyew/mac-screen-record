@@ -43,6 +43,16 @@ public struct PresenterLayoutModalView: View {
         .frame(minWidth: 780, minHeight: 560)
         .background(Color(NSColor.windowBackgroundColor))
         .allowAppTerminationWhenModal()
+        .onAppear {
+            let pipScreen = currentPiPScreenRect
+            let targetScreen = (vm.selectedDisplayID.flatMap { id in
+                NSScreen.screens.first(where: {
+                    guard let num = $0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return false }
+                    return CGDirectDisplayID(num.uint32Value) == id
+                })
+            } ?? NSScreen.main ?? NSScreen.screens.first)
+            backdropOverlay.updatePiPFrame(pipScreen, on: targetScreen)
+        }
         .onChange(of: activeDraggingHandle) { handle in
             if handle == nil {
                 initialDragRect = .zero
@@ -316,7 +326,43 @@ public struct PresenterLayoutModalView: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
 
-                    Toggle(isOn: $vm.backdropIsGrouped) {
+                    Toggle(isOn: Binding(
+                        get: { vm.backdropIsGrouped },
+                        set: { newIsGrouped in
+                            guard vm.backdropIsGrouped != newIsGrouped else { return }
+                            let vFrame = targetScreenVisibleFrame
+                            let pipScreen = currentPiPScreenRect
+                            let targetScreen = (vm.selectedDisplayID.flatMap { id in
+                                NSScreen.screens.first(where: {
+                                    guard let num = $0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return false }
+                                    return CGDirectDisplayID(num.uint32Value) == id
+                                })
+                            } ?? NSScreen.main ?? NSScreen.screens.first)
+
+                            backdropOverlay.updatePiPFrame(pipScreen, on: targetScreen)
+
+                            if newIsGrouped {
+                                let currentBackdrop = PresenterBackdropGeometry.freeformScreenRect(
+                                    visibleFrame: vFrame,
+                                    freeformNormalizedRect: backdropOverlay.freeformNormalizedRect
+                                )
+                                backdropOverlay.relativeRect = PresenterBackdropGeometry.computeRelativeRect(
+                                    backdropScreenRect: currentBackdrop,
+                                    pipScreenRect: pipScreen
+                                )
+                            } else {
+                                let currentBackdrop = PresenterBackdropGeometry.groupedScreenRect(
+                                    pipScreenRect: pipScreen,
+                                    relativeRect: backdropOverlay.relativeRect
+                                )
+                                backdropOverlay.freeformNormalizedRect = PresenterBackdropGeometry.computeFreeformNormalizedRect(
+                                    backdropScreenRect: currentBackdrop,
+                                    visibleFrame: vFrame
+                                )
+                            }
+                            vm.backdropIsGrouped = newIsGrouped
+                        }
+                    )) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(vm.backdropIsGrouped ? "Grouped with Camera" : "Ungrouped (Independent)")
                                 .font(.subheadline.weight(.medium))
