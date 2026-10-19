@@ -89,6 +89,7 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | ✅ **Shipped** |
 | **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`MM:SS` / `HH:MM:SS`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | ✅ **Shipped** |
 | **Phase 13** | **Extended PiP Shapes, Alternate Visual Sources & Transparent Branding** | Presenter PiP & Branding (`v0.5.0`) | **1.** Expanded basic geometric shapes (Oval, Hexagon, Diamond, Heart, Star) with synchronized `CGPath` border strokes; **2.** Static image & looping video alternative visual sources substituting camera; **3.** Transparent PNG branding/frame overlay across all variants | ✅ **Shipped** |
+| **Phase 14** | **General Availability Hardening, Distribution & OBS-User Gap Polish** | Release Candidate (`v1.0.0`) | **1.** Full user QA & OBS-user gap assessment; **2.** Hardware resilience & edge-case hardening; **3.** First-run onboarding & HIG refinement; **4.** Universal drag-to-install DMG packaging | 🔜 **Up Next (v1.0.0 Target)** |
 
 ---
 
@@ -201,3 +202,31 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
   - Allow selection of an alpha-channel transparent image (PNG) as a branding overlay or custom border frame.
   - Composited directly over or around the presenter PiP layer, available across all modes (live camera, blur backdrop, virtual preset, cutout silhouette, or media source).
   - Preserved in capture presets for streamlined reusable presentation setups.
+
+---
+
+## 6. Target Milestone: Phase 14 — General Availability, Distribution & OBS-User Gap Polish (v1.0.0) 🔜
+
+### Phase 14: General Availability, Distribution & OBS-User Gap Polish (v1.0.0) 🔜 Planned
+**Objective**: Transition Mac Screen Record from feature-complete preview (`v0.5.0`) to its official, production-grade General Availability (`v1.0.0`) release, incorporating targeted OBS-user feedback, edge-case hardware resilience, and streamlined drag-to-install distribution.
+
+- **OBS-User Comparative Gap Assessment & UX Refinement**:
+  - Evaluate feedback from real-world OBS users (e.g. streaming/recording workflows on Windows) to identify lightweight, high-utility native capture enhancements while strictly rejecting broadcast/streaming bloat (no CEF browser scenes, no RTMP servers).
+  - High-potential candidates for native inclusion:
+    - **Capture Countdown**: Optional pre-roll timer (`3… 2… 1…`) to eliminate clicking dead air.
+    - **Visual Recording Perimeter**: Subtle on-screen border indicator outlining the active capture display or cropped window.
+    - **Mic Push-to-Talk / Mute Shortcut**: Global or session hotkey to temporarily suppress microphone input.
+    - **Multi-Track Audio Channels**: Independent mic and system audio track multiplexing in `.mp4`/`.mov` containers for post-production balancing.
+- **Hardware & Session Resilience Hardening**:
+  - Comprehensive edge-case handling across dynamic macOS hardware changes:
+    - Mid-recording audio route changes (e.g., Bluetooth/AirPods battery exhaustion, USB mic disconnect).
+    - Display topology changes (hot-unplugging or re-arranging external displays during capture).
+    - System sleep, screen lock, and wake recovery during paused or active sessions.
+    - Extended-duration capture stress testing (verifying flat memory footprint on 1+ hour 4K recordings).
+- **First-Run Onboarding & Human Interface Polish**:
+  - Streamlined permission onboarding flow guiding users through macOS Screen Recording, Microphone, and Camera authorizations with zero friction.
+  - Built-in shortcuts cheat sheet and application help documentation conforming to macOS Human Interface Guidelines.
+- **Production Packaging & Release Automation**:
+  - Universal binary (`arm64` + `x86_64`) drag-to-install `.dmg` packager with custom background art and Applications symlink.
+  - Automated notarization and staple harness for friction-free Gatekeeper validation.
+  - Embedded CycloneDX 1.5 SBOM (`bom.json`) and provenance disclosures packaged into release assets.
