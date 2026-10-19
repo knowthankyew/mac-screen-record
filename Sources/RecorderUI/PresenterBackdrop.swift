@@ -73,13 +73,27 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
         return CGWindowID(w.windowNumber)
     }
 
+    /// Window level of the backdrop overlay panel.
+    public var panelLevel: NSWindow.Level? {
+        window?.level
+    }
+
     private var window: PresenterBackdropPanel?
     private var imageView: NSImageView?
     private var currentPiPFrame: NSRect = .zero
     private weak var currentTargetScreen: NSScreen?
     private weak var pipPanel: NSWindow?
+    private var isUpdatingFrame: Bool = false
+    private var isTrackingBackdropMove: Bool = false
+    private var moveObserverToken: (any NSObjectProtocol)?
 
     public init() {}
+
+    deinit {
+        if let token = moveObserverToken {
+            NotificationCenter.default.removeObserver(token)
+        }
+    }
 
     public func show(targetScreen: NSScreen?, pipFrame: NSRect, relativeTo pipWindow: NSWindow?) {
         self.currentTargetScreen = targetScreen
@@ -99,7 +113,8 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
         updateFrame()
 
         if let panel = window {
-            if let pipWin = pipWindow {
+            panel.pipWindow = pipWindow
+            if let pipWin = pipWindow, pipWin.isVisible {
                 panel.order(.below, relativeTo: pipWin.windowNumber)
             } else {
                 panel.orderFront(nil)
@@ -114,6 +129,7 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
     public func updatePiPFrame(_ pipFrame: NSRect, on screen: NSScreen?) {
         self.currentPiPFrame = pipFrame
         if let screen { self.currentTargetScreen = screen }
+        guard !isTrackingBackdropMove else { return }
         updateFrame()
     }
 
@@ -136,8 +152,12 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
             )
         }
 
+        isUpdatingFrame = true
         panel.setFrame(targetRect, display: true, animate: false)
-        if let pipWin = pipPanel {
+        isUpdatingFrame = false
+
+        panel.pipWindow = pipPanel
+        if let pipWin = pipPanel, pipWin.isVisible {
             panel.order(.below, relativeTo: pipWin.windowNumber)
         }
     }
@@ -172,14 +192,59 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.level = .floating
+        // Strictly place the backdrop one sub-level below .floating so the PiP camera window
+        // (at .floating) is guaranteed by the WindowServer compositor to render in front,
+        // even if the backdrop window is clicked or receives focus.
+        panel.level = NSWindow.Level(NSWindow.Level.floating.rawValue - 1)
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
+        panel.isMovableByWindowBackground = true
 
-        let imgView = NSImageView(frame: panel.contentView?.bounds ?? .zero)
+        let imgView = PassthroughImageView(frame: panel.contentView?.bounds ?? .zero)
         imgView.autoresizingMask = [.width, .height]
         imgView.imageScaling = .scaleAxesIndependently
         panel.contentView = imgView
         self.imageView = imgView
+
+        if let oldToken = moveObserverToken {
+            NotificationCenter.default.removeObserver(oldToken)
+            moveObserverToken = nil
+        }
+
+        moveObserverToken = NotificationCenter.default.addObserver(
+            forName: NSWindow.didMoveNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self = self, let p = self.window, let screen = p.screen else { return }
+                guard !self.isUpdatingFrame else { return }
+                let frame = p.frame
+                let vFrame = screen.visibleFrame
+                if self.isGrouped, let pipWin = self.pipPanel {
+                    let newPipX = frame.minX - self.relativeRect.origin.x
+                    let newPipY = frame.minY - self.relativeRect.origin.y
+                    self.isTrackingBackdropMove = true
+                    pipWin.setFrameOrigin(NSPoint(x: newPipX, y: newPipY))
+                    self.currentPiPFrame = pipWin.frame
+                    self.isTrackingBackdropMove = false
+                } else if !self.isGrouped {
+                    self.currentTargetScreen = screen
+                    let normX = (frame.minX - vFrame.minX) / max(1, vFrame.width)
+                    let normY = (frame.minY - vFrame.minY) / max(1, vFrame.height)
+                    let normW = frame.width / max(1, vFrame.width)
+                    let normH = frame.height / max(1, vFrame.height)
+                    self.freeformNormalizedRect = CGRect(
+                        x: normX,
+                        y: normY,
+                        width: normW,
+                        height: normH
+                    )
+                }
+                if let pipWin = self.pipPanel, pipWin.isVisible {
+                    p.order(.below, relativeTo: pipWin.windowNumber)
+                }
+            }
+        }
 
         return panel
     }
@@ -188,6 +253,27 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
 private final class PresenterBackdropPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+    weak var pipWindow: NSWindow?
+
+    override func sendEvent(_ event: NSEvent) {
+        super.sendEvent(event)
+        if event.type == .leftMouseDown || event.type == .rightMouseDown || event.type == .otherMouseDown {
+            if let pip = pipWindow, pip.isVisible {
+                self.order(.below, relativeTo: pip.windowNumber)
+            }
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        if let pip = pipWindow, pip.isVisible {
+            self.order(.below, relativeTo: pip.windowNumber)
+        }
+    }
+}
+
+private final class PassthroughImageView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 // MARK: - 8 Resize Handles Definition

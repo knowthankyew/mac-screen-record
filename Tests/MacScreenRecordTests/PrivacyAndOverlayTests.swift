@@ -471,6 +471,20 @@ final class PrivacyAndOverlayTests {
         try checkNotNil(overlay.cachedImage, "Real image must be cached in memory")
         try checkEqual(overlay.cachedImage?.size.width, 100.0)
 
+        // Verify window level is strictly below .floating so PiP camera cannot be obscured on click
+        let mockPiP = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 200, height: 200), styleMask: [.borderless], backing: .buffered, defer: false)
+        mockPiP.level = .floating
+        mockPiP.orderFront(nil)
+        defer { mockPiP.orderOut(nil) }
+
+        overlay.show(targetScreen: nil, pipFrame: mockPiP.frame, relativeTo: mockPiP)
+        defer { overlay.hide() }
+
+        try checkNotNil(overlay.panelLevel, "Panel must be created on show")
+        try checkEqual(overlay.panelLevel, NSWindow.Level(NSWindow.Level.floating.rawValue - 1))
+        try checkTrue(overlay.panelLevel!.rawValue < NSWindow.Level.floating.rawValue, "Backdrop level must be strictly lower than PiP floating level")
+        try checkTrue(overlay.panelLevel!.rawValue > NSWindow.Level.normal.rawValue, "Backdrop level must be strictly higher than normal document windows")
+
         // Clearing imageURL must clear cachedImage cleanly
         overlay.imageURL = nil
         try checkNil(overlay.cachedImage, "Clearing imageURL clears cached image")
