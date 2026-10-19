@@ -88,10 +88,15 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 
     /// Generates the vector outline path for this shape fitting within the specified bounds.
-    public func path(in bounds: CGRect) -> CGPath {
+    /// - Parameters:
+    ///   - bounds: The bounding rectangle to fit the shape within.
+    ///   - flipped: When `true`, inverts the vertical axis so that shapes drawn in SwiftUI
+    ///              (where Y increases downward) match AppKit window coordinates (where Y increases upward).
+    public func path(in bounds: CGRect, flipped: Bool = false) -> CGPath {
         guard bounds.width > 0 && bounds.height > 0 else {
             return CGPath(rect: bounds, transform: nil)
         }
+        let basePath: CGPath
         switch self {
         case .circle:
             let d = min(bounds.width, bounds.height)
@@ -101,14 +106,14 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
                 width: d,
                 height: d
             )
-            return CGPath(ellipseIn: circleRect, transform: nil)
+            basePath = CGPath(ellipseIn: circleRect, transform: nil)
 
         case .oval:
-            return CGPath(ellipseIn: bounds, transform: nil)
+            basePath = CGPath(ellipseIn: bounds, transform: nil)
 
         case .roundedRect:
             let cornerRadius = min(bounds.width, bounds.height) * 0.16
-            return CGPath(
+            basePath = CGPath(
                 roundedRect: bounds,
                 cornerWidth: cornerRadius,
                 cornerHeight: cornerRadius,
@@ -134,7 +139,7 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
                 }
             }
             path.closeSubpath()
-            return path
+            basePath = path
 
         case .diamond:
             let path = CGMutablePath()
@@ -143,7 +148,7 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
             path.addLine(to: CGPoint(x: bounds.midX, y: bounds.maxY))
             path.addLine(to: CGPoint(x: bounds.minX, y: bounds.midY))
             path.closeSubpath()
-            return path
+            basePath = path
 
         case .heart:
             let path = CGMutablePath()
@@ -177,7 +182,7 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
                 control2: CGPoint(x: ox + w * 0.75, y: oy + h * 0.15)
             )
             path.closeSubpath()
-            return path
+            basePath = path
 
         case .star:
             let path = CGMutablePath()
@@ -199,8 +204,14 @@ public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
                 }
             }
             path.closeSubpath()
-            return path
+            basePath = path
         }
+
+        guard flipped else { return basePath }
+        var transform = CGAffineTransform(translationX: bounds.minX, y: bounds.maxY)
+            .scaledBy(x: 1, y: -1)
+            .translatedBy(x: -bounds.minX, y: -bounds.minY)
+        return basePath.copy(using: &transform) ?? basePath
     }
 }
 

@@ -278,7 +278,23 @@ final class PrivacyAndOverlayTests {
             try checkTrue(pathBounds.height > 0, "\(shape.rawValue) path height should be positive")
             try checkTrue(pathBounds.maxX <= testBounds.maxX + 1.0, "\(shape.rawValue) path should fit inside bounds")
             try checkTrue(pathBounds.maxY <= testBounds.maxY + 1.0, "\(shape.rawValue) path should fit inside bounds")
+
+            let flippedPath = shape.path(in: testBounds, flipped: true)
+            let flippedBounds = flippedPath.boundingBox
+            try checkFalse(flippedPath.isEmpty, "\(shape.rawValue) flipped path should not be empty")
+            try checkTrue(flippedBounds.width > 0, "\(shape.rawValue) flipped path width should be positive")
+            try checkTrue(flippedBounds.height > 0, "\(shape.rawValue) flipped path height should be positive")
+            try checkTrue(flippedBounds.maxX <= testBounds.maxX + 1.0, "\(shape.rawValue) flipped path should fit inside bounds")
+            try checkTrue(flippedBounds.maxY <= testBounds.maxY + 1.0, "\(shape.rawValue) flipped path should fit inside bounds")
         }
+
+        // Heart orientation inversion verification:
+        // In unflipped AppKit mode, tip is near bottom (minY = 10, maxY = 130).
+        // In flipped SwiftUI mode, tip is near bottom in SwiftUI coordinate space (maxY = 190, minY = 70).
+        let unflippedHeart = WebcamShape.heart.path(in: testBounds, flipped: false).boundingBoxOfPath
+        let flippedHeart = WebcamShape.heart.path(in: testBounds, flipped: true).boundingBoxOfPath
+        try checkEqual(Float(unflippedHeart.minY), 10.0, accuracy: 0.1)
+        try checkEqual(Float(flippedHeart.maxY), 190.0, accuracy: 0.1)
 
         // supportsAspectRatio
         try checkTrue(WebcamShape.roundedRect.supportsAspectRatio)

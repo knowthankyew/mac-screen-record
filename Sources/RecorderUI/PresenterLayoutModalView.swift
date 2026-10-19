@@ -6,14 +6,21 @@ import SwiftUI
 /// expand/contract resize grips, grouping controls, and real-time live synchronization.
 public struct PresenterLayoutModalView: View {
     @ObservedObject var vm: RecordingViewModel
+    @ObservedObject private var webcam: WebcamOverlayController
+    @ObservedObject private var backdropOverlay: PresenterBackdropOverlay
     @Environment(\.dismiss) private var dismiss
 
     @State private var hoveredHandle: ResizeHandle? = nil
     @State private var activeDraggingHandle: ResizeHandle? = nil
     @State private var initialDragRect: CGRect = .zero
+    @State private var dragStartPiPNormalized: CGPoint? = nil
+    @State private var dragStartBackdropRelativeRect: CGRect? = nil
+    @State private var dragStartBackdropFreeformRect: CGRect? = nil
 
     public init(vm: RecordingViewModel) {
         self.vm = vm
+        self._webcam = ObservedObject(wrappedValue: vm.webcam)
+        self._backdropOverlay = ObservedObject(wrappedValue: vm.webcam.backdropOverlay)
     }
 
     public var body: some View {
@@ -169,7 +176,15 @@ public struct PresenterLayoutModalView: View {
             .gesture(
                 DragGesture()
                     .onChanged { val in
+                        if dragStartBackdropRelativeRect == nil && dragStartBackdropFreeformRect == nil {
+                            dragStartBackdropRelativeRect = backdropOverlay.relativeRect
+                            dragStartBackdropFreeformRect = backdropOverlay.freeformNormalizedRect
+                        }
                         handleBackdropBodyDrag(translation: val.translation, scale: scale)
+                    }
+                    .onEnded { _ in
+                        dragStartBackdropRelativeRect = nil
+                        dragStartBackdropFreeformRect = nil
                     }
             )
 
@@ -209,20 +224,20 @@ public struct PresenterLayoutModalView: View {
 
     @ViewBuilder
     private func pipCameraBox(canvasSize: CGSize, scale: CGFloat) -> some View {
-        let pipDim = vm.webcam.currentDimensions
+        let pipDim = webcam.currentDimensions
         let canvasW = max(24, pipDim.width * scale)
         let canvasH = max(24, pipDim.height * scale)
         let frame = pipCanvasFrame(canvasSize: canvasSize, scale: scale)
 
         ZStack {
             // Camera Fill Shape
-            Path(vm.webcam.shape.path(in: CGRect(origin: .zero, size: CGSize(width: canvasW, height: canvasH))))
+            Path(webcam.shape.path(in: CGRect(origin: .zero, size: CGSize(width: canvasW, height: canvasH)), flipped: true))
                 .fill(Color(nsColor: .controlAccentColor).opacity(0.35))
 
             // Border Stroke
             if vm.webcamShowBorder && vm.webcamBorderWidth > 0 {
                 let borderScale = max(0.5, CGFloat(vm.webcamBorderWidth) * scale)
-                Path(vm.webcam.shape.path(in: CGRect(origin: .zero, size: CGSize(width: canvasW, height: canvasH)).insetBy(dx: borderScale / 2, dy: borderScale / 2)))
+                Path(webcam.shape.path(in: CGRect(origin: .zero, size: CGSize(width: canvasW, height: canvasH)).insetBy(dx: borderScale / 2, dy: borderScale / 2), flipped: true))
                     .stroke(Color(nsColor: NSColor(cgColor: vm.webcamBorderColor) ?? .white), lineWidth: borderScale)
             }
 
@@ -239,12 +254,19 @@ public struct PresenterLayoutModalView: View {
             }
         }
         .frame(width: canvasW, height: canvasH)
+        .contentShape(Rectangle())
         .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
         .offset(x: frame.minX, y: frame.minY)
         .gesture(
             DragGesture()
                 .onChanged { val in
-                    handlePiPDrag(translation: val.translation, canvasSize: canvasSize, scale: scale)
+                    if dragStartPiPNormalized == nil {
+                        dragStartPiPNormalized = webcam.pipNormalizedPosition
+                    }
+                    handlePiPDrag(translation: val.translation, scale: scale)
+                }
+                .onEnded { _ in
+                    dragStartPiPNormalized = nil
                 }
         )
     }
@@ -329,7 +351,7 @@ public struct PresenterLayoutModalView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                         ForEach(PresenterSnapPosition.allCases) { pos in
                             Button(pos.rawValue) {
-                                vm.webcam.snapTo(position: pos)
+                                webcam.snapTo(position: pos)
                             }
                             .controlSize(.small)
                             .frame(maxWidth: .infinity)
@@ -384,7 +406,7 @@ public struct PresenterLayoutModalView: View {
         let pipScreen = currentPiPScreenRect
 
         if vm.backdropIsGrouped {
-            let rel = vm.webcam.backdropOverlay.relativeRect
+            let rel = backdropOverlay.relativeRect
             return CGRect(
                 x: pipScreen.minX + rel.origin.x,
                 y: pipScreen.minY + rel.origin.y,
@@ -392,7 +414,7 @@ public struct PresenterLayoutModalView: View {
                 height: max(40, rel.height)
             )
         } else {
-            let fn = vm.webcam.backdropOverlay.freeformNormalizedRect
+            let fn = backdropOverlay.freeformNormalizedRect
             return CGRect(
                 x: vFrame.minX + fn.origin.x * vFrame.width,
                 y: vFrame.minY + fn.origin.y * vFrame.height,
@@ -404,15 +426,15 @@ public struct PresenterLayoutModalView: View {
 
     private var currentPiPScreenRect: CGRect {
         let vFrame = targetScreenVisibleFrame
-        let target = vm.webcam.currentDimensions
+        let target = webcam.currentDimensions
         let margin: CGFloat = 24
         let minX = vFrame.minX + margin
         let maxX = max(minX, vFrame.maxX - target.width - margin)
         let minY = vFrame.minY + margin
         let maxY = max(minY, vFrame.maxY - target.height - margin)
 
-        let posX = minX + max(0, min(1, vm.webcam.pipNormalizedPosition.x)) * (maxX - minX)
-        let posY = minY + max(0, min(1, vm.webcam.pipNormalizedPosition.y)) * (maxY - minY)
+        let posX = minX + max(0, min(1, webcam.pipNormalizedPosition.x)) * (maxX - minX)
+        let posY = minY + max(0, min(1, webcam.pipNormalizedPosition.y)) * (maxY - minY)
         return CGRect(x: posX, y: posY, width: target.width, height: target.height)
     }
 
@@ -440,9 +462,11 @@ public struct PresenterLayoutModalView: View {
 
     // MARK: - Drag & Resize Handling
 
-    private func handlePiPDrag(translation: CGSize, canvasSize: CGSize, scale: CGFloat) {
+    private func handlePiPDrag(translation: CGSize, scale: CGFloat) {
+        guard let startNorm = dragStartPiPNormalized else { return }
+
         let vFrame = targetScreenVisibleFrame
-        let target = vm.webcam.currentDimensions
+        let target = webcam.currentDimensions
         let margin: CGFloat = 24
         let minX = vFrame.minX + margin
         let maxX = max(minX, vFrame.maxX - target.width - margin)
@@ -451,18 +475,20 @@ public struct PresenterLayoutModalView: View {
 
         guard maxX > minX, maxY > minY else { return }
 
+        let startScreenX = minX + max(0, min(1, startNorm.x)) * (maxX - minX)
+        let startScreenY = minY + max(0, min(1, startNorm.y)) * (maxY - minY)
+
         let deltaScreenX = translation.width / scale
         let deltaScreenY = -translation.height / scale
 
-        let curScreen = currentPiPScreenRect
-        let newX = max(minX, min(maxX, curScreen.minX + deltaScreenX))
-        let newY = max(minY, min(maxY, curScreen.minY + deltaScreenY))
+        let newX = max(minX, min(maxX, startScreenX + deltaScreenX))
+        let newY = max(minY, min(maxY, startScreenY + deltaScreenY))
 
         let normX = (newX - minX) / (maxX - minX)
         let normY = (newY - minY) / (maxY - minY)
 
-        vm.webcam.pipNormalizedPosition = CGPoint(x: normX, y: normY)
-        vm.webcam.reposition()
+        webcam.pipNormalizedPosition = CGPoint(x: normX, y: normY)
+        webcam.reposition()
     }
 
     private func handleBackdropBodyDrag(translation: CGSize, scale: CGFloat) {
@@ -470,18 +496,20 @@ public struct PresenterLayoutModalView: View {
         let deltaScreenY = -translation.height / scale
 
         if vm.backdropIsGrouped {
-            var rel = vm.webcam.backdropOverlay.relativeRect
+            guard let startRel = dragStartBackdropRelativeRect else { return }
+            var rel = startRel
             rel.origin.x += deltaScreenX
             rel.origin.y += deltaScreenY
-            vm.webcam.backdropOverlay.relativeRect = rel
+            backdropOverlay.relativeRect = rel
         } else {
+            guard let startFree = dragStartBackdropFreeformRect else { return }
             let vFrame = targetScreenVisibleFrame
-            var fn = vm.webcam.backdropOverlay.freeformNormalizedRect
-            fn.origin.x += deltaScreenX / vFrame.width
-            fn.origin.y += deltaScreenY / vFrame.height
-            vm.webcam.backdropOverlay.freeformNormalizedRect = fn
+            var fn = startFree
+            fn.origin.x += deltaScreenX / max(1, vFrame.width)
+            fn.origin.y += deltaScreenY / max(1, vFrame.height)
+            backdropOverlay.freeformNormalizedRect = fn
         }
-        vm.webcam.backdropOverlay.updateFrame()
+        backdropOverlay.updateFrame()
     }
 
     private func handleResizeDrag(handle: ResizeHandle, translation: CGSize, scale: CGFloat) {
@@ -540,16 +568,16 @@ public struct PresenterLayoutModalView: View {
             let pipScreen = currentPiPScreenRect
             let relX = newX - pipScreen.minX
             let relY = newY - pipScreen.minY
-            vm.webcam.backdropOverlay.relativeRect = CGRect(x: relX, y: relY, width: newW, height: newH)
+            backdropOverlay.relativeRect = CGRect(x: relX, y: relY, width: newW, height: newH)
         } else {
             let vFrame = targetScreenVisibleFrame
             let normX = (newX - vFrame.minX) / vFrame.width
             let normY = (newY - vFrame.minY) / vFrame.height
             let normW = newW / vFrame.width
             let normH = newH / vFrame.height
-            vm.webcam.backdropOverlay.freeformNormalizedRect = CGRect(x: normX, y: normY, width: normW, height: normH)
+            backdropOverlay.freeformNormalizedRect = CGRect(x: normX, y: normY, width: normW, height: normH)
         }
-        vm.webcam.backdropOverlay.updateFrame()
+        backdropOverlay.updateFrame()
     }
 
     private func computeCanvasSize(in geoSize: CGSize) -> (CGSize, CGFloat) {
@@ -572,13 +600,13 @@ public struct PresenterLayoutModalView: View {
     }
 
     private func resetLayout() {
-        vm.webcam.snapTo(position: .bottomRight)
+        webcam.snapTo(position: .bottomRight)
         vm.backdropIsGrouped = true
-        vm.webcam.backdropOverlay.isGrouped = true
-        vm.webcam.backdropOverlay.relativeRect = CGRect(x: -30, y: -20, width: 260, height: 240)
-        vm.webcam.backdropOverlay.freeformNormalizedRect = CGRect(x: 0.75, y: 0.05, width: 0.22, height: 0.22)
-        vm.webcam.reposition()
-        vm.webcam.backdropOverlay.updateFrame()
+        backdropOverlay.isGrouped = true
+        backdropOverlay.relativeRect = CGRect(x: -30, y: -20, width: 260, height: 240)
+        backdropOverlay.freeformNormalizedRect = CGRect(x: 0.75, y: 0.05, width: 0.22, height: 0.22)
+        webcam.reposition()
+        backdropOverlay.updateFrame()
     }
 }
 
