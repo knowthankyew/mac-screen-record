@@ -1134,7 +1134,7 @@ public final class RecordingViewModel: ObservableObject {
         }
         let standardized = url.standardizedFileURL
         guard FileManager.default.fileExists(atPath: standardized.path) else {
-            log.error("Cannot open video for trimming: file does not exist at \(standardized.path, privacy: .public)")
+            log.error("Cannot open video for trimming: file does not exist: \(standardized.lastPathComponent, privacy: .public)")
             status = .error("Cannot open video: file does not exist at '\(standardized.lastPathComponent)'.")
             bringWindowToFront()
             return false
