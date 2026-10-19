@@ -938,6 +938,7 @@ public final class RecordingViewModel: ObservableObject {
         NSApp.requestUserAttention(.criticalRequest)
 
         // 4. Force-activate the app and bring recorder window to front
+        didMinimizeForCapture = false
         NSApp.activate(ignoringOtherApps: true)
         if let window = recorderWindow {
             window.makeKeyAndOrderFront(nil)
