@@ -49,6 +49,10 @@ public final class VideoEncoder: @unchecked Sendable {
         queue.sync { paused }
     }
 
+    public var writerStatus: AVAssetWriter.Status? {
+        queue.sync { writer?.status }
+    }
+
     public func pause() {
         let now = CMClockGetTime(CMClockGetHostTimeClock())
         queue.sync {

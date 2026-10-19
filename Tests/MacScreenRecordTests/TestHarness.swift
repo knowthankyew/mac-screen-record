@@ -300,9 +300,9 @@ struct MacScreenRecordTestRunner {
                 try await companionSuite.testVideoEncoderCancelDeletesFileOnDisk()
             }
         }
-        await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelAfterAppendedSamplesDeletesFile") {
+        await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelMidSessionDeletesFile") {
             try await companionSuite.withLifecycle {
-                try await companionSuite.testVideoEncoderCancelAfterAppendedSamplesDeletesFile()
+                try await companionSuite.testVideoEncoderCancelMidSessionDeletesFile()
             }
         }
         await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelAfterFinishDoesNotDeleteFile") {

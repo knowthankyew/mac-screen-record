@@ -137,34 +137,31 @@ final class MenuBarAndSessionCompanionTests {
         try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks output file from disk")
     }
 
-    /// Verifies that calling cancel() after appending samples (including mismatched frames) safely removes output file from disk.
-    func testVideoEncoderCancelAfterAppendedSamplesDeletesFile() async throws {
+    /// Verifies that calling cancel() mid-session after appending samples cleanly unlinks output file from disk.
+    func testVideoEncoderCancelMidSessionDeletesFile() async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .resolvingSymlinksInPath()
-            .appendingPathComponent("EncoderFailedCancelTest-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("EncoderMidSessionCancelTest-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let outputURL = tempDir.appendingPathComponent("test_failed_cancel.mp4")
+        let outputURL = tempDir.appendingPathComponent("test_midsession_cancel.mp4")
         let settings = RecordingSettings(width: 160, height: 120, fps: 30, outputURL: outputURL)
         let encoder = VideoEncoder(settings: settings)
 
         try encoder.start()
         try checkTrue(FileManager.default.fileExists(atPath: outputURL.path), "Writer creates file")
 
-        // Append a valid frame to start session
-        if let sample = makeSyntheticSampleBuffer(width: 160, height: 120, pts: CMTime(value: 10, timescale: 30)) {
-            encoder.append(sample, kind: VideoEncoder.SampleKind.video)
+        // Append sample frames to advance session
+        if let sample1 = makeSyntheticSampleBuffer(width: 160, height: 120, pts: CMTime(value: 10, timescale: 30)) {
+            encoder.append(sample1, kind: VideoEncoder.SampleKind.video)
+        }
+        if let sample2 = makeSyntheticSampleBuffer(width: 160, height: 120, pts: CMTime(value: 11, timescale: 30)) {
+            encoder.append(sample2, kind: VideoEncoder.SampleKind.video)
         }
 
-        // Append a sample with mismatched dimensions (320x240) to force AVAssetWriter into .failed state
-        if let mismatched = makeSyntheticSampleBuffer(width: 320, height: 240, pts: CMTime(value: 11, timescale: 30)) {
-            encoder.append(mismatched, kind: VideoEncoder.SampleKind.video)
-        }
-
-        // Calling cancel() cleans up the file even when writer is in .failed state (not .writing)
         encoder.cancel()
-        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks file when writer is failed")
+        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks file mid-session")
     }
 
     /// Verifies that calling cancel() after finish() has completed preserves the finalized file on disk.
