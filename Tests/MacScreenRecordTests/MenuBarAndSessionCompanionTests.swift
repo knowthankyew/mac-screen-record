@@ -1,3 +1,4 @@
+import AppKit
 import AVFoundation
 import CaptureCore
 import CoreMedia
@@ -264,5 +265,41 @@ final class MenuBarAndSessionCompanionTests {
             sampleBufferOut: &sampleBuffer
         )
         return sampleBuffer
+    }
+
+    /// Verifies that modal sheets are configured with preventsApplicationTerminationWhenModal = false,
+    /// ensuring OS-level quit actions (Dock icon right-click / task bar, Cmd+Q) are not blocked while modal.
+    func testModalSheetAllowsApplicationTermination() throws {
+        let parent = NSWindow(
+            contentRect: NSRect(x: 100, y: 100, width: 300, height: 300),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        let sheet = NSWindow(
+            contentRect: NSRect(x: 150, y: 150, width: 200, height: 200),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+
+        // By default in AppKit, sheets block termination
+        try checkTrue(sheet.preventsApplicationTerminationWhenModal, "Default AppKit sheet blocks termination")
+
+        // ModalTerminationHelper.configure clears this block
+        ModalTerminationHelper.configure(window: sheet)
+        try checkFalse(sheet.preventsApplicationTerminationWhenModal, "ModalTerminationHelper.configure allows app termination")
+
+        // ModalTerminationHelper.configureSheets also configures sheets attached to a parent window
+        let sheet2 = NSWindow(
+            contentRect: NSRect(x: 150, y: 150, width: 200, height: 200),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        parent.beginSheet(sheet2) { _ in }
+        ModalTerminationHelper.configureSheets(on: parent)
+        try checkFalse(sheet2.preventsApplicationTerminationWhenModal, "ModalTerminationHelper.configureSheets configures attached sheet")
+        parent.endSheet(sheet2)
     }
 }

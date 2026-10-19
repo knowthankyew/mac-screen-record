@@ -41,6 +41,7 @@ public struct PresenterLayoutModalView: View {
         }
         .frame(minWidth: 780, minHeight: 560)
         .background(Color(NSColor.windowBackgroundColor))
+        .allowAppTerminationWhenModal()
     }
 
     // MARK: - Header & Footer

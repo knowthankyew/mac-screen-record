@@ -82,6 +82,7 @@ public struct VideoTrimModalView: View {
         }
         .frame(minWidth: 640, minHeight: 520)
         .background(Color(NSColor.windowBackgroundColor))
+        .allowAppTerminationWhenModal()
         .alert("Trimming Error", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }

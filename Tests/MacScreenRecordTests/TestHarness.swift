@@ -348,6 +348,11 @@ struct MacScreenRecordTestRunner {
                 try companionSuite.testSavedRecordingStateUpdateAndReveal()
             }
         }
+        await run("MenuBarAndSessionCompanionTests", "testModalSheetAllowsApplicationTermination") {
+            try await companionSuite.withLifecycle {
+                try companionSuite.testModalSheetAllowsApplicationTermination()
+            }
+        }
 
         let recentsSuite = RecentRecordingsAndOpenWithTests()
         await run("RecentRecordingsAndOpenWithTests", "testRecentsStoreMRUOrderingAndDeduplication") {

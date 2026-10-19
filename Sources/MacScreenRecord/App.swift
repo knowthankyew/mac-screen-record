@@ -65,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let menuBar = MenuBarController()
     private weak var vm: RecordingViewModel?
     private var pendingOpenURL: URL?
+    private var terminationObservers: [NSObjectProtocol] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Shorten the default tooltip delay so help tooltips appear promptly on hover.
@@ -76,6 +77,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // can quick-toggle from the bar without closing the main window.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+
+        // Ensure modal sheets and windows do not block application termination
+        // when quitting from the Dock icon / task bar or pressing Cmd+Q.
+        terminationObservers = ModalTerminationHelper.installObservers()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
