@@ -167,6 +167,29 @@ final class MenuBarAndSessionCompanionTests {
         try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks file when writer is failed")
     }
 
+    /// Verifies that calling cancel() after finish() has completed preserves the finalized file on disk.
+    func testVideoEncoderCancelAfterFinishDoesNotDeleteFile() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .resolvingSymlinksInPath()
+            .appendingPathComponent("EncoderFinishCancelTest-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let outputURL = tempDir.appendingPathComponent("test_finished.mp4")
+        let settings = RecordingSettings(width: 160, height: 120, fps: 30, outputURL: outputURL)
+        let encoder = VideoEncoder(settings: settings)
+
+        try encoder.start()
+        if let sample = makeSyntheticSampleBuffer(width: 160, height: 120, pts: .zero) {
+            encoder.append(sample, kind: VideoEncoder.SampleKind.video)
+        }
+        let finalizedURL = try await encoder.finish()
+        try checkTrue(FileManager.default.fileExists(atPath: finalizedURL.path), "Finalized file exists")
+
+        encoder.cancel()
+        try checkTrue(FileManager.default.fileExists(atPath: finalizedURL.path), "cancel() after finish() preserves finalized file")
+    }
+
     /// Verifies that updateFinishedRecording updates view model status and lastRecordingURL,
     /// enabling the prominent green link in the UI header, while protecting active recording states.
     func testSavedRecordingStateUpdateAndReveal() throws {
@@ -188,6 +211,14 @@ final class MenuBarAndSessionCompanionTests {
         let anotherURL = URL(fileURLWithPath: "/tmp/Another_trimmed.mp4")
         vm.updateFinishedRecording(anotherURL)
         try checkEqual(vm.status, .recording(startedAt: now), "updateFinishedRecording preserves active recording state")
+
+        // Discard test: discarding artifacts resets status and clears lastRecordingURL
+        let discardVM = RecordingViewModel(settings: settings)
+        discardVM.updateFinishedRecording(testURL)
+        try checkEqual(discardVM.status, .finished(testURL), "status is .finished prior to discard")
+        discardVM.deleteLastRecordingArtifacts(moveToTrash: false)
+        try checkNil(discardVM.lastRecordingURL, "lastRecordingURL is cleared on discard")
+        try checkTrue(discardVM.status == .ready || discardVM.status == .idle, "status is reset from .finished on discard")
     }
 
     // MARK: - Helpers

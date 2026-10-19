@@ -305,6 +305,11 @@ struct MacScreenRecordTestRunner {
                 try await companionSuite.testVideoEncoderCancelAfterAppendedSamplesDeletesFile()
             }
         }
+        await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelAfterFinishDoesNotDeleteFile") {
+            try await companionSuite.withLifecycle {
+                try await companionSuite.testVideoEncoderCancelAfterFinishDoesNotDeleteFile()
+            }
+        }
         await run("MenuBarAndSessionCompanionTests", "testSavedRecordingStateUpdateAndReveal") {
             try await companionSuite.withLifecycle {
                 try companionSuite.testSavedRecordingStateUpdateAndReveal()

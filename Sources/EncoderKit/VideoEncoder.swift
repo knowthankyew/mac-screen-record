@@ -331,9 +331,9 @@ public final class VideoEncoder: @unchecked Sendable {
 
     public func cancel() {
         queue.sync {
-            guard !self.isFinishing else { return }
-            let outputURL = self.writer?.outputURL ?? self.settings.outputURL
-            if let writer = self.writer, writer.status == .writing {
+            guard !self.isFinishing, let writer = self.writer else { return }
+            let outputURL = writer.outputURL
+            if writer.status == .writing {
                 writer.cancelWriting()
             }
             try? FileManager.default.removeItem(at: outputURL)

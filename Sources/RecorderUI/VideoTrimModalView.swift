@@ -14,6 +14,7 @@ public struct VideoTrimModalView: View {
     public let library: RecordingsLibrary
     public let settings: AppSettings
     public var onTrimSaved: ((URL) -> Void)?
+    public var onDiscard: (() -> Void)?
     public var onDismiss: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
@@ -39,12 +40,14 @@ public struct VideoTrimModalView: View {
         library: RecordingsLibrary,
         settings: AppSettings,
         onTrimSaved: ((URL) -> Void)? = nil,
+        onDiscard: (() -> Void)? = nil,
         onDismiss: (() -> Void)? = nil
     ) {
         self.target = target
         self.library = library
         self.settings = settings
         self.onTrimSaved = onTrimSaved
+        self.onDiscard = onDiscard
         self.onDismiss = onDismiss
     }
 
@@ -219,7 +222,11 @@ public struct VideoTrimModalView: View {
         HStack(spacing: 12) {
             if target.isPostCaptureReview {
                 Button("Discard Recording", role: .destructive) {
-                    library.deleteArtifacts(at: target.url, moveToTrash: true)
+                    if let onDiscard {
+                        onDiscard()
+                    } else {
+                        library.deleteArtifacts(at: target.url, moveToTrash: true)
+                    }
                     dismiss()
                 }
                 .buttonStyle(.bordered)

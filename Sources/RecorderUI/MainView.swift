@@ -75,6 +75,9 @@ public struct MainView: View {
                 settings: vm.settings,
                 onTrimSaved: { savedURL in
                     vm.updateFinishedRecording(savedURL)
+                },
+                onDiscard: {
+                    vm.deleteLastRecordingArtifacts(moveToTrash: true)
                 }
             )
         }
