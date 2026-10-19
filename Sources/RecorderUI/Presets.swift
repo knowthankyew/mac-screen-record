@@ -30,6 +30,10 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
     public var webcamShowBorder: Bool?
     public var webcamBorderColorHex: String?
     public var webcamBorderWidth: Double?
+    public var webcamSourceType: WebcamSourceType?
+    public var webcamStaticImageURL: String?
+    public var webcamVideoClipURL: String?
+    public var webcamBrandingOverlayURL: String?
 
     public init(
         id: UUID = UUID(),
@@ -55,7 +59,11 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         webcamBlurCustomImage: Bool? = nil,
         webcamShowBorder: Bool? = nil,
         webcamBorderColorHex: String? = nil,
-        webcamBorderWidth: Double? = nil
+        webcamBorderWidth: Double? = nil,
+        webcamSourceType: WebcamSourceType? = nil,
+        webcamStaticImageURL: String? = nil,
+        webcamVideoClipURL: String? = nil,
+        webcamBrandingOverlayURL: String? = nil
     ) {
         self.id = id; self.name = name
         self.sourceKindRaw = sourceKindRaw
@@ -78,6 +86,10 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.webcamShowBorder = webcamShowBorder
         self.webcamBorderColorHex = webcamBorderColorHex
         self.webcamBorderWidth = webcamBorderWidth
+        self.webcamSourceType = webcamSourceType
+        self.webcamStaticImageURL = webcamStaticImageURL
+        self.webcamVideoClipURL = webcamVideoClipURL
+        self.webcamBrandingOverlayURL = webcamBrandingOverlayURL
     }
 
     enum CodingKeys: String, CodingKey {
@@ -90,6 +102,8 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         case webcamShape, webcamAspectRatio, webcamBlurCustomImage
         case webcamShowBorder, webcamBorderColorHex, webcamBorderWidth
         case webcamShapeRaw, webcamAspectRatioRaw
+        case webcamSourceType, webcamSourceTypeRaw
+        case webcamStaticImageURL, webcamVideoClipURL, webcamBrandingOverlayURL
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -127,6 +141,11 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         try container.encodeIfPresent(webcamShowBorder, forKey: .webcamShowBorder)
         try container.encodeIfPresent(webcamBorderColorHex, forKey: .webcamBorderColorHex)
         try container.encodeIfPresent(webcamBorderWidth, forKey: .webcamBorderWidth)
+        try container.encodeIfPresent(webcamSourceType, forKey: .webcamSourceType)
+        try container.encodeIfPresent(webcamSourceType?.rawValue, forKey: .webcamSourceTypeRaw)
+        try container.encodeIfPresent(webcamStaticImageURL, forKey: .webcamStaticImageURL)
+        try container.encodeIfPresent(webcamVideoClipURL, forKey: .webcamVideoClipURL)
+        try container.encodeIfPresent(webcamBrandingOverlayURL, forKey: .webcamBrandingOverlayURL)
     }
 
     public init(from decoder: Decoder) throws {
@@ -200,6 +219,18 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.webcamShowBorder = try? container.decodeIfPresent(Bool.self, forKey: .webcamShowBorder)
         self.webcamBorderColorHex = try? container.decodeIfPresent(String.self, forKey: .webcamBorderColorHex)
         self.webcamBorderWidth = try? container.decodeIfPresent(Double.self, forKey: .webcamBorderWidth)
+
+        if let st = try? container.decodeIfPresent(WebcamSourceType.self, forKey: .webcamSourceType) {
+            self.webcamSourceType = st
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamSourceTypeRaw), let st = WebcamSourceType(rawValue: raw) {
+            self.webcamSourceType = st
+        } else {
+            self.webcamSourceType = nil
+        }
+
+        self.webcamStaticImageURL = try? container.decodeIfPresent(String.self, forKey: .webcamStaticImageURL)
+        self.webcamVideoClipURL = try? container.decodeIfPresent(String.self, forKey: .webcamVideoClipURL)
+        self.webcamBrandingOverlayURL = try? container.decodeIfPresent(String.self, forKey: .webcamBrandingOverlayURL)
     }
 }
 

@@ -30,7 +30,7 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
 
 ---
 
-## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.4.0)
+## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.5.0)
 
 - ✅ **Core Hardware Capture & Encoding (v0.1.0)**:
   - Display, single-window, specific application, and drag-to-select region capture via ScreenCaptureKit.
@@ -54,7 +54,7 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
   - Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume with PTS rewriting, `⌃⌥P` Facecam toggle, `⌃⌥K` keystrokes toggle).
   - In-app hotkey customization table in Settings with key capture, modifier translation, Carbon handler suspension/resume, `UserDefaults` persistence, and "Reset Hotkeys to Defaults".
 - ✅ **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (v0.3.0) — Phase 9**:
-  - 23 deterministic unit tests across 6 test suites at v0.3.0 (43 across 8 as of Phase 11) (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
+  - 23 deterministic unit tests across 6 test suites at v0.3.0 (47 across 8 as of v0.5.0) (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
   - Static zero-egress scanner and claims linter (`Scripts/audit-claims.py`) checking zero network imports, hotkeys, and TCC table parity.
   - GitHub Actions CI workflow (`.github/workflows/ci.yml`), CycloneDX 1.5 JSON SBOM (`bom.json`), and SLSA build provenance attestation.
 - ✅ **Post-Capture & Library Lossless Trim (v0.3.0) — Phase 10**:
@@ -68,6 +68,10 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
   - Standard system application menu bar commands (`⌘O` Open Video to Trim…, `⌘L` Recordings Library…, and "Open Recent" submenu).
   - Strict zero-ghost invariant dynamically excluding any files deleted from disk from recent history and library listings.
   - Visual callout and pulsing radar animation drawing immediate focus to the saved recording path.
+- ✅ **Extended PiP Shapes, Alternate Visual Sources & Transparent Branding (v0.5.0) — Phase 13**:
+  - Expanded geometric PiP outlines (Oval, Hexagon, Diamond, Heart, Star) with synchronized `CGPath` vector masks and border stroke layers inset by half border width.
+  - Camera-free alternative visual sources: Static Image Avatar (`.png`, `.jpg`, `.heic`, `.tiff`) and Looping Video File (`.mp4`, `.mov`, `.m4v`) via native Apple `AVPlayerItemVideoOutput` / `AVPlayerLooper`, routed through Neural Engine segmentation and backdrop framing.
+  - Transparent PNG branding and custom frame overlay composited upright (non-mirrored) over all PiP presenter modes with preset persistence.
 
 ---
 
@@ -84,7 +88,7 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | ✅ **Shipped** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | ✅ **Shipped** |
 | **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`MM:SS` / `HH:MM:SS`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | ✅ **Shipped** |
-| **Phase 13** | **Extended PiP Shapes, Alternate Visual Sources & Transparent Branding** | Presenter PiP & Branding (`v0.5.0`) | **1.** Expanded basic geometric shapes (Oval, Hexagon, Diamond, Heart, Star) with synchronized `CGPath` border strokes; **2.** Static image & looping video alternative visual sources substituting camera; **3.** Transparent PNG branding/frame overlay across all variants | 🔜 **Up Next (v0.5.0 Active)** |
+| **Phase 13** | **Extended PiP Shapes, Alternate Visual Sources & Transparent Branding** | Presenter PiP & Branding (`v0.5.0`) | **1.** Expanded basic geometric shapes (Oval, Hexagon, Diamond, Heart, Star) with synchronized `CGPath` border strokes; **2.** Static image & looping video alternative visual sources substituting camera; **3.** Transparent PNG branding/frame overlay across all variants | ✅ **Shipped** |
 
 ---
 
@@ -127,7 +131,7 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
 
 ---
 
-## 5. Recent & Upcoming Milestones (Phases 10–12)
+## 5. Recent & Shipped Milestones (Phases 10–13)
 
 ### Phase 10: Post-Capture & Posthumous Library Lossless Trim ✅ Shipped
 **Objective**: Eliminate dead air at the start and end of recordings without re-encoding or quality loss, both immediately after capture and posthumously from the Recordings Library or disk.
@@ -178,12 +182,12 @@ Rather than adopting heavy third-party broadcasting suites (such as OBS Studio s
   - Read-only capture telemetry: selected microphone device (active/disabled), system audio capture state, and active capture target.
   - In-flight overlay toggles: Quick toggle Facecam presenter PiP (`⌃⌥P`), keystroke overlay (`⌃⌥K`), and mouse click highlights.
 
-### Phase 13: Extended PiP Shapes, Alternate Visual Sources & Transparent Branding (v0.5.0) 🔜 Active
+### Phase 13: Extended PiP Shapes, Alternate Visual Sources & Transparent Branding (v0.5.0) ✅ Shipped
 **Objective**: Complete the presenter overlay suite with versatile geometric outlines, camera-free visual media sources (static images & looping video clips), and custom alpha-channel branding/frame overlays while maintaining strict zero-egress invariants and Apple native performance.
 
 - **Expanded Geometric PiP Outlines**:
   - Add basic geometric shapes beyond Circle and Rounded Rectangle:
-    - **Oval / Capsule**: Smooth oblong framing ideal for presenter busts and vertical avatars.
+    - **Oval / Ellipse**: Smooth curved framing ideal for presenter busts and vertical avatars.
     - **Hexagon**: Symmetrical 6-sided polygon offering a modern, technical aesthetic.
     - **Diamond / Rhombus**: Dynamic 4-point angular framing.
     - **Heart & Star**: Playful presentation shapes providing custom flair.

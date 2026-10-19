@@ -2,6 +2,57 @@
 
 > *Note: Mac Screen Record is a hard fork and continuation of Free Mac Screen Recorder by penguinpecker. All foundational upstream releases and git commit history are preserved in full under the MIT License.*
 
+## Mac Screen Record 0.5.0
+
+**Release:** `v0.5.0` (Build `5`)  
+**Date:** October 19, 2026  
+**Architectures:** Apple Silicon (`arm64`), Intel (`x86_64`)  
+**Minimum OS:** macOS 13.0 (Ventura) or later  
+
+---
+
+### What's New in 0.5.0
+
+#### 1. Expanded Geometric PiP Outlines (Phase 13)
+* **5 New Geometric Shapes**:
+  Added five native vector geometric shapes beyond Circle and Rounded Rectangle:
+  * **Oval / Ellipse**: Smooth curved framing ideal for presenter busts and vertical avatars.
+  * **Hexagon**: Symmetrical 6-sided polygon offering a modern, technical aesthetic.
+  * **Diamond / Rhombus**: Dynamic 4-point angular framing.
+  * **Heart & Star**: Expressive presentation shapes providing custom flair.
+* **Vector Path Inset Borders**:
+  PiP border strokes (`borderShapeLayer`) are mathematically inset by half border width (`borderWidth / 2`) so custom border colors and widths (up to 12px) cleanly track the exact perimeter without clipping against layer bounds.
+* **Aspect Ratio Adaptation**:
+  Shapes automatically adapt to framing constraints: shapes requiring uniform symmetry lock to 1:1, while compatible shapes support 1:1 square, 16:9 widescreen, and 4:3 standard aspect ratios.
+
+#### 2. Alternative Visual Media Sources (Virtual Presenter)
+* **Camera-Free Presenter PiP**:
+  Users can replace the live webcam feed with alternative local media sources:
+  * **Static Image Avatar**: Select any `.png`, `.jpg`, `.jpeg`, `.heic`, or `.tiff` photo or avatar from disk, rendered upright with native EXIF orientation awareness (`.applyOrientationProperty: true`).
+  * **Looping Video File**: Select any local `.mp4`, `.mov`, or `.m4v` video clip played on a seamless loop via native Apple `AVPlayerItemVideoOutput` and `AVPlayerLooper` with zero-network restrictions (`AVAssetReferenceRestrictions.forbidAll`).
+* **Hardware Decoupling**:
+  PiP can be toggled and previewed with static avatars or video loops even if physical camera permissions are not determined or denied, or when no camera hardware is connected.
+* **Downstream Neural Engine Compatibility**:
+  Static images and video loops seamlessly pass through Apple Neural Engine person segmentation, virtual backdrops, and silhouette cutout modes.
+* **Strict Source Filtering & Canvas Synchronization**:
+  `WebcamVideoProcessor` enforces strict source-type checking before queueing and during execution on `processingQueue`, with serial canvas clearing to prevent late camera frames from overwriting media sources.
+
+#### 3. Transparent Branding & Frame Overlays
+* **Custom Branding & Watermarks**:
+  Select an alpha-channel transparent image (`.png`) composited directly over the presenter window.
+* **Universal Mode Support**:
+  Watermark frames and branding badges render upright (non-mirrored) across all presenter variants (live camera, background blur, virtual backdrops, silhouette cutout, static avatars, and video loops).
+* **Preset Persistence**:
+  Branding overlays and visual media selections are saved and restored in capture presets.
+
+#### 4. Automated Testing & Verification
+* **47 Deterministic Unit Tests across 8 Suites**:
+  Expanded unit tests in `MacScreenRecordTests` covering source filtering, static-image frame delivery, negative frame dropping, geometric path creation, and preset persistence of media sources.
+* **CycloneDX 1.5 SBOM & Claims Audit**:
+  Regenerated `bom.json` for `v0.5.0` with verified zero-egress invariants and CodeRabbit review gate.
+
+---
+
 ## Mac Screen Record 0.4.0
 
 **Release:** `v0.4.0` (Build `4`)  

@@ -110,6 +110,7 @@ public final class RecordingViewModel: ObservableObject {
     private var recentsCancellable: AnyCancellable?
     private var permissionsCancellable: AnyCancellable?
     private var hotkeyCancellable: AnyCancellable?
+    private var webcamCancellable: AnyCancellable?
     public weak var recorderWindow: NSWindow?
     private var salvageTask: Task<Void, Never>?
 
@@ -197,6 +198,30 @@ public final class RecordingViewModel: ObservableObject {
     @Published public var webcamBorderWidth: Double = 2.0 {
         didSet { webcam.borderWidth = CGFloat(webcamBorderWidth) }
     }
+    @Published public var webcamSourceType: WebcamSourceType = .camera {
+        didSet {
+            guard oldValue != webcamSourceType else { return }
+            webcam.sourceType = webcamSourceType
+        }
+    }
+    @Published public var webcamStaticImageURL: URL? = nil {
+        didSet {
+            guard oldValue != webcamStaticImageURL else { return }
+            webcam.staticImageURL = webcamStaticImageURL
+        }
+    }
+    @Published public var webcamVideoClipURL: URL? = nil {
+        didSet {
+            guard oldValue != webcamVideoClipURL else { return }
+            webcam.videoClipURL = webcamVideoClipURL
+        }
+    }
+    @Published public var webcamBrandingOverlayURL: URL? = nil {
+        didSet {
+            guard oldValue != webcamBrandingOverlayURL else { return }
+            webcam.brandingOverlayURL = webcamBrandingOverlayURL
+        }
+    }
     @Published public var clickHighlightsEnabled: Bool = false
     @Published public var keystrokesEnabled: Bool = false
     public let highlightOverlaysSubject = PassthroughSubject<Void, Never>()
@@ -233,6 +258,10 @@ public final class RecordingViewModel: ObservableObject {
             || (active.webcamShowBorder != nil && active.webcamShowBorder != webcamShowBorder)
             || (active.webcamBorderColorHex != nil && active.webcamBorderColorHex != webcamBorderColor.hexString)
             || (active.webcamBorderWidth != nil && active.webcamBorderWidth != webcamBorderWidth)
+            || (active.webcamSourceType != nil && active.webcamSourceType != webcamSourceType)
+            || (active.webcamSourceType != nil && active.webcamStaticImageURL != webcamStaticImageURL?.path)
+            || (active.webcamSourceType != nil && active.webcamVideoClipURL != webcamVideoClipURL?.path)
+            || (active.webcamSourceType != nil && active.webcamBrandingOverlayURL != webcamBrandingOverlayURL?.path)
     }
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "ViewModel")
@@ -305,6 +334,12 @@ public final class RecordingViewModel: ObservableObject {
             if let width = defaultP.webcamBorderWidth {
                 self.webcamBorderWidth = width
             }
+            if let st = defaultP.webcamSourceType {
+                self.webcamStaticImageURL = defaultP.webcamStaticImageURL.map { URL(fileURLWithPath: $0) }
+                self.webcamVideoClipURL = defaultP.webcamVideoClipURL.map { URL(fileURLWithPath: $0) }
+                self.webcamBrandingOverlayURL = defaultP.webcamBrandingOverlayURL.map { URL(fileURLWithPath: $0) }
+                self.webcamSourceType = st
+            }
             // Note: overlay activation (webcam, click highlights, keystrokes) is safely deferred
             // to applyStartupDefaultOverlays(), called when the view appears.
         }
@@ -322,6 +357,10 @@ public final class RecordingViewModel: ObservableObject {
         webcam.showBorder = webcamShowBorder
         webcam.borderColor = webcamBorderColor
         webcam.borderWidth = CGFloat(webcamBorderWidth)
+        webcam.sourceType = webcamSourceType
+        webcam.staticImageURL = webcamStaticImageURL
+        webcam.videoClipURL = webcamVideoClipURL
+        webcam.brandingOverlayURL = webcamBrandingOverlayURL
 
         // Reload library if the user changes the output folder.
         self.settingsCancellable = settings.$outputFolder
@@ -351,6 +390,20 @@ public final class RecordingViewModel: ObservableObject {
             .sink { [weak self] _ in
                 Task { @MainActor in
                     await self?.loadAvailableContent()
+                }
+            }
+
+        // Wire webcam overlay errors to overlayError state
+        self.webcamCancellable = webcam.$lastError
+            .compactMap { $0 }
+            .sink { [weak self] err in
+                guard let self else { return }
+                self.overlayError = err
+                switch self.status {
+                case .idle, .ready, .error:
+                    self.status = .error(err)
+                default:
+                    break
                 }
             }
 
@@ -434,23 +487,37 @@ public final class RecordingViewModel: ObservableObject {
             webcamEnabled = false
             return
         }
-        guard let id = selectedWebcamDeviceID ?? devices.cameras.first?.id else {
-            let msg = "No camera available."
-            self.overlayError = msg
-            if case .recording = status {} else if case .paused = status {} else {
-                status = .error(msg)
+        let deviceID: String
+        if webcamSourceType == .camera {
+            guard let id = selectedWebcamDeviceID ?? devices.cameras.first?.id else {
+                let msg = "No camera available."
+                self.overlayError = msg
+                switch status {
+                case .idle, .ready, .error:
+                    status = .error(msg)
+                default:
+                    break
+                }
+                return
             }
-            return
+            deviceID = id
+        } else {
+            deviceID = selectedWebcamDeviceID ?? devices.cameras.first?.id ?? ""
         }
         do {
-            try await webcam.show(deviceID: id)
-            selectedWebcamDeviceID = id
+            try await webcam.show(deviceID: deviceID)
+            if !deviceID.isEmpty {
+                selectedWebcamDeviceID = deviceID
+            }
             webcamEnabled = true
         } catch {
             let msg = "Couldn't start webcam: \(error.localizedDescription)"
             self.overlayError = msg
-            if case .recording = status {} else if case .paused = status {} else {
+            switch status {
+            case .idle, .ready, .error:
                 status = .error(msg)
+            default:
+                break
             }
         }
     }
@@ -466,6 +533,35 @@ public final class RecordingViewModel: ObservableObject {
         if webcamBackgroundMode == .customImage {
             self.webcamBackgroundMode = .preset
         }
+    }
+
+    public func pickWebcamStaticImage() {
+        guard let url = webcam.pickStaticImage() else { return }
+        self.webcamStaticImageURL = url
+        self.webcamSourceType = .staticImage
+    }
+
+    public func clearWebcamStaticImage() {
+        self.webcamStaticImageURL = nil
+    }
+
+    public func pickWebcamVideoClip() {
+        guard let url = webcam.pickVideoClip() else { return }
+        self.webcamVideoClipURL = url
+        self.webcamSourceType = .videoClip
+    }
+
+    public func clearWebcamVideoClip() {
+        self.webcamVideoClipURL = nil
+    }
+
+    public func pickWebcamBrandingOverlay() {
+        guard let url = webcam.pickBrandingOverlay() else { return }
+        self.webcamBrandingOverlayURL = url
+    }
+
+    public func clearWebcamBrandingOverlay() {
+        self.webcamBrandingOverlayURL = nil
     }
 
     public func toggleClickHighlights() {
@@ -535,7 +631,11 @@ public final class RecordingViewModel: ObservableObject {
             webcamBlurCustomImage: webcamBlurCustomImage,
             webcamShowBorder: webcamShowBorder,
             webcamBorderColorHex: webcamBorderColor.hexString,
-            webcamBorderWidth: webcamBorderWidth
+            webcamBorderWidth: webcamBorderWidth,
+            webcamSourceType: webcamSourceType,
+            webcamStaticImageURL: webcamStaticImageURL?.path,
+            webcamVideoClipURL: webcamVideoClipURL?.path,
+            webcamBrandingOverlayURL: webcamBrandingOverlayURL?.path
         )
     }
 
@@ -626,6 +726,12 @@ public final class RecordingViewModel: ObservableObject {
         }
         if let width = preset.webcamBorderWidth {
             self.webcamBorderWidth = width
+        }
+        if let st = preset.webcamSourceType {
+            self.webcamStaticImageURL = preset.webcamStaticImageURL.map { URL(fileURLWithPath: $0) }
+            self.webcamVideoClipURL = preset.webcamVideoClipURL.map { URL(fileURLWithPath: $0) }
+            self.webcamBrandingOverlayURL = preset.webcamBrandingOverlayURL.map { URL(fileURLWithPath: $0) }
+            self.webcamSourceType = st
         }
 
         if preset.clickHighlightsEnabled != clickHighlightsEnabled {

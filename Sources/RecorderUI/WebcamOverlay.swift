@@ -1,6 +1,7 @@
 @preconcurrency import AVFoundation
 import AppKit
 import CoreGraphics
+import CoreImage
 import OSLog
 import QuartzCore
 import UniformTypeIdentifiers
@@ -34,7 +35,7 @@ public enum WebcamSize: String, Codable, CaseIterable, Identifiable, Sendable {
 
     /// Frame dimensions calculated from chosen shape and aspect ratio.
     public func dimensions(shape: WebcamShape, aspectRatio: WebcamAspectRatio = .square) -> CGSize {
-        guard shape == .roundedRect else {
+        guard shape.supportsAspectRatio else {
             return pixels
         }
         switch aspectRatio {
@@ -68,6 +69,34 @@ public enum WebcamSize: String, Codable, CaseIterable, Identifiable, Sendable {
 public final class WebcamOverlayController: ObservableObject {
 
     @Published public private(set) var isVisible: Bool = false
+    @Published public var lastError: String? = nil
+    @Published public var sourceType: WebcamSourceType = .camera {
+        didSet {
+            guard oldValue != sourceType else { return }
+            updateSource()
+        }
+    }
+    @Published public var staticImageURL: URL? = nil {
+        didSet {
+            guard oldValue != staticImageURL else { return }
+            cachedStaticCIImage = nil
+            failedStaticImageURL = nil
+            if sourceType == .staticImage { updateSource() }
+        }
+    }
+    @Published public var videoClipURL: URL? = nil {
+        didSet {
+            guard oldValue != videoClipURL else { return }
+            if sourceType == .videoClip { updateSource() }
+        }
+    }
+    @Published public var brandingOverlayURL: URL? = nil {
+        didSet {
+            guard oldValue != brandingOverlayURL else { return }
+            videoProcessor.brandingOverlayURL = brandingOverlayURL
+            refreshStaticFrameIfNeeded()
+        }
+    }
     @Published public var corner: WebcamCorner = .bottomRight {
         didSet { reposition() }
     }
@@ -76,18 +105,23 @@ public final class WebcamOverlayController: ObservableObject {
     }
     @Published public var shape: WebcamShape = .circle {
         didSet {
-            videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
+            videoProcessor.aspectRatio = shape.supportsAspectRatio ? aspectRatio : .square
             reposition()
+            refreshStaticFrameIfNeeded()
         }
     }
     @Published public var aspectRatio: WebcamAspectRatio = .square {
         didSet {
-            videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
+            videoProcessor.aspectRatio = shape.supportsAspectRatio ? aspectRatio : .square
             reposition()
+            refreshStaticFrameIfNeeded()
         }
     }
     @Published public var mirrored: Bool = true {
-        didSet { videoProcessor.mirrored = mirrored }
+        didSet {
+            videoProcessor.mirrored = mirrored
+            refreshStaticFrameIfNeeded()
+        }
     }
     @Published public var targetDisplayID: CGDirectDisplayID? = nil {
         didSet { reposition() }
@@ -99,19 +133,32 @@ public final class WebcamOverlayController: ObservableObject {
             if let host = window?.contentView {
                 updateHostStyling(host: host, size: currentDimensions)
             }
+            refreshStaticFrameIfNeeded()
         }
     }
     @Published public var blurStrength: WebcamBlurStrength = .balanced {
-        didSet { videoProcessor.blurStrength = blurStrength }
+        didSet {
+            videoProcessor.blurStrength = blurStrength
+            refreshStaticFrameIfNeeded()
+        }
     }
     @Published public var blurCustomImage: Bool = false {
-        didSet { videoProcessor.blurCustomImage = blurCustomImage }
+        didSet {
+            videoProcessor.blurCustomImage = blurCustomImage
+            refreshStaticFrameIfNeeded()
+        }
     }
     @Published public var backgroundPreset: WebcamBackgroundPreset = .warmStudio {
-        didSet { videoProcessor.backgroundPreset = backgroundPreset }
+        didSet {
+            videoProcessor.backgroundPreset = backgroundPreset
+            refreshStaticFrameIfNeeded()
+        }
     }
     @Published public var customImageURL: URL? = nil {
-        didSet { videoProcessor.customImageURL = customImageURL }
+        didSet {
+            videoProcessor.customImageURL = customImageURL
+            refreshStaticFrameIfNeeded()
+        }
     }
     @Published public var showBorder: Bool = true {
         didSet {
@@ -150,6 +197,11 @@ public final class WebcamOverlayController: ObservableObject {
     private var window: WebcamPanel?
     private var metalView: WebcamMetalView?
     private var currentDeviceID: String?
+    private var borderShapeLayer: CAShapeLayer?
+    private var maskShapeLayer: CAShapeLayer?
+    private var mediaLoopPlayer: WebcamMediaLoopPlayer?
+    private var cachedStaticCIImage: CIImage?
+    private var failedStaticImageURL: URL?
 
     public init() {
         videoProcessor.mirrored = mirrored
@@ -158,7 +210,13 @@ public final class WebcamOverlayController: ObservableObject {
         videoProcessor.blurCustomImage = blurCustomImage
         videoProcessor.backgroundPreset = backgroundPreset
         videoProcessor.customImageURL = customImageURL
-        videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
+        videoProcessor.brandingOverlayURL = brandingOverlayURL
+        videoProcessor.aspectRatio = shape.supportsAspectRatio ? aspectRatio : .square
+        videoProcessor.onAssetLoaded = { [weak self] in
+            DispatchQueue.main.async {
+                self?.refreshStaticFrameIfNeeded()
+            }
+        }
     }
 
     /// CGWindowID of the overlay panel — used by SCContentFilter exceptions.
@@ -168,62 +226,178 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     public func show(deviceID: String) async throws {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            break
-        case .notDetermined:
-            let granted = await AVCaptureDevice.requestAccess(for: .video)
-            guard granted else {
+        currentDeviceID = deviceID
+
+        var cameraInput: AVCaptureDeviceInput?
+        if sourceType == .camera {
+            switch AVCaptureDevice.authorizationStatus(for: .video) {
+            case .authorized:
+                break
+            case .notDetermined:
+                let granted = await AVCaptureDevice.requestAccess(for: .video)
+                guard granted else {
+                    throw NSError(
+                        domain: "Webcam",
+                        code: 2,
+                        userInfo: [NSLocalizedDescriptionKey: "Camera access was not granted. Enable it in System Settings › Privacy & Security › Camera."]
+                    )
+                }
+            case .denied, .restricted:
                 throw NSError(
                     domain: "Webcam",
                     code: 2,
-                    userInfo: [NSLocalizedDescriptionKey: "Camera access was not granted. Enable it in System Settings › Privacy & Security › Camera."]
+                    userInfo: [NSLocalizedDescriptionKey: "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."]
                 )
+            @unknown default:
+                break
             }
-        case .denied, .restricted:
-            throw NSError(
-                domain: "Webcam",
-                code: 2,
-                userInfo: [NSLocalizedDescriptionKey: "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."]
-            )
-        @unknown default:
-            break
+            guard let device = AVCaptureDevice(uniqueID: deviceID) else {
+                throw NSError(domain: "Webcam", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "Camera not found"])
+            }
+            cameraInput = try AVCaptureDeviceInput(device: device)
         }
-        guard let device = AVCaptureDevice(uniqueID: deviceID) else {
-            throw NSError(domain: "Webcam", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Camera not found"])
-        }
-        let input = try AVCaptureDeviceInput(device: device)
+
+        // Present panel ONLY after camera authorization and device lookup succeed (or for non-camera sources)
         if window == nil {
             let panel = makePanel()
             self.window = panel
         }
-        currentDeviceID = deviceID
-        let session = captureSession
-        let output = videoOutput
-        let processor = videoProcessor
-        let vQueue = videoQueue
-        sessionQueue.async {
-            Self.applySessionConfiguration(
-                captureSession: session,
-                videoOutput: output,
-                videoProcessor: processor,
-                videoQueue: vQueue,
-                input: input
-            )
-            session.startRunning()
-        }
         reposition()
         window?.orderFront(nil)
         isVisible = true
-        log.info("Webcam overlay shown")
+        videoProcessor.acceptedSource = sourceType
+
+        if let input = cameraInput {
+            let session = captureSession
+            let output = videoOutput
+            let processor = videoProcessor
+            let vQueue = videoQueue
+            sessionQueue.async {
+                Self.applySessionConfiguration(
+                    captureSession: session,
+                    videoOutput: output,
+                    videoProcessor: processor,
+                    videoQueue: vQueue,
+                    input: input
+                )
+                session.startRunning()
+            }
+        } else {
+            updateSource()
+        }
+        log.info("Webcam overlay shown (source: \(self.sourceType.rawValue, privacy: .public))")
     }
 
     public func hide() {
         let session = captureSession
         sessionQueue.async { session.stopRunning() }
+        mediaLoopPlayer?.stop()
+        mediaLoopPlayer = nil
+        clearCanvas()
         window?.orderOut(nil)
         isVisible = false
+    }
+
+    private func clearCanvas() {
+        videoProcessor.clearCanvas(size: currentDimensions)
+    }
+
+    private func refreshStaticFrameIfNeeded() {
+        guard isVisible, sourceType == .staticImage else { return }
+        if let img = cachedStaticCIImage {
+            videoProcessor.processImage(img)
+        } else if let url = staticImageURL, url != failedStaticImageURL {
+            if let img = CIImage(contentsOf: url, options: [.applyOrientationProperty: true]) {
+                cachedStaticCIImage = img
+                failedStaticImageURL = nil
+                videoProcessor.processImage(img)
+            } else {
+                failedStaticImageURL = url
+                lastError = "Couldn't load avatar image \(url.lastPathComponent)."
+                clearCanvas()
+            }
+        }
+    }
+
+    private func updateSource() {
+        guard isVisible else { return }
+        switch sourceType {
+        case .camera:
+            videoProcessor.acceptedSource = .camera
+            mediaLoopPlayer?.stop()
+            mediaLoopPlayer = nil
+            let devID = (currentDeviceID?.isEmpty == false) ? currentDeviceID! : (AVCaptureDevice.DiscoverySession(deviceTypes: [.builtInWideAngleCamera, .externalUnknown], mediaType: .video, position: .unspecified).devices.first?.uniqueID ?? "")
+            guard !devID.isEmpty else {
+                lastError = "No camera available."
+                clearCanvas()
+                return
+            }
+            let authStatus = AVCaptureDevice.authorizationStatus(for: .video)
+            if authStatus == .notDetermined {
+                clearCanvas()
+                Task { @MainActor [weak self] in
+                    let granted = await AVCaptureDevice.requestAccess(for: .video)
+                    guard let self, self.sourceType == .camera else { return }
+                    if granted {
+                        self.updateSource()
+                    } else {
+                        self.lastError = "Camera access was not granted. Enable it in System Settings › Privacy & Security › Camera."
+                    }
+                }
+                return
+            }
+            guard authStatus == .authorized else {
+                lastError = "Camera access is denied. Enable it in System Settings › Privacy & Security › Camera."
+                clearCanvas()
+                return
+            }
+            currentDeviceID = devID
+            do {
+                try setDevice(devID)
+                let session = captureSession
+                sessionQueue.async {
+                    if !session.isRunning { session.startRunning() }
+                }
+            } catch {
+                lastError = "Couldn't start webcam: \(error.localizedDescription)"
+                clearCanvas()
+            }
+        case .staticImage:
+            videoProcessor.acceptedSource = .staticImage
+            let session = captureSession
+            sessionQueue.async {
+                if session.isRunning { session.stopRunning() }
+            }
+            mediaLoopPlayer?.stop()
+            mediaLoopPlayer = nil
+            refreshStaticFrameIfNeeded()
+            if cachedStaticCIImage == nil {
+                clearCanvas()
+            }
+        case .videoClip:
+            videoProcessor.acceptedSource = .videoClip
+            let session = captureSession
+            sessionQueue.async {
+                if session.isRunning { session.stopRunning() }
+            }
+            cachedStaticCIImage = nil
+            clearCanvas()
+            if let url = videoClipURL {
+                let player = mediaLoopPlayer ?? WebcamMediaLoopPlayer(processor: videoProcessor)
+                player.onError = { [weak self] errorMessage in
+                    Task { @MainActor [weak self] in
+                        self?.lastError = errorMessage
+                        self?.clearCanvas()
+                    }
+                }
+                mediaLoopPlayer = player
+                player.start(url: url)
+            } else {
+                mediaLoopPlayer?.stop()
+                mediaLoopPlayer = nil
+            }
+        }
     }
 
     public func setDevice(_ deviceID: String) throws {
@@ -255,7 +429,52 @@ public final class WebcamOverlayController: ObservableObject {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.image]
-        panel.message = "Choose a background image for webcam PIP"
+        panel.message = "Choose a background image for presenter PiP"
+        panel.prompt = "Select"
+        if panel.runModal() == .OK, let url = panel.url {
+            return url
+        }
+        return nil
+    }
+
+    /// Prompts the user to select a static image avatar from disk.
+    public func pickStaticImage() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.image]
+        panel.message = "Choose a static image avatar for presenter PiP"
+        panel.prompt = "Select"
+        if panel.runModal() == .OK, let url = panel.url {
+            return url
+        }
+        return nil
+    }
+
+    /// Prompts the user to select a video clip to loop as presenter PiP.
+    public func pickVideoClip() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.mpeg4Movie, .quickTimeMovie, .movie]
+        panel.message = "Choose a video file to loop for presenter PiP"
+        panel.prompt = "Select"
+        if panel.runModal() == .OK, let url = panel.url {
+            return url
+        }
+        return nil
+    }
+
+    /// Prompts the user to select an alpha-channel transparent image (PNG) for branding/frame overlay.
+    public func pickBrandingOverlay() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.png, .image]
+        panel.message = "Choose a transparent branding or frame overlay image (PNG)"
         panel.prompt = "Select"
         if panel.runModal() == .OK, let url = panel.url {
             return url
@@ -323,33 +542,43 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     private func updateHostStyling(host: NSView, size: CGSize) {
-        let isCircle = (shape == .circle)
-        let radius: CGFloat = isCircle ? min(size.width, size.height) / 2 : 18
-        host.layer?.cornerRadius = radius
-        if #available(macOS 10.15, *) {
-            host.layer?.cornerCurve = isCircle ? .circular : .continuous
+        let bounds = CGRect(origin: .zero, size: size)
+        let shapePath = shape.path(in: bounds)
+
+        // Mask metalView to exact vector shape path
+        if maskShapeLayer == nil {
+            let mask = CAShapeLayer()
+            self.maskShapeLayer = mask
+            metalView?.layer?.mask = mask
+        }
+        maskShapeLayer?.frame = bounds
+        maskShapeLayer?.path = shapePath
+
+        // Draw vector border stroke following exact perimeter
+        if borderShapeLayer == nil {
+            let border = CAShapeLayer()
+            border.fillColor = nil
+            border.lineJoin = .round
+            border.lineCap = .round
+            self.borderShapeLayer = border
+            host.layer?.addSublayer(border)
+        }
+        borderShapeLayer?.frame = bounds
+        let inset = (showBorder && borderWidth > 0) ? borderWidth / 2 : 0
+        borderShapeLayer?.path = shape.path(in: bounds.insetBy(dx: inset, dy: inset))
+        if showBorder && borderWidth > 0 {
+            borderShapeLayer?.lineWidth = borderWidth
+            borderShapeLayer?.strokeColor = borderColor
+        } else {
+            borderShapeLayer?.lineWidth = 0
+            borderShapeLayer?.strokeColor = nil
         }
 
-        if showBorder && borderWidth > 0 {
-            host.layer?.borderColor = borderColor
-            host.layer?.borderWidth = borderWidth
-            host.layer?.masksToBounds = true
-            metalView?.layer?.masksToBounds = true
-        } else {
-            host.layer?.borderColor = nil
-            host.layer?.borderWidth = 0
-            if backgroundMode == .cutout {
-                host.layer?.masksToBounds = false
-                metalView?.layer?.masksToBounds = false
-            } else {
-                host.layer?.masksToBounds = true
-                metalView?.layer?.masksToBounds = true
-            }
-        }
-        metalView?.layer?.cornerRadius = radius
-        if #available(macOS 10.15, *) {
-            metalView?.layer?.cornerCurve = isCircle ? .circular : .continuous
-        }
+        host.layer?.cornerRadius = 0
+        host.layer?.borderWidth = 0
+        metalView?.layer?.cornerRadius = 0
+        metalView?.layer?.borderWidth = 0
+
         window?.invalidateShadow()
     }
 
@@ -403,4 +632,112 @@ public final class WebcamOverlayController: ObservableObject {
 private final class WebcamPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+}
+
+/// Plays a local video file on an infinite loop, extracting BGRA pixel buffers via `AVPlayerItemVideoOutput`
+/// and forwarding them directly to `WebcamVideoProcessor`.
+private final class WebcamMediaLoopPlayer: NSObject, @unchecked Sendable {
+    var onError: (@Sendable (String) -> Void)?
+
+    private var player: AVQueuePlayer?
+    private var looper: AVPlayerLooper?
+    private var outputs: [ObjectIdentifier: AVPlayerItemVideoOutput] = [:]
+    private var displayTimer: DispatchSourceTimer?
+    private weak var processor: WebcamVideoProcessor?
+    private let processingQueue = DispatchQueue(label: "com.macscreenrecord.webcam.videoloop", qos: .userInteractive)
+    private var itemObservation: NSKeyValueObservation?
+    private var looperObservation: NSKeyValueObservation?
+
+    init(processor: WebcamVideoProcessor) {
+        self.processor = processor
+        super.init()
+    }
+
+    func start(url: URL) {
+        stop()
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            onError?("Video clip file not found at \(url.lastPathComponent).")
+            return
+        }
+
+        let asset = AVURLAsset(url: url, options: [
+            AVURLAssetReferenceRestrictionsKey: NSNumber(value: AVAssetReferenceRestrictions.forbidAll.rawValue)
+        ])
+        let templateItem = AVPlayerItem(asset: asset)
+
+        itemObservation = templateItem.observe(\.status, options: [.new]) { [weak self] item, _ in
+            if item.status == .failed {
+                let errDesc = item.error?.localizedDescription ?? "Playback error"
+                self?.onError?("Couldn't play video clip \(url.lastPathComponent): \(errDesc)")
+            }
+        }
+
+        let attrs: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: Int(kCVPixelFormatType_32BGRA)
+        ]
+        let queuePlayer = AVQueuePlayer()
+        queuePlayer.isMuted = true
+        let looper = AVPlayerLooper(player: queuePlayer, templateItem: templateItem)
+
+        looperObservation = looper.observe(\.status, options: [.new]) { [weak self] lpr, _ in
+            if lpr.status == .failed {
+                let errDesc = lpr.error?.localizedDescription ?? "Loop playback failed"
+                self?.onError?("Couldn't loop video clip \(url.lastPathComponent): \(errDesc)")
+            }
+        }
+
+        var outputsMap: [ObjectIdentifier: AVPlayerItemVideoOutput] = [:]
+        for item in looper.loopingPlayerItems {
+            let out = AVPlayerItemVideoOutput(pixelBufferAttributes: attrs)
+            item.add(out)
+            outputsMap[ObjectIdentifier(item)] = out
+        }
+        self.looper = looper
+        self.player = queuePlayer
+
+        let timer = DispatchSource.makeTimerSource(queue: processingQueue)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(33))
+        timer.setEventHandler { [weak self, weak queuePlayer] in
+            guard let self = self, let item = queuePlayer?.currentItem else { return }
+            let key = ObjectIdentifier(item)
+            let out: AVPlayerItemVideoOutput
+            if let existing = self.outputs[key] {
+                out = existing
+            } else {
+                let created = AVPlayerItemVideoOutput(pixelBufferAttributes: attrs)
+                item.add(created)
+                self.outputs[key] = created
+                return
+            }
+            let itemTime = out.itemTime(forHostTime: CACurrentMediaTime())
+            if out.hasNewPixelBuffer(forItemTime: itemTime),
+               let pixelBuffer = out.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil) {
+                self.processor?.processPixelBuffer(pixelBuffer, from: .videoClip)
+            }
+        }
+        self.displayTimer = timer
+
+        // Serial queue: runs after stop()'s removeAll(), before the first tick.
+        processingQueue.async { [weak self] in
+            self?.outputs = outputsMap
+            timer.resume()
+        }
+        queuePlayer.play()
+    }
+
+    func stop() {
+        itemObservation?.invalidate()
+        itemObservation = nil
+        looperObservation?.invalidate()
+        looperObservation = nil
+        displayTimer?.cancel()
+        displayTimer = nil
+        player?.pause()
+        player = nil
+        looper = nil
+        processingQueue.async { [weak self] in
+            self?.outputs.removeAll()
+        }
+    }
 }

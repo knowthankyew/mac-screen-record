@@ -227,6 +227,18 @@ struct MacScreenRecordTestRunner {
         await run("PrivacyAndOverlayTests", "testWebcamVideoProcessorCenteredCropRectMath") {
             try privacySuite.testWebcamVideoProcessorCenteredCropRectMath()
         }
+        await run("PrivacyAndOverlayTests", "testWebcamShapePathGenerationAndAspectSupport") {
+            try privacySuite.testWebcamShapePathGenerationAndAspectSupport()
+        }
+        await run("PrivacyAndOverlayTests", "testWebcamSourceTypeCodableAndIcons") {
+            try privacySuite.testWebcamSourceTypeCodableAndIcons()
+        }
+        await run("PrivacyAndOverlayTests", "testPresetWebcamSourceAndBrandingPersistence") {
+            try privacySuite.testPresetWebcamSourceAndBrandingPersistence()
+        }
+        await run("PrivacyAndOverlayTests", "testWebcamVideoProcessorProcessImageAndBrandingOverlay") {
+            try privacySuite.testWebcamVideoProcessorProcessImageAndBrandingOverlay()
+        }
 
         let evidenceSuite = EvidenceSealTests()
         await run("EvidenceSealTests", "testStreamingHashKnownVectors") {

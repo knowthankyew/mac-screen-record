@@ -11,7 +11,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.4.0"):
+def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.5.0"):
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch:
         try:
@@ -149,5 +149,5 @@ def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.4.0")
 if __name__ == "__main__":
     out = sys.argv[1] if len(sys.argv) > 1 else "dist/bom.json"
     arch = sys.argv[2] if len(sys.argv) > 2 else "arm64"
-    ver = sys.argv[3] if len(sys.argv) > 3 else "0.4.0"
+    ver = sys.argv[3] if len(sys.argv) > 3 else "0.5.0"
     generate_sbom(out, arch, ver)

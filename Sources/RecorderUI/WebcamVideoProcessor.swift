@@ -22,6 +22,7 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         var blurCustomImage: Bool = false
         var backgroundPreset: WebcamBackgroundPreset = .warmStudio
         var customImageURL: URL? = nil
+        var brandingOverlayURL: URL? = nil
         var mirrored: Bool = true
         var aspectRatio: WebcamAspectRatio = .square
     }
@@ -30,9 +31,15 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     private let segmentationRequest: VNGeneratePersonSegmentationRequest
     private let prepareContext = CIContext(options: [.cacheIntermediates: false])
     private let lock = NSLock()
+    private let processingQueue = DispatchQueue(label: "com.macscreenrecord.webcam.processing", qos: .userInteractive)
+
+    public var onAssetLoaded: (@Sendable () -> Void)?
+    public var onFrameProcessed: (@Sendable (CIImage) -> Void)?
 
     // Guarded by lock
     private var config = Config()
+    private var activeSource: WebcamSourceType = .camera
+    private var frameInFlight = false
     private var cachedCustomImage: CIImage?
     private var cachedCustomImageURL: URL?
     private var cachedPreparedCustomImage: CIImage?
@@ -40,11 +47,18 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     private var lastPreparedCustomImageSize: CGSize = .zero
     private var lastPreparedBlurCustomImage: Bool = false
     private var lastPreparedBlurStrength: WebcamBlurStrength = .balanced
+    private var cachedBrandingImage: CIImage?
+    private var cachedBrandingImageURL: URL?
     private var cachedPresetImage: CIImage?
     private var lastCachedPreset: WebcamBackgroundPreset?
     private var lastCachedPresetSize: CGSize = .zero
 
     // Thread-safe public properties
+    public var acceptedSource: WebcamSourceType {
+        get { lock.lock(); defer { lock.unlock() }; return activeSource }
+        set { lock.lock(); activeSource = newValue; lock.unlock() }
+    }
+
     public var backgroundMode: WebcamBackgroundMode {
         get { lock.lock(); defer { lock.unlock() }; return config.mode }
         set { lock.lock(); config.mode = newValue; lock.unlock() }
@@ -83,6 +97,11 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     public var customImageURL: URL? {
         get { lock.lock(); defer { lock.unlock() }; return config.customImageURL }
         set { setCustomImageURL(newValue) }
+    }
+
+    public var brandingOverlayURL: URL? {
+        get { lock.lock(); defer { lock.unlock() }; return config.brandingOverlayURL }
+        set { setBrandingOverlayURL(newValue) }
     }
 
     public var mirrored: Bool {
@@ -130,8 +149,8 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
-            guard let loaded = CIImage(contentsOf: targetURL) else {
-                self.log.error("Failed to load custom background image from \(targetURL.path, privacy: .public)")
+            guard let loaded = CIImage(contentsOf: targetURL, options: [.applyOrientationProperty: true]) else {
+                self.log.error("Failed to load custom background image from \(targetURL.lastPathComponent, privacy: .public)")
                 return
             }
             self.lock.lock()
@@ -142,10 +161,43 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
                 self.cachedPreparedCustomImage = nil
             }
             self.lock.unlock()
+            self.onAssetLoaded?()
+        }
+    }
+
+    /// Updates the transparent branding overlay URL and triggers eager asynchronous loading.
+    public func setBrandingOverlayURL(_ url: URL?) {
+        lock.lock()
+        guard config.brandingOverlayURL != url else {
+            lock.unlock()
+            return
+        }
+        config.brandingOverlayURL = url
+        cachedBrandingImage = nil
+        cachedBrandingImageURL = nil
+        lock.unlock()
+
+        guard let targetURL = url else { return }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            guard let loaded = CIImage(contentsOf: targetURL, options: [.applyOrientationProperty: true]) else {
+                self.log.error("Failed to load branding overlay image from \(targetURL.lastPathComponent, privacy: .public)")
+                return
+            }
+            self.lock.lock()
+            if self.config.brandingOverlayURL == targetURL {
+                self.cachedBrandingImage = loaded
+                self.cachedBrandingImageURL = targetURL
+            }
+            self.lock.unlock()
+            self.onAssetLoaded?()
         }
     }
 
     // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+
+    // MARK: - Frame Processing Entry Points
 
     public func captureOutput(
         _ output: AVCaptureOutput,
@@ -153,16 +205,83 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         from connection: AVCaptureConnection
     ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        processPixelBuffer(pixelBuffer, from: .camera)
+    }
 
-        let sourceImage = CIImage(cvPixelBuffer: pixelBuffer)
+    /// Process a frame directly from a CVPixelBuffer (e.g. from AVCaptureSession or looping video playback).
+    public func processPixelBuffer(_ pixelBuffer: CVPixelBuffer, from source: WebcamSourceType = .camera) {
+        lock.lock()
+        guard activeSource == source else {
+            lock.unlock()
+            return
+        }
+        if frameInFlight {
+            lock.unlock()
+            return
+        }
+        frameInFlight = true
+        lock.unlock()
+
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+            defer {
+                self.lock.lock()
+                self.frameInFlight = false
+                self.lock.unlock()
+            }
+            self.lock.lock()
+            let matchesSource = (self.activeSource == source)
+            self.lock.unlock()
+            guard matchesSource else { return }
+
+            let sourceImage = CIImage(cvPixelBuffer: pixelBuffer)
+            self.processSource(sourceImage: sourceImage, pixelBufferForVision: pixelBuffer, source: source)
+        }
+    }
+
+    /// Process a static image directly (e.g. user-selected static avatar/profile image).
+    public func processImage(_ sourceImage: CIImage) {
+        lock.lock()
+        guard activeSource == .staticImage else {
+            lock.unlock()
+            return
+        }
+        lock.unlock()
+
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+            self.lock.lock()
+            let matchesSource = (self.activeSource == .staticImage)
+            self.lock.unlock()
+            guard matchesSource else { return }
+
+            self.processSource(sourceImage: sourceImage, pixelBufferForVision: nil, source: .staticImage)
+        }
+    }
+
+    /// Clears the rendered frame on the serial processing queue, ensuring it runs strictly after any in-flight frames.
+    public func clearCanvas(size: CGSize) {
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+            let clear = CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0))
+                .cropped(to: CGRect(origin: .zero, size: size))
+            self.deliverFrame(clear)
+        }
+    }
+
+    private func processSource(sourceImage: CIImage, pixelBufferForVision: CVPixelBuffer?, source: WebcamSourceType) {
         let sourceExtent = sourceImage.extent
         guard sourceExtent.width > 0 && sourceExtent.height > 0 else { return }
 
         // Snapshot all configuration and cached assets once at the top.
         // No further locks are acquired during frame processing or rendering.
         lock.lock()
-        let snapConfig = self.config
+        var snapConfig = self.config
+        if source != .camera {
+            snapConfig.mirrored = false
+        }
         let snapCustomImage = self.cachedCustomImage
+        let snapBrandingImage = self.cachedBrandingImage
         lock.unlock()
 
         let cropRect = Self.centeredCropRect(source: sourceExtent.size, ratio: snapConfig.aspectRatio.ratio)
@@ -182,7 +301,7 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             .cropped(to: cropRect)
             .transformed(by: CGAffineTransform(translationX: -cropRect.origin.x, y: -cropRect.origin.y))
 
-        let finalImage: CIImage
+        var finalImage: CIImage
 
         if snapConfig.mode == .none {
             // Passthrough with zero segmentation overhead
@@ -192,19 +311,31 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             // `segmentationRequest` is sequentially reused across frames. This is safe
             // and supported by Vision because all `handler.perform` calls and subsequent
             // reads from `segmentationRequest.results` execute serially on `videoQueue`.
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+            let handler: VNImageRequestHandler
+            if let pBuf = pixelBufferForVision {
+                handler = VNImageRequestHandler(cvPixelBuffer: pBuf, options: [:])
+            } else {
+                handler = VNImageRequestHandler(ciImage: sourceImage, options: [:])
+            }
+
             do {
                 try handler.perform([segmentationRequest])
             } catch {
                 log.error("Person segmentation failed: \(error.localizedDescription, privacy: .public)")
                 finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
-                renderView?.update(image: finalImage)
+                if let snapBranding = snapBrandingImage {
+                    finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
+                }
+                deliverFrame(finalImage)
                 return
             }
 
             guard let maskPixelBuffer = segmentationRequest.results?.first?.pixelBuffer else {
                 finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
-                renderView?.update(image: finalImage)
+                if let snapBranding = snapBrandingImage {
+                    finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
+                }
+                deliverFrame(finalImage)
                 return
             }
 
@@ -236,7 +367,36 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             finalImage = applyMirror(image: composited, width: finalCropWidth, mirrored: snapConfig.mirrored)
         }
 
+        // Composite transparent branding overlay (if configured) on top of the mirrored presenter feed
+        if let snapBranding = snapBrandingImage {
+            finalImage = applyBrandingOverlay(image: finalImage, overlay: snapBranding, size: cropSize)
+        }
+
+        deliverFrame(finalImage)
+    }
+
+    private func deliverFrame(_ finalImage: CIImage) {
         renderView?.update(image: finalImage)
+        onFrameProcessed?(finalImage)
+    }
+
+    private func applyBrandingOverlay(image: CIImage, overlay: CIImage, size: CGSize) -> CIImage {
+        let extent = overlay.extent
+        guard extent.width > 0 && extent.height > 0 && size.width > 0 && size.height > 0 else {
+            return image
+        }
+        let scale = min(size.width / extent.width, size.height / extent.height)
+        let scaled = overlay
+            .transformed(by: CGAffineTransform(translationX: -extent.origin.x, y: -extent.origin.y))
+            .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let offsetX = max(0, (size.width - scaled.extent.width) / 2.0)
+        let offsetY = max(0, (size.height - scaled.extent.height) / 2.0)
+        let positioned = scaled.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
+
+        let filter = CIFilter.sourceOverCompositing()
+        filter.inputImage = positioned
+        filter.backgroundImage = image
+        return filter.outputImage ?? image
     }
 
     // MARK: - Helpers

@@ -324,14 +324,41 @@ public struct MainView: View {
                 Spacer()
             }
             if vm.webcamEnabled {
-                Picker("Camera", selection: $vm.selectedWebcamDeviceID) {
-                    ForEach(vm.devices.cameras) { c in
-                        Text(c.localizedName).tag(String?.some(c.id))
+                Picker("Visual source", selection: $vm.webcamSourceType) {
+                    ForEach(WebcamSourceType.allCases) { type in
+                        Label(type.displayName, systemImage: type.systemImage).tag(type)
                     }
                 }
-                .onChange(of: vm.selectedWebcamDeviceID) { newID in
-                    if let id = newID { try? vm.webcam.setDevice(id) }
+                .pickerStyle(.segmented)
+
+                switch vm.webcamSourceType {
+                case .camera:
+                    Picker("Camera", selection: $vm.selectedWebcamDeviceID) {
+                        ForEach(vm.devices.cameras) { c in
+                            Text(c.localizedName).tag(String?.some(c.id))
+                        }
+                    }
+                    .onChange(of: vm.selectedWebcamDeviceID) { newID in
+                        if let id = newID { try? vm.webcam.setDevice(id) }
+                    }
+                case .staticImage:
+                    fileChooserRow(
+                        "Avatar image",
+                        url: vm.webcamStaticImageURL,
+                        chooseTitle: "Choose Image…",
+                        pick: vm.pickWebcamStaticImage,
+                        clear: vm.clearWebcamStaticImage
+                    )
+                case .videoClip:
+                    fileChooserRow(
+                        "Looping video",
+                        url: vm.webcamVideoClipURL,
+                        chooseTitle: "Choose Video…",
+                        pick: vm.pickWebcamVideoClip,
+                        clear: vm.clearWebcamVideoClip
+                    )
                 }
+
                 Picker("Position", selection: $vm.webcamCorner) {
                     ForEach(WebcamCorner.allCases) { c in
                         Text(c.displayName).tag(c)
@@ -344,12 +371,11 @@ public struct MainView: View {
                 }
                 Picker("Shape", selection: $vm.webcamShape) {
                     ForEach(WebcamShape.allCases) { shape in
-                        Text(shape.displayName).tag(shape)
+                        Label(shape.displayName, systemImage: shape.systemImage).tag(shape)
                     }
                 }
-                .pickerStyle(.segmented)
 
-                if vm.webcamShape == .roundedRect {
+                if vm.webcamShape.supportsAspectRatio {
                     Picker("Aspect ratio", selection: $vm.webcamAspectRatio) {
                         ForEach(WebcamAspectRatio.allCases) { ratio in
                             Text(ratio.displayName).tag(ratio)
@@ -366,6 +392,14 @@ public struct MainView: View {
                 }
 
                 webcamBackgroundOptions
+
+                fileChooserRow(
+                    "Branding overlay",
+                    url: vm.webcamBrandingOverlayURL,
+                    chooseTitle: "Choose PNG…",
+                    pick: vm.pickWebcamBrandingOverlay,
+                    clear: vm.clearWebcamBrandingOverlay
+                )
 
                 Toggle("Show border ring", isOn: $vm.webcamShowBorder)
                 if vm.webcamShowBorder {
@@ -445,24 +479,13 @@ public struct MainView: View {
             }
         case .customImage:
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text("Custom image")
-                    Spacer()
-                    if let url = vm.webcamCustomImageURL {
-                        Text(url.lastPathComponent)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Button("Change…") { vm.pickWebcamCustomImage() }
-                            .controlSize(.small)
-                        Button("Clear") { vm.clearWebcamCustomImage() }
-                            .controlSize(.small)
-                    } else {
-                        Button("Choose Image…") { vm.pickWebcamCustomImage() }
-                            .controlSize(.small)
-                    }
-                }
+                fileChooserRow(
+                    "Custom image",
+                    url: vm.webcamCustomImageURL,
+                    chooseTitle: "Choose Image…",
+                    pick: vm.pickWebcamCustomImage,
+                    clear: vm.clearWebcamCustomImage
+                )
                 Toggle("Blur image backdrop", isOn: $vm.webcamBlurCustomImage)
                 if vm.webcamBlurCustomImage {
                     Picker("Blur strength", selection: $vm.webcamBlurStrength) {
@@ -471,6 +494,33 @@ public struct MainView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    private func fileChooserRow(
+        _ title: String,
+        url: URL?,
+        chooseTitle: String,
+        pick: @escaping () -> Void,
+        clear: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+            Spacer()
+            if let url {
+                Text(url.lastPathComponent)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Button("Change…", action: pick)
+                    .controlSize(.small)
+                Button("Clear", action: clear)
+                    .controlSize(.small)
+            } else {
+                Button(chooseTitle, action: pick)
+                    .controlSize(.small)
             }
         }
     }

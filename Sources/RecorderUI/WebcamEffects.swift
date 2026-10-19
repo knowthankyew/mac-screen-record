@@ -24,16 +24,182 @@ public enum WebcamBackgroundMode: String, Codable, CaseIterable, Identifiable, S
     }
 }
 
+/// Active visual source for the presenter picture-in-picture overlay.
+public enum WebcamSourceType: String, Codable, CaseIterable, Identifiable, Sendable {
+    case camera
+    case staticImage
+    case videoClip
+
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .camera:      return "Camera"
+        case .staticImage: return "Static Image"
+        case .videoClip:   return "Video Loop"
+        }
+    }
+    public var systemImage: String {
+        switch self {
+        case .camera:      return "camera"
+        case .staticImage: return "photo"
+        case .videoClip:   return "play.rectangle"
+        }
+    }
+}
+
 /// Framing shape for the webcam overlay window.
 public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
     case circle
     case roundedRect
+    case oval
+    case hexagon
+    case diamond
+    case heart
+    case star
 
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
         case .circle:      return "Circle"
-        case .roundedRect:  return "Rounded Rectangle"
+        case .roundedRect: return "Rounded Rectangle"
+        case .oval:        return "Oval"
+        case .hexagon:     return "Hexagon"
+        case .diamond:     return "Diamond"
+        case .heart:       return "Heart"
+        case .star:        return "Star"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .circle:      return "circle"
+        case .roundedRect: return "rectangle.roundedtop"
+        case .oval:        return "oval"
+        case .hexagon:     return "hexagon"
+        case .diamond:     return "diamond"
+        case .heart:       return "heart"
+        case .star:        return "star"
+        }
+    }
+
+    /// Whether this shape supports non-square aspect ratios (16:9 widescreen and 4:3 classic).
+    public var supportsAspectRatio: Bool {
+        self == .roundedRect || self == .oval
+    }
+
+    /// Generates the vector outline path for this shape fitting within the specified bounds.
+    public func path(in bounds: CGRect) -> CGPath {
+        guard bounds.width > 0 && bounds.height > 0 else {
+            return CGPath(rect: bounds, transform: nil)
+        }
+        switch self {
+        case .circle:
+            let d = min(bounds.width, bounds.height)
+            let circleRect = CGRect(
+                x: bounds.midX - d / 2.0,
+                y: bounds.midY - d / 2.0,
+                width: d,
+                height: d
+            )
+            return CGPath(ellipseIn: circleRect, transform: nil)
+
+        case .oval:
+            return CGPath(ellipseIn: bounds, transform: nil)
+
+        case .roundedRect:
+            let cornerRadius = min(bounds.width, bounds.height) * 0.16
+            return CGPath(
+                roundedRect: bounds,
+                cornerWidth: cornerRadius,
+                cornerHeight: cornerRadius,
+                transform: nil
+            )
+
+        case .hexagon:
+            let path = CGMutablePath()
+            let cx = bounds.midX
+            let cy = bounds.midY
+            let rx = bounds.width / 2.0
+            let ry = bounds.height / 2.0
+            for i in 0..<6 {
+                let angle = -Double.pi / 2.0 + Double(i) * (Double.pi / 3.0)
+                let pt = CGPoint(
+                    x: cx + rx * CGFloat(cos(angle)),
+                    y: cy + ry * CGFloat(sin(angle))
+                )
+                if i == 0 {
+                    path.move(to: pt)
+                } else {
+                    path.addLine(to: pt)
+                }
+            }
+            path.closeSubpath()
+            return path
+
+        case .diamond:
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: bounds.midX, y: bounds.minY))
+            path.addLine(to: CGPoint(x: bounds.maxX, y: bounds.midY))
+            path.addLine(to: CGPoint(x: bounds.midX, y: bounds.maxY))
+            path.addLine(to: CGPoint(x: bounds.minX, y: bounds.midY))
+            path.closeSubpath()
+            return path
+
+        case .heart:
+            let path = CGMutablePath()
+            let w = bounds.width
+            let h = bounds.height
+            let ox = bounds.minX
+            let oy = bounds.minY
+            let tip = CGPoint(x: ox + w * 0.5, y: oy + h * 0.05)
+            let notch = CGPoint(x: ox + w * 0.5, y: oy + h * 0.72)
+            path.move(to: tip)
+            // Left lobe
+            path.addCurve(
+                to: CGPoint(x: ox + w * 0.05, y: oy + h * 0.55),
+                control1: CGPoint(x: ox + w * 0.25, y: oy + h * 0.15),
+                control2: CGPoint(x: ox + w * 0.05, y: oy + h * 0.35)
+            )
+            path.addCurve(
+                to: notch,
+                control1: CGPoint(x: ox + w * 0.05, y: oy + h * 0.95),
+                control2: CGPoint(x: ox + w * 0.45, y: oy + h * 0.95)
+            )
+            // Right lobe
+            path.addCurve(
+                to: CGPoint(x: ox + w * 0.95, y: oy + h * 0.55),
+                control1: CGPoint(x: ox + w * 0.55, y: oy + h * 0.95),
+                control2: CGPoint(x: ox + w * 0.95, y: oy + h * 0.95)
+            )
+            path.addCurve(
+                to: tip,
+                control1: CGPoint(x: ox + w * 0.95, y: oy + h * 0.35),
+                control2: CGPoint(x: ox + w * 0.75, y: oy + h * 0.15)
+            )
+            path.closeSubpath()
+            return path
+
+        case .star:
+            let path = CGMutablePath()
+            let cx = bounds.midX
+            let cy = bounds.midY
+            let R = min(bounds.width, bounds.height) / 2.0
+            let r = R * 0.382
+            for i in 0..<10 {
+                let angle = Double.pi / 2.0 + Double(i) * (Double.pi / 5.0)
+                let radius = (i % 2 == 0) ? R : r
+                let pt = CGPoint(
+                    x: cx + CGFloat(radius * cos(angle)),
+                    y: cy + CGFloat(radius * sin(angle))
+                )
+                if i == 0 {
+                    path.move(to: pt)
+                } else {
+                    path.addLine(to: pt)
+                }
+            }
+            path.closeSubpath()
+            return path
         }
     }
 }

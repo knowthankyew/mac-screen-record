@@ -266,5 +266,165 @@ final class PrivacyAndOverlayTests {
         let zeroCrop = WebcamVideoProcessor.centeredCropRect(source: .zero, ratio: 1.0)
         try checkEqual(zeroCrop, .zero)
     }
+
+    func testWebcamShapePathGenerationAndAspectSupport() throws {
+        let testBounds = CGRect(x: 0, y: 0, width: 200, height: 200)
+
+        for shape in WebcamShape.allCases {
+            let path = shape.path(in: testBounds)
+            let pathBounds = path.boundingBox
+            try checkFalse(path.isEmpty, "\(shape.rawValue) path should not be empty")
+            try checkTrue(pathBounds.width > 0, "\(shape.rawValue) path width should be positive")
+            try checkTrue(pathBounds.height > 0, "\(shape.rawValue) path height should be positive")
+            try checkTrue(pathBounds.maxX <= testBounds.maxX + 1.0, "\(shape.rawValue) path should fit inside bounds")
+            try checkTrue(pathBounds.maxY <= testBounds.maxY + 1.0, "\(shape.rawValue) path should fit inside bounds")
+        }
+
+        // supportsAspectRatio
+        try checkTrue(WebcamShape.roundedRect.supportsAspectRatio)
+        try checkTrue(WebcamShape.oval.supportsAspectRatio)
+        try checkFalse(WebcamShape.circle.supportsAspectRatio)
+        try checkFalse(WebcamShape.hexagon.supportsAspectRatio)
+        try checkFalse(WebcamShape.diamond.supportsAspectRatio)
+        try checkFalse(WebcamShape.heart.supportsAspectRatio)
+        try checkFalse(WebcamShape.star.supportsAspectRatio)
+
+        // Degenerate bounds
+        let degeneratePath = WebcamShape.hexagon.path(in: .zero)
+        try checkEqual(degeneratePath.boundingBox, .zero)
+    }
+
+    func testWebcamSourceTypeCodableAndIcons() throws {
+        try checkEqual(WebcamSourceType.camera.displayName, "Camera")
+        try checkEqual(WebcamSourceType.staticImage.displayName, "Static Image")
+        try checkEqual(WebcamSourceType.videoClip.displayName, "Video Loop")
+
+        try checkEqual(WebcamSourceType.camera.systemImage, "camera")
+        try checkEqual(WebcamSourceType.staticImage.systemImage, "photo")
+        try checkEqual(WebcamSourceType.videoClip.systemImage, "play.rectangle")
+
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        for source in WebcamSourceType.allCases {
+            let data = try encoder.encode(source)
+            let decoded = try decoder.decode(WebcamSourceType.self, from: data)
+            try checkEqual(decoded, source)
+        }
+    }
+
+    func testPresetWebcamSourceAndBrandingPersistence() throws {
+        let preset = Preset(
+            name: "Phase 13 Preset",
+            sourceKindRaw: "display",
+            codec: .hevc,
+            fps: 60,
+            showsCursor: true,
+            captureSystemAudio: true,
+            captureMicrophone: true,
+            customWidth: 1920,
+            customHeight: 1080,
+            webcamEnabled: true,
+            webcamShape: .hexagon,
+            webcamSourceType: .staticImage,
+            webcamStaticImageURL: "/tmp/avatar.png",
+            webcamVideoClipURL: "/tmp/loop.mp4",
+            webcamBrandingOverlayURL: "/tmp/watermark.png"
+        )
+
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
+        let data = try encoder.encode(preset)
+        let decoded = try decoder.decode(Preset.self, from: data)
+
+        try checkEqual(decoded.webcamSourceType, .staticImage)
+        try checkEqual(decoded.webcamShape, .hexagon)
+        try checkEqual(decoded.webcamStaticImageURL, "/tmp/avatar.png")
+        try checkEqual(decoded.webcamVideoClipURL, "/tmp/loop.mp4")
+        try checkEqual(decoded.webcamBrandingOverlayURL, "/tmp/watermark.png")
+
+        // Legacy JSON without Phase 13 fields decodes cleanly as nil
+        let legacyJSON = """
+        {
+            "id": "\(UUID().uuidString)",
+            "name": "Legacy Preset Phase 11",
+            "sourceKindRaw": "display",
+            "codec": "h264",
+            "fps": 30,
+            "showsCursor": true,
+            "captureSystemAudio": false,
+            "captureMicrophone": false,
+            "webcamEnabled": true
+        }
+        """.data(using: .utf8)!
+
+        let decodedLegacy = try decoder.decode(Preset.self, from: legacyJSON)
+        try checkNil(decodedLegacy.webcamSourceType, "Missing sourceType decodes as nil")
+        try checkNil(decodedLegacy.webcamStaticImageURL, "Missing static image decodes as nil")
+        try checkNil(decodedLegacy.webcamVideoClipURL, "Missing video clip decodes as nil")
+        try checkNil(decodedLegacy.webcamBrandingOverlayURL, "Missing branding overlay decodes as nil")
+    }
+
+    private final class Box<T>: @unchecked Sendable {
+        private var val: T
+        private let lock = NSLock()
+        init(_ val: T) { self.val = val }
+        func set(_ val: T) { lock.lock(); self.val = val; lock.unlock() }
+        func get() -> T { lock.lock(); defer { lock.unlock() }; return val }
+    }
+
+    func testWebcamVideoProcessorProcessImageAndBrandingOverlay() throws {
+        let processor = WebcamVideoProcessor()
+        try checkNil(processor.brandingOverlayURL)
+
+        let testBrandingURL = URL(fileURLWithPath: "/tmp/test-branding.png")
+        processor.brandingOverlayURL = testBrandingURL
+        try checkEqual(processor.brandingOverlayURL, testBrandingURL)
+
+        processor.brandingOverlayURL = nil
+        try checkNil(processor.brandingOverlayURL)
+
+        // Negative check: when acceptedSource is .camera, processImage drops the frame
+        let deliveredFrames = Box<[CIImage]>([])
+        processor.onFrameProcessed = { frame in
+            var current = deliveredFrames.get()
+            current.append(frame)
+            deliveredFrames.set(current)
+        }
+        processor.acceptedSource = .camera
+        let testImage = CIImage(color: CIColor.red).cropped(to: CGRect(x: 0, y: 0, width: 320, height: 240))
+        processor.processImage(testImage)
+        try checkTrue(deliveredFrames.get().isEmpty, "Camera mode should drop static image frame")
+
+        // Positive check: static image is processed and delivered
+        let sema1 = DispatchSemaphore(value: 0)
+        processor.onFrameProcessed = { _ in sema1.signal() }
+        processor.acceptedSource = .staticImage
+        processor.backgroundMode = .none
+        processor.processImage(testImage)
+
+        let result1 = sema1.wait(timeout: .now() + 2.0)
+        try checkTrue(result1 == .success, "Static image should be processed and delivered")
+
+        // Test with background preset and verify delivery
+        let sema2 = DispatchSemaphore(value: 0)
+        let lastRendered = Box<CIImage?>(nil)
+        processor.onFrameProcessed = { frame in
+            lastRendered.set(frame)
+            sema2.signal()
+        }
+        processor.backgroundMode = .preset
+        processor.backgroundPreset = .warmStudio
+        processor.processImage(testImage)
+
+        let result2 = sema2.wait(timeout: .now() + 2.0)
+        try checkTrue(result2 == .success, "Preset background frame should be processed and delivered")
+        let renderedOpt = lastRendered.get()
+        try checkNotNil(renderedOpt, "Processed frame must be observable")
+        if let rendered = renderedOpt {
+            try checkTrue(rendered.extent.width > 0 && rendered.extent.height > 0, "Rendered frame must have valid dimensions")
+        }
+    }
 }
 
