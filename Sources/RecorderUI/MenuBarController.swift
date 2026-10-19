@@ -95,50 +95,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         }
         let timeString = formatTime(seconds: elapsed)
 
-        let targetDesc: String = {
-            guard let vm else { return "Screen" }
-            if let src = vm.sessionSource {
-                switch src {
-                case .display(let id, let region):
-                    if region != nil {
-                        return "Custom Region"
-                    }
-                    if let disp = vm.displays.first(where: { $0.id == id }) {
-                        return "Display (\(disp.width)×\(disp.height))"
-                    }
-                    return "Main Display"
-                case .window(let id):
-                    if let win = vm.windows.first(where: { $0.id == id }) {
-                        return "Window (\(win.title.isEmpty ? win.appName : win.title))"
-                    }
-                    return "Window"
-                case .application(let pid, _):
-                    if let app = vm.apps.first(where: { $0.id == pid }) {
-                        return "Application (\(app.applicationName))"
-                    }
-                    return "Application"
-                }
-            }
-            switch vm.sourceKind {
-            case .display:
-                if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
-                    return "Display (\(disp.width)×\(disp.height))"
-                }
-                return "Main Display"
-            case .window:
-                if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
-                    return "Window (\(win.title.isEmpty ? win.appName : win.title))"
-                }
-                return "Window"
-            case .app:
-                if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
-                    return "Application (\(app.applicationName))"
-                }
-                return "Application"
-            case .region:
-                return "Custom Region"
-            }
-        }()
+        let targetDesc = vm.map { describeTarget(for: $0).detail } ?? "Screen"
         let codecDesc = vm?.sessionCodec?.displayName ?? vm?.codec.displayName ?? "H.264"
 
         if isRecording {
@@ -162,6 +119,53 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
             return String(format: "%02d:%02d:%02d", hrs, mins, secs)
         } else {
             return String(format: "%02d:%02d", mins, secs)
+        }
+    }
+
+    private func describeTarget(for vm: RecordingViewModel) -> (emoji: String, detail: String) {
+        if let src = vm.sessionSource {
+            switch src {
+            case .display(let id, let region):
+                if region != nil {
+                    return ("📐", "Custom Region")
+                }
+                if let disp = vm.displays.first(where: { $0.id == id }) {
+                    return ("🖥", "Display (\(disp.width)×\(disp.height))")
+                }
+                return ("🖥", "Main Display")
+            case .window(let id):
+                if let win = vm.windows.first(where: { $0.id == id }) {
+                    let title = win.title.isEmpty ? win.appName : win.title
+                    return ("🪟", title)
+                }
+                return ("🪟", "Selected Window")
+            case .application(let pid, _):
+                if let app = vm.apps.first(where: { $0.id == pid }) {
+                    return ("📱", app.applicationName)
+                }
+                return ("📱", "Application")
+            }
+        }
+
+        switch vm.sourceKind {
+        case .display:
+            if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
+                return ("🖥", "Display (\(disp.width)×\(disp.height))")
+            }
+            return ("🖥", "Main Display")
+        case .window:
+            if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
+                let title = win.title.isEmpty ? win.appName : win.title
+                return ("🪟", title)
+            }
+            return ("🪟", "Selected Window")
+        case .app:
+            if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
+                return ("📱", app.applicationName)
+            }
+            return ("📱", "Application")
+        case .region:
+            return ("📐", "Custom Region")
         }
     }
 
@@ -254,55 +258,8 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         sysAudioItem.isEnabled = false
         menu.addItem(sysAudioItem)
 
-        let targetInfo: String
-        if let src = vm.sessionSource {
-            switch src {
-            case .display(let id, let region):
-                if region != nil {
-                    targetInfo = "📐 Target: Custom Region"
-                } else if let disp = vm.displays.first(where: { $0.id == id }) {
-                    targetInfo = "🖥 Target: Display (\(disp.width)×\(disp.height))"
-                } else {
-                    targetInfo = "🖥 Target: Main Display"
-                }
-            case .window(let id):
-                if let win = vm.windows.first(where: { $0.id == id }) {
-                    targetInfo = "🪟 Target: \(win.title.isEmpty ? win.appName : win.title)"
-                } else {
-                    targetInfo = "🪟 Target: Selected Window"
-                }
-            case .application(let pid, _):
-                if let app = vm.apps.first(where: { $0.id == pid }) {
-                    targetInfo = "📱 Target: \(app.applicationName)"
-                } else {
-                    targetInfo = "📱 Target: Application"
-                }
-            }
-        } else {
-            switch vm.sourceKind {
-            case .display:
-                if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
-                    targetInfo = "🖥 Target: Display (\(disp.width)×\(disp.height))"
-                } else {
-                    targetInfo = "🖥 Target: Main Display"
-                }
-            case .window:
-                if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
-                    targetInfo = "🪟 Target: \(win.title.isEmpty ? win.appName : win.title)"
-                } else {
-                    targetInfo = "🪟 Target: Selected Window"
-                }
-            case .app:
-                if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
-                    targetInfo = "📱 Target: \(app.applicationName)"
-                } else {
-                    targetInfo = "📱 Target: Application"
-                }
-            case .region:
-                targetInfo = "📐 Target: Custom Region"
-            }
-        }
-        let targetItem = NSMenuItem(title: targetInfo, action: nil, keyEquivalent: "")
+        let target = describeTarget(for: vm)
+        let targetItem = NSMenuItem(title: "\(target.emoji) Target: \(target.detail)", action: nil, keyEquivalent: "")
         targetItem.isEnabled = false
         menu.addItem(targetItem)
 
