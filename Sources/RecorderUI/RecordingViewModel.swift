@@ -1042,8 +1042,15 @@ public final class RecordingViewModel: ObservableObject {
         }
     }
 
-    /// Updates the view model's active recording state to reflect a newly saved or trimmed recording.
+    /// Updates the view model's active recording state to reflect a newly saved or trimmed recording,
+    /// guarded against overwriting an active in-progress recording session.
     public func updateFinishedRecording(_ url: URL) {
+        switch status {
+        case .recording, .paused, .stopping:
+            return
+        default:
+            break
+        }
         self.lastRecordingURL = url
         self.status = .finished(url)
     }

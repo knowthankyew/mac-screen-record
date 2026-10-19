@@ -295,7 +295,17 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func togglePause()          { vm?.togglePause() }
     @objc private func stopRecording()        { Task { @MainActor in await vm?.stopRecording() } }
     @objc private func stopAndTrimRecording() { Task { @MainActor in await vm?.stopRecording(forceTrimReview: true) } }
-    @objc private func burnRecording()        { Task { @MainActor in await vm?.burnRecording() } }
+    @objc private func burnRecording() {
+        let alert = NSAlert()
+        alert.messageText = "Permanently discard this recording?"
+        alert.informativeText = "The recording will be deleted from disk immediately. This cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Hard Burn")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        Task { @MainActor in await vm?.burnRecording() }
+    }
     @objc private func toggleWebcam()         { Task { @MainActor in await vm?.toggleWebcam() } }
     @objc private func toggleKeystrokes()     { vm?.toggleKeystrokes() }
     @objc private func toggleClicks()         { vm?.toggleClickHighlights() }

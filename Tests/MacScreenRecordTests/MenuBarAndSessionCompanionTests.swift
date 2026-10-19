@@ -157,13 +157,18 @@ final class MenuBarAndSessionCompanionTests {
             encoder.append(sample, kind: VideoEncoder.SampleKind.video)
         }
 
-        // Calling cancel() cleans up the file even if writer experienced error or was stopped
+        // Append a sample with mismatched dimensions (320x240) to force AVAssetWriter into .failed state
+        if let mismatched = makeSyntheticSampleBuffer(width: 320, height: 240, pts: CMTime(value: 11, timescale: 30)) {
+            encoder.append(mismatched, kind: VideoEncoder.SampleKind.video)
+        }
+
+        // Calling cancel() cleans up the file even when writer is in .failed state (not .writing)
         encoder.cancel()
-        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() cleans up file regardless of writer state")
+        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks file when writer is failed")
     }
 
     /// Verifies that updateFinishedRecording updates view model status and lastRecordingURL,
-    /// enabling the prominent green link in the UI header.
+    /// enabling the prominent green link in the UI header, while protecting active recording states.
     func testSavedRecordingStateUpdateAndReveal() throws {
         let settings = AppSettings(defaults: isolatedDefaults)
         let vm = RecordingViewModel(settings: settings)
@@ -176,6 +181,13 @@ final class MenuBarAndSessionCompanionTests {
 
         let linkView = SavedRecordingLinkView(url: testURL, onReveal: {})
         try checkEqual(linkView.url, testURL, "SavedRecordingLinkView accepts and holds target URL")
+
+        // Guard test: active recording status must NOT be overwritten
+        let now = Date()
+        vm.setStatusForTesting(.recording(startedAt: now))
+        let anotherURL = URL(fileURLWithPath: "/tmp/Another_trimmed.mp4")
+        vm.updateFinishedRecording(anotherURL)
+        try checkEqual(vm.status, .recording(startedAt: now), "updateFinishedRecording preserves active recording state")
     }
 
     // MARK: - Helpers
