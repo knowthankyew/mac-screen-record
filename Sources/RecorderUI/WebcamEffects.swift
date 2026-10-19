@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CoreImage
 import CoreImage.CIFilterBuiltins
@@ -23,8 +24,47 @@ public enum WebcamBackgroundMode: String, Codable, CaseIterable, Identifiable, S
     }
 }
 
+/// Framing shape for the webcam overlay window.
+public enum WebcamShape: String, Codable, CaseIterable, Identifiable, Sendable {
+    case circle
+    case roundedRect
+
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .circle:      return "Circle"
+        case .roundedRect:  return "Rounded Rectangle"
+        }
+    }
+}
+
+/// Aspect ratio for rounded rectangle webcam overlay framing.
+public enum WebcamAspectRatio: String, Codable, CaseIterable, Identifiable, Sendable {
+    case square
+    case widescreen
+    case classic
+
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .square:     return "1:1 Square"
+        case .widescreen: return "16:9 Widescreen"
+        case .classic:    return "4:3 Classic"
+        }
+    }
+
+    /// Aspect ratio expressed as width / height
+    public var ratio: CGFloat {
+        switch self {
+        case .square:     return 1.0
+        case .widescreen: return 16.0 / 9.0
+        case .classic:    return 4.0 / 3.0
+        }
+    }
+}
+
 /// Blur strength options for background blurring.
-public enum WebcamBlurStrength: String, CaseIterable, Identifiable, Sendable {
+public enum WebcamBlurStrength: String, Codable, CaseIterable, Identifiable, Sendable {
     case subtle
     case balanced
     case strong
@@ -47,7 +87,7 @@ public enum WebcamBlurStrength: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// Built-in virtual background presets generated on-device with zero assets or network egress.
-public enum WebcamBackgroundPreset: String, CaseIterable, Identifiable, Sendable {
+public enum WebcamBackgroundPreset: String, Codable, CaseIterable, Identifiable, Sendable {
     case warmStudio
     case coolSlate
     case modernMinimal
@@ -113,3 +153,60 @@ public enum WebcamBackgroundPreset: String, CaseIterable, Identifiable, Sendable
         }
     }
 }
+
+// MARK: - Hex Color Conversions
+
+extension CGColor {
+    /// Creates a device-independent sRGB CGColor from a hex string (e.g. "#FFFFFF", "34C759", or 8-char "#RRGGBBAA").
+    public static func fromHex(_ hex: String) -> CGColor? {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hexSanitized.hasPrefix("#") {
+            hexSanitized.removeFirst()
+        }
+        guard hexSanitized.count == 6 || hexSanitized.count == 8 else { return nil }
+        guard hexSanitized.allSatisfy(\.isHexDigit) else { return nil }
+        guard let rgbValue = UInt64(hexSanitized, radix: 16) else { return nil }
+        if hexSanitized.count == 6 {
+            let r = CGFloat((rgbValue & 0xFF0000) >> 16) / 255.0
+            let g = CGFloat((rgbValue & 0x00FF00) >> 8) / 255.0
+            let b = CGFloat(rgbValue & 0x0000FF) / 255.0
+            return CGColor(srgbRed: r, green: g, blue: b, alpha: 1.0)
+        } else {
+            let r = CGFloat((rgbValue & 0xFF000000) >> 24) / 255.0
+            let g = CGFloat((rgbValue & 0x00FF0000) >> 16) / 255.0
+            let b = CGFloat((rgbValue & 0x0000FF00) >> 8) / 255.0
+            let a = CGFloat(rgbValue & 0x000000FF) / 255.0
+            return CGColor(srgbRed: r, green: g, blue: b, alpha: a)
+        }
+    }
+
+    /// Canonical sRGB hexadecimal representation (`#RRGGBB` or `#RRGGBBAA` if alpha < 1.0).
+    public var hexString: String {
+        guard let srgbSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let srgb = converted(to: srgbSpace, intent: .defaultIntent, options: nil),
+              let components = srgb.components, components.count >= 3 else {
+            return "#FFFFFF"
+        }
+        let r = Int(round(components[0] * 255))
+        let g = Int(round(components[1] * 255))
+        let b = Int(round(components[2] * 255))
+        let a = components.count >= 4 ? Int(round(components[3] * 255)) : 255
+        if a < 255 {
+            return String(format: "#%02X%02X%02X%02X", r, g, b, a)
+        } else {
+            return String(format: "#%02X%02X%02X", r, g, b)
+        }
+    }
+}
+
+extension NSColor {
+    public convenience init?(hex: String) {
+        guard let cg = CGColor.fromHex(hex) else { return nil }
+        self.init(cgColor: cg)
+    }
+
+    public var hexString: String {
+        cgColor.hexString
+    }
+}
+

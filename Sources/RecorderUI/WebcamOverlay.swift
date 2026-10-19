@@ -31,6 +31,29 @@ public enum WebcamSize: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
     public var displayName: String { rawValue.capitalized }
+
+    /// Frame dimensions calculated from chosen shape and aspect ratio.
+    public func dimensions(shape: WebcamShape, aspectRatio: WebcamAspectRatio = .square) -> CGSize {
+        guard shape == .roundedRect else {
+            return pixels
+        }
+        switch aspectRatio {
+        case .square:
+            return pixels
+        case .widescreen:
+            switch self {
+            case .small:  return CGSize(width: 240, height: 135)
+            case .medium: return CGSize(width: 320, height: 180)
+            case .large:  return CGSize(width: 400, height: 225)
+            }
+        case .classic:
+            switch self {
+            case .small:  return CGSize(width: 200, height: 150)
+            case .medium: return CGSize(width: 280, height: 210)
+            case .large:  return CGSize(width: 360, height: 270)
+            }
+        }
+    }
 }
 
 /// A floating, rounded, draggable picture-in-picture preview of a chosen
@@ -51,6 +74,18 @@ public final class WebcamOverlayController: ObservableObject {
     @Published public var size: WebcamSize = .medium {
         didSet { reposition() }
     }
+    @Published public var shape: WebcamShape = .circle {
+        didSet {
+            videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
+            reposition()
+        }
+    }
+    @Published public var aspectRatio: WebcamAspectRatio = .square {
+        didSet {
+            videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
+            reposition()
+        }
+    }
     @Published public var mirrored: Bool = true {
         didSet { videoProcessor.mirrored = mirrored }
     }
@@ -62,12 +97,15 @@ public final class WebcamOverlayController: ObservableObject {
         didSet {
             videoProcessor.backgroundMode = backgroundMode
             if let host = window?.contentView {
-                updateHostStyling(host: host, size: size.pixels)
+                updateHostStyling(host: host, size: currentDimensions)
             }
         }
     }
     @Published public var blurStrength: WebcamBlurStrength = .balanced {
         didSet { videoProcessor.blurStrength = blurStrength }
+    }
+    @Published public var blurCustomImage: Bool = false {
+        didSet { videoProcessor.blurCustomImage = blurCustomImage }
     }
     @Published public var backgroundPreset: WebcamBackgroundPreset = .warmStudio {
         didSet { videoProcessor.backgroundPreset = backgroundPreset }
@@ -78,9 +116,28 @@ public final class WebcamOverlayController: ObservableObject {
     @Published public var showBorder: Bool = true {
         didSet {
             if let host = window?.contentView {
-                updateHostStyling(host: host, size: size.pixels)
+                updateHostStyling(host: host, size: currentDimensions)
             }
         }
+    }
+    @Published public var borderColor: CGColor = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1) {
+        didSet {
+            if let host = window?.contentView {
+                updateHostStyling(host: host, size: currentDimensions)
+            }
+        }
+    }
+    @Published public var borderWidth: CGFloat = 2.0 {
+        didSet {
+            if let host = window?.contentView {
+                updateHostStyling(host: host, size: currentDimensions)
+            }
+        }
+    }
+
+    /// Current target frame size matching the chosen shape and aspect ratio.
+    public var currentDimensions: CGSize {
+        size.dimensions(shape: shape, aspectRatio: aspectRatio)
     }
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "Webcam")
@@ -98,8 +155,10 @@ public final class WebcamOverlayController: ObservableObject {
         videoProcessor.mirrored = mirrored
         videoProcessor.backgroundMode = backgroundMode
         videoProcessor.blurStrength = blurStrength
+        videoProcessor.blurCustomImage = blurCustomImage
         videoProcessor.backgroundPreset = backgroundPreset
         videoProcessor.customImageURL = customImageURL
+        videoProcessor.aspectRatio = (shape == .circle) ? .square : aspectRatio
     }
 
     /// CGWindowID of the overlay panel — used by SCContentFilter exceptions.
@@ -234,7 +293,7 @@ public final class WebcamOverlayController: ObservableObject {
     }
 
     private func makePanel() -> WebcamPanel {
-        let frame = NSRect(origin: .zero, size: size.pixels)
+        let frame = NSRect(origin: .zero, size: currentDimensions)
         let panel = WebcamPanel(
             contentRect: frame,
             styleMask: [.borderless, .nonactivatingPanel],
@@ -258,18 +317,22 @@ public final class WebcamOverlayController: ObservableObject {
         self.metalView = metal
         self.videoProcessor.renderView = metal
 
-        updateHostStyling(host: host, size: size.pixels)
+        updateHostStyling(host: host, size: currentDimensions)
         panel.contentView = host
         return panel
     }
 
     private func updateHostStyling(host: NSView, size: CGSize) {
-        let radius = min(size.width, size.height) / 2
+        let isCircle = (shape == .circle)
+        let radius: CGFloat = isCircle ? min(size.width, size.height) / 2 : 18
         host.layer?.cornerRadius = radius
+        if #available(macOS 10.15, *) {
+            host.layer?.cornerCurve = isCircle ? .circular : .continuous
+        }
 
-        if showBorder {
-            host.layer?.borderColor = NSColor.white.withAlphaComponent(0.6).cgColor
-            host.layer?.borderWidth = 2
+        if showBorder && borderWidth > 0 {
+            host.layer?.borderColor = borderColor
+            host.layer?.borderWidth = borderWidth
             host.layer?.masksToBounds = true
             metalView?.layer?.masksToBounds = true
         } else {
@@ -284,6 +347,10 @@ public final class WebcamOverlayController: ObservableObject {
             }
         }
         metalView?.layer?.cornerRadius = radius
+        if #available(macOS 10.15, *) {
+            metalView?.layer?.cornerCurve = isCircle ? .circular : .continuous
+        }
+        window?.invalidateShadow()
     }
 
     private func reposition() {
@@ -295,7 +362,7 @@ public final class WebcamOverlayController: ObservableObject {
                   })
               } ?? NSScreen.main ?? NSScreen.screens.first) else { return }
 
-        let target = size.pixels
+        let target = currentDimensions
         let visibleFrame = targetScreen.visibleFrame
         let margin: CGFloat = 24
         let origin: NSPoint

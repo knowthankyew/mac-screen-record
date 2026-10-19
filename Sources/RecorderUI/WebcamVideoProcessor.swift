@@ -19,19 +19,27 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     private struct Config {
         var mode: WebcamBackgroundMode = .none
         var blurStrength: WebcamBlurStrength = .balanced
+        var blurCustomImage: Bool = false
         var backgroundPreset: WebcamBackgroundPreset = .warmStudio
         var customImageURL: URL? = nil
         var mirrored: Bool = true
+        var aspectRatio: WebcamAspectRatio = .square
     }
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "WebcamProcessor")
     private let segmentationRequest: VNGeneratePersonSegmentationRequest
+    private let prepareContext = CIContext(options: [.cacheIntermediates: false])
     private let lock = NSLock()
 
     // Guarded by lock
     private var config = Config()
     private var cachedCustomImage: CIImage?
     private var cachedCustomImageURL: URL?
+    private var cachedPreparedCustomImage: CIImage?
+    private var lastPreparedCustomImageURL: URL?
+    private var lastPreparedCustomImageSize: CGSize = .zero
+    private var lastPreparedBlurCustomImage: Bool = false
+    private var lastPreparedBlurStrength: WebcamBlurStrength = .balanced
     private var cachedPresetImage: CIImage?
     private var lastCachedPreset: WebcamBackgroundPreset?
     private var lastCachedPresetSize: CGSize = .zero
@@ -44,12 +52,32 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
 
     public var blurStrength: WebcamBlurStrength {
         get { lock.lock(); defer { lock.unlock() }; return config.blurStrength }
-        set { lock.lock(); config.blurStrength = newValue; lock.unlock() }
+        set {
+            lock.lock()
+            config.blurStrength = newValue
+            cachedPreparedCustomImage = nil
+            lock.unlock()
+        }
+    }
+
+    public var blurCustomImage: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return config.blurCustomImage }
+        set {
+            lock.lock()
+            config.blurCustomImage = newValue
+            cachedPreparedCustomImage = nil
+            lock.unlock()
+        }
     }
 
     public var backgroundPreset: WebcamBackgroundPreset {
         get { lock.lock(); defer { lock.unlock() }; return config.backgroundPreset }
-        set { lock.lock(); config.backgroundPreset = newValue; lock.unlock() }
+        set {
+            lock.lock()
+            config.backgroundPreset = newValue
+            cachedPresetImage = nil
+            lock.unlock()
+        }
     }
 
     public var customImageURL: URL? {
@@ -60,6 +88,17 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     public var mirrored: Bool {
         get { lock.lock(); defer { lock.unlock() }; return config.mirrored }
         set { lock.lock(); config.mirrored = newValue; lock.unlock() }
+    }
+
+    public var aspectRatio: WebcamAspectRatio {
+        get { lock.lock(); defer { lock.unlock() }; return config.aspectRatio }
+        set {
+            lock.lock()
+            config.aspectRatio = newValue
+            cachedPreparedCustomImage = nil
+            cachedPresetImage = nil
+            lock.unlock()
+        }
     }
 
     public weak var renderView: WebcamMetalView?
@@ -83,6 +122,8 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         config.customImageURL = url
         cachedCustomImage = nil
         cachedCustomImageURL = nil
+        cachedPreparedCustomImage = nil
+        lastPreparedCustomImageURL = nil
         lock.unlock()
 
         guard let targetURL = url else { return }
@@ -98,6 +139,7 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             if self.config.customImageURL == targetURL {
                 self.cachedCustomImage = loaded
                 self.cachedCustomImageURL = targetURL
+                self.cachedPreparedCustomImage = nil
             }
             self.lock.unlock()
         }
@@ -116,24 +158,27 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
         let sourceExtent = sourceImage.extent
         guard sourceExtent.width > 0 && sourceExtent.height > 0 else { return }
 
-        let minDim = min(sourceExtent.width, sourceExtent.height)
-        let cropRect = CGRect(
-            x: (sourceExtent.width - minDim) / 2.0,
-            y: (sourceExtent.height - minDim) / 2.0,
-            width: minDim,
-            height: minDim
-        )
-
         // Snapshot all configuration and cached assets once at the top.
         // No further locks are acquired during frame processing or rendering.
         lock.lock()
         let snapConfig = self.config
         let snapCustomImage = self.cachedCustomImage
-        let snapPresetImage = (self.lastCachedPreset == snapConfig.backgroundPreset &&
-                               self.lastCachedPresetSize == CGSize(width: minDim, height: minDim)) ? self.cachedPresetImage : nil
         lock.unlock()
 
-        let squareSource = sourceImage
+        let cropRect = Self.centeredCropRect(source: sourceExtent.size, ratio: snapConfig.aspectRatio.ratio)
+        let cropSize = cropRect.size
+        let finalCropWidth = cropRect.width
+
+        lock.lock()
+        let snapPresetImage = (self.lastCachedPreset == snapConfig.backgroundPreset &&
+                               self.lastCachedPresetSize == cropSize) ? self.cachedPresetImage : nil
+        let snapPreparedCustomImage = (self.lastPreparedCustomImageURL == snapConfig.customImageURL &&
+                                       self.lastPreparedCustomImageSize == cropSize &&
+                                       self.lastPreparedBlurCustomImage == snapConfig.blurCustomImage &&
+                                       self.lastPreparedBlurStrength == snapConfig.blurStrength) ? self.cachedPreparedCustomImage : nil
+        lock.unlock()
+
+        let croppedSource = sourceImage
             .cropped(to: cropRect)
             .transformed(by: CGAffineTransform(translationX: -cropRect.origin.x, y: -cropRect.origin.y))
 
@@ -141,7 +186,7 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
 
         if snapConfig.mode == .none {
             // Passthrough with zero segmentation overhead
-            finalImage = applyMirror(image: squareSource, width: minDim, mirrored: snapConfig.mirrored)
+            finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
         } else {
             // Concurrency Note on Request Reuse:
             // `segmentationRequest` is sequentially reused across frames. This is safe
@@ -152,13 +197,13 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
                 try handler.perform([segmentationRequest])
             } catch {
                 log.error("Person segmentation failed: \(error.localizedDescription, privacy: .public)")
-                finalImage = applyMirror(image: squareSource, width: minDim, mirrored: snapConfig.mirrored)
+                finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
                 renderView?.update(image: finalImage)
                 return
             }
 
             guard let maskPixelBuffer = segmentationRequest.results?.first?.pixelBuffer else {
-                finalImage = applyMirror(image: squareSource, width: minDim, mirrored: snapConfig.mirrored)
+                finalImage = applyMirror(image: croppedSource, width: finalCropWidth, mirrored: snapConfig.mirrored)
                 renderView?.update(image: finalImage)
                 return
             }
@@ -176,24 +221,56 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
                 config: snapConfig,
                 cachedCustomImage: snapCustomImage,
                 cachedPresetImage: snapPresetImage,
-                squareSource: squareSource,
-                size: CGSize(width: minDim, height: minDim)
+                cachedPreparedCustomImage: snapPreparedCustomImage,
+                source: croppedSource,
+                size: cropSize
             )
 
             // Blend foreground person over background using the matte mask
             let blendFilter = CIFilter.blendWithMask()
-            blendFilter.inputImage = squareSource
+            blendFilter.inputImage = croppedSource
             blendFilter.backgroundImage = background
             blendFilter.maskImage = scaledMask
 
-            let composited = blendFilter.outputImage ?? squareSource
-            finalImage = applyMirror(image: composited, width: minDim, mirrored: snapConfig.mirrored)
+            let composited = blendFilter.outputImage ?? croppedSource
+            finalImage = applyMirror(image: composited, width: finalCropWidth, mirrored: snapConfig.mirrored)
         }
 
         renderView?.update(image: finalImage)
     }
 
     // MARK: - Helpers
+
+    /// Computes a centered crop rectangle fitting the desired aspect ratio within source dimensions.
+    public static func centeredCropRect(source: CGSize, ratio targetRatio: CGFloat) -> CGRect {
+        guard source.width > 0 && source.height > 0 && targetRatio > 0 else {
+            return CGRect(origin: .zero, size: source)
+        }
+        let sourceRatio = source.width / source.height
+        let cropWidth: CGFloat
+        let cropHeight: CGFloat
+
+        if sourceRatio > targetRatio {
+            // Source is wider than target -> fit height, crop width
+            cropHeight = source.height
+            cropWidth = round(cropHeight * targetRatio)
+        } else {
+            // Source is taller than target -> fit width, crop height
+            cropWidth = source.width
+            cropHeight = round(cropWidth / targetRatio)
+        }
+
+        let finalCropWidth = min(cropWidth, source.width)
+        let finalCropHeight = min(cropHeight, source.height)
+        let cropOriginX = max(0, round((source.width - finalCropWidth) / 2.0))
+        let cropOriginY = max(0, round((source.height - finalCropHeight) / 2.0))
+        return CGRect(
+            x: cropOriginX,
+            y: cropOriginY,
+            width: finalCropWidth,
+            height: finalCropHeight
+        )
+    }
 
     private func applyMirror(image: CIImage, width: CGFloat, mirrored: Bool) -> CIImage {
         guard mirrored else { return image }
@@ -203,23 +280,24 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
     }
 
     /// Background resolver using snapshotted configuration and cached assets
-    /// (lock-free on hot path; performs standalone lock write-back only on preset cache miss).
+    /// (lock-free on hot path; performs standalone lock write-back only on cache miss).
     private func resolveBackground(
         config: Config,
         cachedCustomImage: CIImage?,
         cachedPresetImage: CIImage?,
-        squareSource: CIImage,
+        cachedPreparedCustomImage: CIImage?,
+        source: CIImage,
         size: CGSize
     ) -> CIImage {
         switch config.mode {
         case .none:
-            return squareSource
+            return source
 
         case .blur:
             let blur = CIFilter.gaussianBlur()
-            blur.inputImage = squareSource.clampedToExtent()
+            blur.inputImage = source.clampedToExtent()
             blur.radius = Float(config.blurStrength.sigma)
-            return blur.outputImage?.cropped(to: squareSource.extent) ?? squareSource
+            return blur.outputImage?.cropped(to: source.extent) ?? source
 
         case .preset:
             if let cached = cachedPresetImage {
@@ -235,39 +313,71 @@ public final class WebcamVideoProcessor: NSObject, AVCaptureVideoDataOutputSampl
             return generated
 
         case .customImage:
+            if let cachedPrepared = cachedPreparedCustomImage {
+                return cachedPrepared
+            }
             if let cached = cachedCustomImage {
                 let extent = cached.extent
+                guard extent.width > 0 && extent.height > 0 else {
+                    return fallbackWarmStudio(size: size)
+                }
                 let scale = max(size.width / extent.width, size.height / extent.height)
                 let scaled = cached
                     .transformed(by: CGAffineTransform(translationX: -extent.origin.x, y: -extent.origin.y))
                     .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-                let cropOriginX = (scaled.extent.width - size.width) / 2.0
-                let cropOriginY = (scaled.extent.height - size.height) / 2.0
-                return scaled
+                let cropOriginX = max(0, (scaled.extent.width - size.width) / 2.0)
+                let cropOriginY = max(0, (scaled.extent.height - size.height) / 2.0)
+                let prepared = scaled
                     .cropped(to: CGRect(x: cropOriginX, y: cropOriginY, width: size.width, height: size.height))
                     .transformed(by: CGAffineTransform(translationX: -cropOriginX, y: -cropOriginY))
-            }
-            // Fallback while custom image loads asynchronously in background (or if load failed)
-            lock.lock()
-            if let fallback = self.cachedPresetImage,
-               self.lastCachedPreset == .warmStudio,
-               self.lastCachedPresetSize == size {
+
+                let finalCustomBg: CIImage
+                if config.blurCustomImage {
+                    let blur = CIFilter.gaussianBlur()
+                    blur.inputImage = prepared.clampedToExtent()
+                    blur.radius = Float(config.blurStrength.sigma)
+                    finalCustomBg = blur.outputImage?.cropped(to: CGRect(origin: .zero, size: size)) ?? prepared
+                } else {
+                    finalCustomBg = prepared
+                }
+
+                let targetRect = CGRect(origin: .zero, size: size)
+                let materialized = prepareContext.createCGImage(finalCustomBg, from: targetRect)
+                    .map { CIImage(cgImage: $0) } ?? finalCustomBg
+
+                lock.lock()
+                self.cachedPreparedCustomImage = materialized
+                self.lastPreparedCustomImageURL = config.customImageURL
+                self.lastPreparedCustomImageSize = size
+                self.lastPreparedBlurCustomImage = config.blurCustomImage
+                self.lastPreparedBlurStrength = config.blurStrength
                 lock.unlock()
-                return fallback
+                return materialized
             }
-            lock.unlock()
-            let generated = WebcamBackgroundPreset.warmStudio.makeImage(size: size)
-            lock.lock()
-            self.cachedPresetImage = generated
-            self.lastCachedPreset = .warmStudio
-            self.lastCachedPresetSize = size
-            lock.unlock()
-            return generated
+            return fallbackWarmStudio(size: size)
 
         case .cutout:
             // Transparent background: Blend with mask will composite foreground person
             // over 0-alpha clear pixels, producing an alpha-channel silhouette.
-            return CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0)).cropped(to: squareSource.extent)
+            return CIImage(color: CIColor(red: 0, green: 0, blue: 0, alpha: 0)).cropped(to: source.extent)
         }
+    }
+
+    private func fallbackWarmStudio(size: CGSize) -> CIImage {
+        lock.lock()
+        if let fallback = self.cachedPresetImage,
+           self.lastCachedPreset == .warmStudio,
+           self.lastCachedPresetSize == size {
+            lock.unlock()
+            return fallback
+        }
+        lock.unlock()
+        let generated = WebcamBackgroundPreset.warmStudio.makeImage(size: size)
+        lock.lock()
+        self.cachedPresetImage = generated
+        self.lastCachedPreset = .warmStudio
+        self.lastCachedPresetSize = size
+        lock.unlock()
+        return generated
     }
 }

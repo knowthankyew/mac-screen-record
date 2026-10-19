@@ -182,6 +182,21 @@ public final class RecordingViewModel: ObservableObject {
     @Published public var webcamShowBorder: Bool = true {
         didSet { webcam.showBorder = webcamShowBorder }
     }
+    @Published public var webcamShape: WebcamShape = .circle {
+        didSet { webcam.shape = webcamShape }
+    }
+    @Published public var webcamAspectRatio: WebcamAspectRatio = .square {
+        didSet { webcam.aspectRatio = webcamAspectRatio }
+    }
+    @Published public var webcamBlurCustomImage: Bool = false {
+        didSet { webcam.blurCustomImage = webcamBlurCustomImage }
+    }
+    @Published public var webcamBorderColor: CGColor = CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 1) {
+        didSet { webcam.borderColor = webcamBorderColor }
+    }
+    @Published public var webcamBorderWidth: Double = 2.0 {
+        didSet { webcam.borderWidth = CGFloat(webcamBorderWidth) }
+    }
     @Published public var clickHighlightsEnabled: Bool = false
     @Published public var keystrokesEnabled: Bool = false
     public let highlightOverlaysSubject = PassthroughSubject<Void, Never>()
@@ -211,6 +226,13 @@ public final class RecordingViewModel: ObservableObject {
             || (active.webcamCorner != nil && active.webcamCorner != webcamCorner)
             || (active.webcamSize != nil && active.webcamSize != webcamSize)
             || (active.webcamBackgroundMode != nil && active.webcamBackgroundMode != webcamBackgroundMode)
+            || (active.webcamBlurStrength != nil && active.webcamBlurStrength != webcamBlurStrength)
+            || (active.webcamShape != nil && active.webcamShape != webcamShape)
+            || (active.webcamAspectRatio != nil && active.webcamAspectRatio != webcamAspectRatio)
+            || (active.webcamBlurCustomImage != nil && active.webcamBlurCustomImage != webcamBlurCustomImage)
+            || (active.webcamShowBorder != nil && active.webcamShowBorder != webcamShowBorder)
+            || (active.webcamBorderColorHex != nil && active.webcamBorderColorHex != webcamBorderColor.hexString)
+            || (active.webcamBorderWidth != nil && active.webcamBorderWidth != webcamBorderWidth)
     }
 
     private let log = Logger(subsystem: "com.macscreenrecord.app", category: "ViewModel")
@@ -262,6 +284,27 @@ public final class RecordingViewModel: ObservableObject {
             if let mode = defaultP.webcamBackgroundMode {
                 self.webcamBackgroundMode = mode
             }
+            if let blurStrength = defaultP.webcamBlurStrength {
+                self.webcamBlurStrength = blurStrength
+            }
+            if let shape = defaultP.webcamShape {
+                self.webcamShape = shape
+            }
+            if let ratio = defaultP.webcamAspectRatio {
+                self.webcamAspectRatio = ratio
+            }
+            if let blurCustom = defaultP.webcamBlurCustomImage {
+                self.webcamBlurCustomImage = blurCustom
+            }
+            if let showBorder = defaultP.webcamShowBorder {
+                self.webcamShowBorder = showBorder
+            }
+            if let colorHex = defaultP.webcamBorderColorHex, let cg = CGColor.fromHex(colorHex) {
+                self.webcamBorderColor = cg
+            }
+            if let width = defaultP.webcamBorderWidth {
+                self.webcamBorderWidth = width
+            }
             // Note: overlay activation (webcam, click highlights, keystrokes) is safely deferred
             // to applyStartupDefaultOverlays(), called when the view appears.
         }
@@ -269,11 +312,16 @@ public final class RecordingViewModel: ObservableObject {
         // didSet observers do not fire during init; sync the overlay controller explicitly.
         webcam.corner = webcamCorner
         webcam.size = webcamSize
+        webcam.shape = webcamShape
+        webcam.aspectRatio = webcamAspectRatio
         webcam.mirrored = webcamMirrored
         webcam.backgroundMode = webcamBackgroundMode
         webcam.blurStrength = webcamBlurStrength
+        webcam.blurCustomImage = webcamBlurCustomImage
         webcam.backgroundPreset = webcamBackgroundPreset
         webcam.showBorder = webcamShowBorder
+        webcam.borderColor = webcamBorderColor
+        webcam.borderWidth = CGFloat(webcamBorderWidth)
 
         // Reload library if the user changes the output folder.
         self.settingsCancellable = settings.$outputFolder
@@ -480,7 +528,14 @@ public final class RecordingViewModel: ObservableObject {
             keystrokesEnabled: keystrokesEnabled,
             webcamCorner: webcamCorner,
             webcamSize: webcamSize,
-            webcamBackgroundMode: webcamBackgroundMode
+            webcamBackgroundMode: webcamBackgroundMode,
+            webcamBlurStrength: webcamBlurStrength,
+            webcamShape: webcamShape,
+            webcamAspectRatio: webcamAspectRatio,
+            webcamBlurCustomImage: webcamBlurCustomImage,
+            webcamShowBorder: webcamShowBorder,
+            webcamBorderColorHex: webcamBorderColor.hexString,
+            webcamBorderWidth: webcamBorderWidth
         )
     }
 
@@ -550,6 +605,27 @@ public final class RecordingViewModel: ObservableObject {
         }
         if let mode = preset.webcamBackgroundMode {
             self.webcamBackgroundMode = mode
+        }
+        if let blurStrength = preset.webcamBlurStrength {
+            self.webcamBlurStrength = blurStrength
+        }
+        if let shape = preset.webcamShape {
+            self.webcamShape = shape
+        }
+        if let ratio = preset.webcamAspectRatio {
+            self.webcamAspectRatio = ratio
+        }
+        if let blurCustom = preset.webcamBlurCustomImage {
+            self.webcamBlurCustomImage = blurCustom
+        }
+        if let showBorder = preset.webcamShowBorder {
+            self.webcamShowBorder = showBorder
+        }
+        if let colorHex = preset.webcamBorderColorHex, let cg = CGColor.fromHex(colorHex) {
+            self.webcamBorderColor = cg
+        }
+        if let width = preset.webcamBorderWidth {
+            self.webcamBorderWidth = width
         }
 
         if preset.clickHighlightsEnabled != clickHighlightsEnabled {

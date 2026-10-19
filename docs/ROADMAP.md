@@ -54,7 +54,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume with PTS rewriting, `⌃⌥P` Facecam toggle, `⌃⌥K` keystrokes toggle).
   - In-app hotkey customization table in Settings with key capture, modifier translation, Carbon handler suspension/resume, `UserDefaults` persistence, and "Reset Hotkeys to Defaults".
 - ✅ **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (v0.3.0) — Phase 9**:
-  - 23 deterministic unit tests across 6 test suites at v0.3.0 (38 across 8 as of v0.4.0) (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
+  - 23 deterministic unit tests across 6 test suites at v0.3.0 (43 across 8 as of Phase 11) (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
   - Static zero-egress scanner and claims linter (`Scripts/audit-claims.py`) checking zero network imports, hotkeys, and TCC table parity.
   - GitHub Actions CI workflow (`.github/workflows/ci.yml`), CycloneDX 1.5 JSON SBOM (`bom.json`), and SLSA build provenance attestation.
 - ✅ **Post-Capture & Library Lossless Trim (v0.3.0) — Phase 10**:
@@ -82,7 +82,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phase 8** | **Universal Keyboard Control & Workflow Polish** | Portfolio Governance | Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume, `⌃⌥P` Facecam, `⌃⌥K` keystrokes) and in-app hotkey remapping in Settings | ✅ **Shipped** |
 | **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | ✅ **Shipped** |
-| **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Up Next (Active)** |
+| **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | ✅ **Shipped** |
 | **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`MM:SS` / `HH:MM:SS`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | ✅ **Shipped** |
 
 ---
@@ -138,7 +138,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Scrubbable thumbnail filmstrip generated asynchronously via `AVAssetImageGenerator` with draggable In / Out handles.
   - Sub-second frame-accurate exports using `AVAssetExportSession` (`AVAssetExportPresetPassthrough`), preserving original hardware-encoded H.264, HEVC, and ProRes bitstreams with zero generation loss.
 
-### Phase 11: Streamlined Facecam & PiP Improvements
+### Phase 11: Streamlined Facecam & PiP Improvements ✅ Shipped
 **Objective**: Deliver high-utility presenter overlay refinements while maintaining zero-egress, native-only simplicity.
 
 - **Blurred Custom Image Backdrop**:

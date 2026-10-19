@@ -342,6 +342,21 @@ public struct MainView: View {
                         Text(s.displayName).tag(s)
                     }
                 }
+                Picker("Shape", selection: $vm.webcamShape) {
+                    ForEach(WebcamShape.allCases) { shape in
+                        Text(shape.displayName).tag(shape)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if vm.webcamShape == .roundedRect {
+                    Picker("Aspect ratio", selection: $vm.webcamAspectRatio) {
+                        ForEach(WebcamAspectRatio.allCases) { ratio in
+                            Text(ratio.displayName).tag(ratio)
+                        }
+                    }
+                }
+
                 Toggle("Mirror image (flip horizontally)", isOn: $vm.webcamMirrored)
 
                 Picker("Background", selection: $vm.webcamBackgroundMode) {
@@ -353,6 +368,20 @@ public struct MainView: View {
                 webcamBackgroundOptions
 
                 Toggle("Show border ring", isOn: $vm.webcamShowBorder)
+                if vm.webcamShowBorder {
+                    HStack {
+                        ColorPicker("Border color", selection: $vm.webcamBorderColor, supportsOpacity: true)
+                        Spacer()
+                    }
+                    HStack {
+                        Text("Border width")
+                        Slider(value: $vm.webcamBorderWidth, in: 0...12, step: 0.5)
+                        Text(String(format: "%.1f px", vm.webcamBorderWidth).replacingOccurrences(of: ".0 px", with: " px"))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
             }
 
             // Click highlights
@@ -415,22 +444,32 @@ public struct MainView: View {
                 }
             }
         case .customImage:
-            HStack(spacing: 8) {
-                Text("Custom image")
-                Spacer()
-                if let url = vm.webcamCustomImageURL {
-                    Text(url.lastPathComponent)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Button("Change…") { vm.pickWebcamCustomImage() }
-                        .controlSize(.small)
-                    Button("Clear") { vm.clearWebcamCustomImage() }
-                        .controlSize(.small)
-                } else {
-                    Button("Choose Image…") { vm.pickWebcamCustomImage() }
-                        .controlSize(.small)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("Custom image")
+                    Spacer()
+                    if let url = vm.webcamCustomImageURL {
+                        Text(url.lastPathComponent)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Button("Change…") { vm.pickWebcamCustomImage() }
+                            .controlSize(.small)
+                        Button("Clear") { vm.clearWebcamCustomImage() }
+                            .controlSize(.small)
+                    } else {
+                        Button("Choose Image…") { vm.pickWebcamCustomImage() }
+                            .controlSize(.small)
+                    }
+                }
+                Toggle("Blur image backdrop", isOn: $vm.webcamBlurCustomImage)
+                if vm.webcamBlurCustomImage {
+                    Picker("Blur strength", selection: $vm.webcamBlurStrength) {
+                        ForEach(WebcamBlurStrength.allCases) { s in
+                            Text(s.displayName).tag(s)
+                        }
+                    }
                 }
             }
         }

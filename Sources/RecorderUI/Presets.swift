@@ -23,6 +23,13 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
     public var webcamCorner: WebcamCorner?
     public var webcamSize: WebcamSize?
     public var webcamBackgroundMode: WebcamBackgroundMode?
+    public var webcamBlurStrength: WebcamBlurStrength?
+    public var webcamShape: WebcamShape?
+    public var webcamAspectRatio: WebcamAspectRatio?
+    public var webcamBlurCustomImage: Bool?
+    public var webcamShowBorder: Bool?
+    public var webcamBorderColorHex: String?
+    public var webcamBorderWidth: Double?
 
     public init(
         id: UUID = UUID(),
@@ -41,7 +48,14 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         keystrokesEnabled: Bool = false,
         webcamCorner: WebcamCorner? = nil,
         webcamSize: WebcamSize? = nil,
-        webcamBackgroundMode: WebcamBackgroundMode? = nil
+        webcamBackgroundMode: WebcamBackgroundMode? = nil,
+        webcamBlurStrength: WebcamBlurStrength? = nil,
+        webcamShape: WebcamShape? = nil,
+        webcamAspectRatio: WebcamAspectRatio? = nil,
+        webcamBlurCustomImage: Bool? = nil,
+        webcamShowBorder: Bool? = nil,
+        webcamBorderColorHex: String? = nil,
+        webcamBorderWidth: Double? = nil
     ) {
         self.id = id; self.name = name
         self.sourceKindRaw = sourceKindRaw
@@ -57,6 +71,13 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         self.webcamCorner = webcamCorner
         self.webcamSize = webcamSize
         self.webcamBackgroundMode = webcamBackgroundMode
+        self.webcamBlurStrength = webcamBlurStrength
+        self.webcamShape = webcamShape
+        self.webcamAspectRatio = webcamAspectRatio
+        self.webcamBlurCustomImage = webcamBlurCustomImage
+        self.webcamShowBorder = webcamShowBorder
+        self.webcamBorderColorHex = webcamBorderColorHex
+        self.webcamBorderWidth = webcamBorderWidth
     }
 
     enum CodingKeys: String, CodingKey {
@@ -65,6 +86,10 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         case webcamEnabled, useForFacecam, clickHighlightsEnabled, keystrokesEnabled
         case webcamCorner, webcamSize, webcamBackgroundMode
         case webcamCornerRaw, webcamSizeRaw, webcamBackgroundModeRaw
+        case webcamBlurStrength, webcamBlurStrengthRaw
+        case webcamShape, webcamAspectRatio, webcamBlurCustomImage
+        case webcamShowBorder, webcamBorderColorHex, webcamBorderWidth
+        case webcamShapeRaw, webcamAspectRatioRaw
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -92,6 +117,16 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         try container.encodeIfPresent(webcamSize?.rawValue, forKey: .webcamSizeRaw)
         try container.encodeIfPresent(webcamBackgroundMode, forKey: .webcamBackgroundMode)
         try container.encodeIfPresent(webcamBackgroundMode?.rawValue, forKey: .webcamBackgroundModeRaw)
+        try container.encodeIfPresent(webcamBlurStrength, forKey: .webcamBlurStrength)
+        try container.encodeIfPresent(webcamBlurStrength?.rawValue, forKey: .webcamBlurStrengthRaw)
+        try container.encodeIfPresent(webcamShape, forKey: .webcamShape)
+        try container.encodeIfPresent(webcamShape?.rawValue, forKey: .webcamShapeRaw)
+        try container.encodeIfPresent(webcamAspectRatio, forKey: .webcamAspectRatio)
+        try container.encodeIfPresent(webcamAspectRatio?.rawValue, forKey: .webcamAspectRatioRaw)
+        try container.encodeIfPresent(webcamBlurCustomImage, forKey: .webcamBlurCustomImage)
+        try container.encodeIfPresent(webcamShowBorder, forKey: .webcamShowBorder)
+        try container.encodeIfPresent(webcamBorderColorHex, forKey: .webcamBorderColorHex)
+        try container.encodeIfPresent(webcamBorderWidth, forKey: .webcamBorderWidth)
     }
 
     public init(from decoder: Decoder) throws {
@@ -136,6 +171,35 @@ public struct Preset: Codable, Identifiable, Hashable, Sendable {
         } else {
             self.webcamBackgroundMode = nil
         }
+
+        if let strength = try? container.decodeIfPresent(WebcamBlurStrength.self, forKey: .webcamBlurStrength) {
+            self.webcamBlurStrength = strength
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamBlurStrengthRaw), let strength = WebcamBlurStrength(rawValue: raw) {
+            self.webcamBlurStrength = strength
+        } else {
+            self.webcamBlurStrength = nil
+        }
+
+        if let shape = try? container.decodeIfPresent(WebcamShape.self, forKey: .webcamShape) {
+            self.webcamShape = shape
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamShapeRaw), let shape = WebcamShape(rawValue: raw) {
+            self.webcamShape = shape
+        } else {
+            self.webcamShape = nil
+        }
+
+        if let ratio = try? container.decodeIfPresent(WebcamAspectRatio.self, forKey: .webcamAspectRatio) {
+            self.webcamAspectRatio = ratio
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .webcamAspectRatioRaw), let ratio = WebcamAspectRatio(rawValue: raw) {
+            self.webcamAspectRatio = ratio
+        } else {
+            self.webcamAspectRatio = nil
+        }
+
+        self.webcamBlurCustomImage = try? container.decodeIfPresent(Bool.self, forKey: .webcamBlurCustomImage)
+        self.webcamShowBorder = try? container.decodeIfPresent(Bool.self, forKey: .webcamShowBorder)
+        self.webcamBorderColorHex = try? container.decodeIfPresent(String.self, forKey: .webcamBorderColorHex)
+        self.webcamBorderWidth = try? container.decodeIfPresent(Double.self, forKey: .webcamBorderWidth)
     }
 }
 
