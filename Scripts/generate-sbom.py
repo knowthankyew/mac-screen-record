@@ -11,7 +11,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.3.0"):
+def generate_sbom(output_path: str, arch: str = "arm64", version: str = "0.4.0"):
     epoch = os.environ.get("SOURCE_DATE_EPOCH")
     if epoch:
         try:

@@ -13,10 +13,45 @@ struct MacScreenRecordApp: App {
                 .onAppear {
                     appDelegate.attach(viewModel: vm)
                 }
+                .onOpenURL { url in
+                    vm.openVideoForTrimming(url: url)
+                }
         }
         .windowResizability(.contentSize)
         .commands {
-            CommandGroup(replacing: .newItem) {}   // hide File → New
+            CommandGroup(replacing: .newItem) {
+                Button("Open Video to Trim…") {
+                    vm.presentOpenVideoPanel()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+                .disabled(vm.isCapturing)
+
+                Menu("Open Recent") {
+                    let recents = vm.recentsStore.existingRecents
+                    if recents.isEmpty {
+                        Text("No Recent Recordings")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(recents, id: \.self) { url in
+                            Button(url.lastPathComponent) {
+                                vm.openVideoForTrimming(url: url)
+                            }
+                        }
+                        Divider()
+                        Button("Clear Menu") {
+                            vm.recentsStore.clear()
+                        }
+                    }
+                }
+                .disabled(vm.isCapturing)
+
+                Divider()
+
+                Button("Recordings Library…") {
+                    vm.showLibrary = true
+                }
+                .keyboardShortcut("l", modifiers: .command)
+            }
         }
 
         Settings {
@@ -29,6 +64,7 @@ struct MacScreenRecordApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let menuBar = MenuBarController()
     private weak var vm: RecordingViewModel?
+    private var pendingOpenURL: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Keep the app as a regular app *and* show a menu-bar item, so users
@@ -37,12 +73,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func application(_ application: NSApplication, open urls: [URL]) {
+        guard let url = urls.first else { return }
+        if let vm {
+            vm.openVideoForTrimming(url: url)
+        } else {
+            pendingOpenURL = url
+        }
+    }
+
     @MainActor
     func attach(viewModel: RecordingViewModel) {
         guard self.vm !== viewModel else { return }
         self.vm = viewModel
         menuBar.install(vm: viewModel)
         viewModel.installGlobalHotkeys()
+        if let pending = pendingOpenURL {
+            pendingOpenURL = nil
+            viewModel.openVideoForTrimming(url: pending)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

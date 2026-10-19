@@ -48,7 +48,7 @@ if [ -z "${SOURCE_DATE_EPOCH:-}" ]; then
     SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}"
 fi
 export SOURCE_DATE_EPOCH
-VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.3.0")"
+VERSION="$(defaults read "$ROOT/Resources/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "0.4.0")"
 python3 "$ROOT/Scripts/generate-sbom.py" "$DIST_DIR/bom.json" "$ARCH" "$VERSION"
 cp "$DIST_DIR/bom.json" "$APP_DIR/Contents/Resources/bom.json"
 if [ -f "$ROOT/NOTICE.md" ]; then

@@ -316,12 +316,49 @@ struct MacScreenRecordTestRunner {
             }
         }
 
+        let recentsSuite = RecentRecordingsAndOpenWithTests()
+        await run("RecentRecordingsAndOpenWithTests", "testRecentsStoreMRUOrderingAndDeduplication") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testRecentsStoreMRUOrderingAndDeduplication()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testRecentsStoreMaxCapacityCap") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testRecentsStoreMaxCapacityCap()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testZeroGhostInvariantOnDiskDeletion") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testZeroGhostInvariantOnDiskDeletion()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testRecentsStoreRejectsNonExistentFileOnAdd") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testRecentsStoreRejectsNonExistentFileOnAdd()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testRecentsStoreRemoveAndClear") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testRecentsStoreRemoveAndClear()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testRecordingViewModelOpenVideoForTrimming") {
+            try await recentsSuite.withLifecycle {
+                try recentsSuite.testRecordingViewModelOpenVideoForTrimming()
+            }
+        }
+        await run("RecentRecordingsAndOpenWithTests", "testRecordingsLibraryPruneMissingFiles") {
+            try await recentsSuite.withLifecycle {
+                try await recentsSuite.testRecordingsLibraryPruneMissingFiles()
+            }
+        }
+
         print("")
         if failed > 0 {
             print("✗ Unit Test Suite FAILED (\(failed) failed, \(passed) passed)")
             Foundation.exit(1)
         } else {
-            print("✓ All \(passed) unit tests passed across 7 test suites.")
+            print("✓ All \(passed) unit tests passed across 8 test suites.")
         }
     }
 }

@@ -2,6 +2,60 @@
 
 > *Note: Mac Screen Record is a hard fork and continuation of Free Mac Screen Recorder by penguinpecker. All foundational upstream releases and git commit history are preserved in full under the MIT License.*
 
+## Mac Screen Record 0.4.0
+
+**Release:** `v0.4.0` (Build `4`)  
+**Date:** October 19, 2026  
+**Architectures:** Apple Silicon (`arm64`), Intel (`x86_64`)  
+**Minimum OS:** macOS 13.0 (Ventura) or later  
+
+---
+
+### What's New in 0.4.0
+
+#### 1. macOS "Open With" & System Open Integration
+* **Finder & Dock "Open With" Support**:
+  Registered `CFBundleDocumentTypes` for `.mp4`, `.mov`, and `.m4v` video media (`Editor` role, `Alternate` rank). Users can right-click any supported video in Finder or drop video files onto the Dock icon to load and losslessly trim them.
+* **Lossless Trimmer Routing**:
+  External video files open directly into the lossless trim review modal (`VideoTrimModalView`), bringing the application window front and centering the playback controls with zero re-encoding or generation loss.
+* **Standard File Menu Commands**:
+  * **Open Video to Trim… (`⌘O`)**: Standard open file panel for lossless video selection.
+  * **Open Recent Menu**: Dynamic submenu tracking recently recorded and trimmed videos.
+  * **Recordings Library… (`⌘L`)**: Shortcut to browse the local recordings catalog.
+  * Session-guarded: File opening and recents are disabled while recording is in progress.
+
+#### 2. Recent Recordings Store & Strict Zero-Ghost Invariant
+* **Dynamic Disk Verification**:
+  `RecentRecordingsStore` dynamically validates every file against disk presence on every access.
+* **Zero Ghost Guarantee**:
+  Any file removed, moved, or deleted outside the application is dynamically excluded from the "Open Recent" menu and pruned from `UserDefaults` persistence.
+* **Library Disk Synchronization**:
+  `RecordingsLibrary` filters candidate files and prunes non-existent items on reload and view appearance, ensuring disk reality and UI state are always perfectly aligned.
+
+#### 3. Ephemeral Recording HUD & Dynamic Session Companion (Phase 12)
+* **Zero-Bloat Ephemeral Lifecycle**:
+  Zero status bar presence when idle. The menu bar companion item is generated dynamically when capture begins and is completely removed upon termination, preserving MacBook display notch real estate.
+* **Live Status Bar Timer & Pause/Resume**:
+  Displays elapsed duration formatted as `MM:SS` (or `HH:MM:SS` past an hour) and provides context-aware Pause/Resume (`⌥Space`) controls with presentation timestamp rewriting.
+* **Distraction-Free Auto-Minimize**:
+  Optional preference to automatically hide the main recorder window during capture and restore it on stop.
+* **Amnesiac "Hard Burn" (`⌃⌥⌘⌫`)**:
+  Destructive cancellation that cancels writing, unlinks partial disk fragments without trashing, flushes memory buffers, and restores an idle state without writing an Evidence Seal.
+
+#### 4. Saved Recording Visual Callout & UI Polish
+* **Prominent Saved Link**:
+  Replaced plain text with a green interactive link that reveals the file in Finder when clicked.
+* **Pulsing Radar Callout Animation**:
+  Plays a smooth expanding concentric ring animation when a recording or trim completes to draw immediate visual focus to the saved file location.
+
+#### 5. Automated Testing & SBOM Verification
+* **38 Unit Tests across 8 Suites**:
+  Added comprehensive tests for `RecentRecordingsStore`, zero-ghost invariant, `openVideoForTrimming`, and `RecordingsLibrary` pruning.
+* **Updated CycloneDX 1.5 SBOM**:
+  Regenerated `bom.json` for `v0.4.0` with verified zero-egress invariants.
+
+---
+
 ## Mac Screen Record 0.3.0
 
 **Release:** `v0.3.0` (Build `3`)  

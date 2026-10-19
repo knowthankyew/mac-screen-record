@@ -30,7 +30,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 
 ---
 
-## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.3.0)
+## 3. Shipped & Stabilized Milestones (v0.1.0 – v0.4.0)
 
 - ✅ **Core Hardware Capture & Encoding (v0.1.0)**:
   - Display, single-window, specific application, and drag-to-select region capture via ScreenCaptureKit.
@@ -62,6 +62,12 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Interactive trim review modal (`VideoTrimModalView`) with asynchronous filmstrip generation (`AVAssetImageGenerator`), draggable In/Out handles with frame scrubbing, real-time timestamp displays, and looping playback preview.
   - Dual entry points: optional post-capture trim review before finalization (`settings.trimBeforeSave`), one-click trim from completion bar, row-level scissors button & context menu in Recordings Library, and posthumous trimming of any video file loaded from disk.
   - Dual save options: save trimmed copy (`_trimmed.mp4`) or replace original via macOS Trash-safe workflow with automated companion Evidence Seal recalculation.
+- ✅ **Ephemeral Recording HUD, Open With & Zero-Ghost Recents (v0.4.0) — Phase 12**:
+  - Ephemeral recording companion in macOS menu bar that exists exclusively during active capture (`.recording` / `.paused`) with live `MM:SS` elapsed duration timer, notch-safe real estate, context-aware Pause/Resume (`⌥Space`), in-flight overlay toggles, distraction-free auto-minimize, and amnesiac Hard Burn purge (`⌃⌥⌘⌫`).
+  - Native macOS "Open With" integration (`CFBundleDocumentTypes`) and Dock icon drag-and-drop routing external `.mp4`, `.mov`, and `.m4v` video files directly into lossless trim review (`VideoTrimModalView`).
+  - Standard system application menu bar commands (`⌘O` Open Video to Trim…, `⌘L` Recordings Library…, and "Open Recent" submenu).
+  - Strict zero-ghost invariant dynamically excluding any files deleted from disk from recent history and library listings.
+  - Visual callout and pulsing radar animation drawing immediate focus to the saved recording path.
 
 ---
 

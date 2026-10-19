@@ -6,6 +6,7 @@ import EncoderKit
 import Foundation
 import OSLog
 import ScreenCaptureKit
+import UniformTypeIdentifiers
 
 /// Single source of truth for the UI. Owns a `CaptureSession`, a
 /// `DeviceManager`, and the user's current selection.
@@ -71,6 +72,17 @@ public final class RecordingViewModel: ObservableObject {
     @Published public private(set) var lastRecordingURL: URL?
     @Published public var activeTrimTarget: TrimTarget? = nil
     @Published public var overlayError: String? = nil
+    @Published public var showLibrary: Bool = false
+
+    /// Returns true if a screen recording session is currently running, paused, or stopping.
+    public var isCapturing: Bool {
+        switch status {
+        case .recording, .paused, .stopping:
+            return true
+        default:
+            return false
+        }
+    }
 
     internal func setStatusForTesting(_ s: Status) {
         self.status = s
@@ -84,6 +96,7 @@ public final class RecordingViewModel: ObservableObject {
     public let devices: DeviceManager
     public let levels: AudioLevelMonitor
     public let library: RecordingsLibrary
+    public let recentsStore: RecentRecordingsStore
     public let presets: PresetsStore
     public let settings: AppSettings
     public let permissions: PermissionsMonitor
@@ -213,6 +226,7 @@ public final class RecordingViewModel: ObservableObject {
 
         self.outputFolder = settings.outputFolder
         self.library = RecordingsLibrary(folder: settings.outputFolder)
+        self.recentsStore = RecentRecordingsStore(defaults: settings.defaults)
         self.presets = PresetsStore()
         self.permissions = PermissionsMonitor()
         self.webcam = WebcamOverlayController()
@@ -781,6 +795,7 @@ public final class RecordingViewModel: ObservableObject {
             let endDate = Date()
             self.lastRecordingURL = url
             status = .finished(url)
+            recentsStore.addRecent(url: url)
             restoreWindowIfNeeded()
             if (forceTrimReview || settings.trimBeforeSave) && LosslessTrimmer.isSupported(url: url) {
                 self.activeTrimTarget = TrimTarget(url: url, isPostCaptureReview: true, originalFile: nil)
@@ -1056,6 +1071,7 @@ public final class RecordingViewModel: ObservableObject {
         }
         self.lastRecordingURL = url
         self.status = .finished(url)
+        self.recentsStore.addRecent(url: url)
     }
 
     /// Opens the lossless trim modal for the most recently completed recording.
@@ -1074,6 +1090,7 @@ public final class RecordingViewModel: ObservableObject {
         }
         guard let url = targetURL else { return }
         library.deleteArtifacts(at: url, moveToTrash: moveToTrash)
+        recentsStore.remove(url: url)
         if self.lastRecordingURL == url {
             self.lastRecordingURL = nil
         }
@@ -1089,6 +1106,7 @@ public final class RecordingViewModel: ObservableObject {
     /// status and lastRecordingURL only if that recording is still the active finished session.
     public func discardReviewedRecording(at url: URL) {
         library.deleteArtifacts(at: url, moveToTrash: true)
+        recentsStore.remove(url: url)
         guard lastRecordingURL?.standardizedFileURL == url.standardizedFileURL else { return }
         lastRecordingURL = nil
         switch status {
@@ -1096,6 +1114,53 @@ public final class RecordingViewModel: ObservableObject {
             status = displays.isEmpty ? .idle : .ready
         default:
             break
+        }
+    }
+
+    /// Validates and opens an external video file directly in the lossless trimming interface.
+    /// Returns `true` if the file exists on disk, has a supported format (.mp4, .mov, .m4v), and was presented.
+    @discardableResult
+    public func openVideoForTrimming(url: URL) -> Bool {
+        guard !isCapturing else {
+            log.warning("Cannot open video for trimming while recording is active")
+            return false
+        }
+        let standardized = url.standardizedFileURL
+        guard FileManager.default.fileExists(atPath: standardized.path) else {
+            log.error("Cannot open video for trimming: file does not exist at \(standardized.path, privacy: .public)")
+            return false
+        }
+        guard LosslessTrimmer.isSupported(url: standardized) else {
+            log.error("Cannot open video for trimming: unsupported video format for \(standardized.lastPathComponent, privacy: .public)")
+            return false
+        }
+
+        recentsStore.addRecent(url: standardized)
+        if let window = recorderWindow {
+            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        self.activeTrimTarget = TrimTarget(url: standardized, isPostCaptureReview: false, originalFile: nil)
+        return true
+    }
+
+    /// Presents a standard system open panel allowing the user to select an .mp4, .mov, or .m4v video to trim.
+    public func presentOpenVideoPanel() {
+        guard !isCapturing else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            UTType.mpeg4Movie,
+            UTType.quickTimeMovie,
+            UTType(filenameExtension: "m4v")
+        ].compactMap { $0 }
+        panel.message = "Choose a video to trim losslessly without re-encoding"
+        panel.prompt = "Select Video"
+        if panel.runModal() == .OK, let url = panel.url {
+            openVideoForTrimming(url: url)
         }
     }
 

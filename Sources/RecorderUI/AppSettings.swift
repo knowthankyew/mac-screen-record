@@ -21,7 +21,7 @@ public final class AppSettings: ObservableObject {
         static let hideWindowDuringRecording = "FMSR.defaults.hideWindowDuringRecording"
     }
 
-    private let defaults: UserDefaults
+    public let defaults: UserDefaults
 
     @Published public var hideWindowDuringRecording: Bool {
         didSet { defaults.set(hideWindowDuringRecording, forKey: Keys.hideWindowDuringRecording) }

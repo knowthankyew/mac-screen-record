@@ -6,7 +6,6 @@ import SwiftUI
 
 public struct MainView: View {
     @ObservedObject private var vm: RecordingViewModel
-    @State private var showLibrary = false
     @State private var showDeleteArtifactsSheet = false
     @State private var moveToTrash = true
     @State private var highlightOverlays = false
@@ -58,12 +57,16 @@ public struct MainView: View {
             vm.recorderWindow?.makeKeyAndOrderFront(nil)
             vm.recorderWindow?.deminiaturize(nil)
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            vm.recentsStore.refresh()
+            vm.library.pruneMissingFiles()
+        }
         .task {
             await vm.loadAvailableContent()
             await vm.applyStartupDefaultOverlays()
         }
-        .sheet(isPresented: $showLibrary) {
-            RecordingsListView(library: vm.library, settings: vm.settings)
+        .sheet(isPresented: $vm.showLibrary) {
+            RecordingsListView(library: vm.library, settings: vm.settings, recentsStore: vm.recentsStore)
         }
         .sheet(isPresented: $showDeleteArtifactsSheet) {
             deleteArtifactsSheet
@@ -194,7 +197,7 @@ public struct MainView: View {
             .help(vm.webcamEnabled ? "Turn off Facecam PiP" : "Turn on Facecam PiP (uses default Facecam profile)")
 
             Button {
-                showLibrary = true
+                vm.showLibrary = true
             } label: {
                 Image(systemName: "film.stack")
             }

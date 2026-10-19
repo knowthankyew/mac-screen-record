@@ -106,7 +106,9 @@ public final class RecordingsLibrary: ObservableObject {
             if folder == targetFolder { files = [] }
             return
         }
-        let candidates = items.filter { Self.supportedExts.contains($0.pathExtension.lowercased()) }
+        let candidates = items.filter {
+            Self.supportedExts.contains($0.pathExtension.lowercased()) && fm.fileExists(atPath: $0.path)
+        }
 
         // Lightweight metadata first so the list renders immediately.
         let initial = candidates.map { url -> RecordingFile in
@@ -149,6 +151,13 @@ public final class RecordingsLibrary: ObservableObject {
                 }
             }
         }
+        pruneMissingFiles()
+    }
+
+    /// Prunes any files from the library list that no longer exist on disk.
+    public func pruneMissingFiles() {
+        let fm = FileManager.default
+        files.removeAll { !fm.fileExists(atPath: $0.url.path) }
     }
 
     public func revealInFinder(_ file: RecordingFile) {

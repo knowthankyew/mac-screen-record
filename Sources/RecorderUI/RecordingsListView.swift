@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 struct RecordingsListView: View {
     @ObservedObject var library: RecordingsLibrary
     public var settings: AppSettings = .shared
+    public var recentsStore: RecentRecordingsStore? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var renamingID: URL?
     @State private var renameText: String = ""
@@ -55,6 +56,7 @@ struct RecordingsListView: View {
                         RecordingRow(
                             file: file,
                             library: library,
+                            recentsStore: recentsStore,
                             renamingID: $renamingID,
                             renameText: $renameText,
                             exportingID: $exportingID,
@@ -79,6 +81,9 @@ struct RecordingsListView: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .onAppear {
+            library.pruneMissingFiles()
+        }
         .task { await library.reload() }
         .onDisappear {
             exportTask?.cancel()
@@ -95,6 +100,7 @@ struct RecordingsListView: View {
         panel.message = "Choose a video to trim losslessly without re-encoding"
         panel.prompt = "Select Video"
         if panel.runModal() == .OK, let url = panel.url {
+            recentsStore?.addRecent(url: url)
             activeTrimTarget = RecordingViewModel.TrimTarget(url: url, isPostCaptureReview: false, originalFile: nil)
         }
     }
@@ -103,6 +109,7 @@ struct RecordingsListView: View {
 private struct RecordingRow: View {
     let file: RecordingFile
     @ObservedObject var library: RecordingsLibrary
+    var recentsStore: RecentRecordingsStore? = nil
     @Binding var renamingID: URL?
     @Binding var renameText: String
     @Binding var exportingID: URL?
@@ -213,6 +220,8 @@ private struct RecordingRow: View {
     private func deleteFile() {
         if let err = library.delete(file) {
             errorMessage = "Delete failed: \(err.localizedDescription)"
+        } else {
+            recentsStore?.remove(url: file.url)
         }
     }
 
