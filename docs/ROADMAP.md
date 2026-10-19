@@ -17,16 +17,16 @@ Similar to how **`gradcast`** is explicitly designated in the Portfolio Master B
 
 ---
 
-## 2. Scope Realignment: Circumventing Upstream Commercial Streamer Bloat
+## 2. Scope Realignment: Lean Native Architecture vs. Heavy Broadcast Suites
 
-The inherited upstream roadmap included extensive planning for commercial content-creator and broadcasting studio tools. To preserve architectural purity and fulfill the `knowthankyew` consumer defense mission, those features are **circumvented and intentionally descheduled**:
+Rather than adopting heavy third-party broadcasting suites (such as OBS Studio scenes, web browser CEF sources, or cloud overlays), **`mac-screen-record`** implements rich presenter personalization and evidence branding using **pure, lightweight Apple native frameworks** (`AVFoundation`, `CoreGraphics`, `Metal`, `AppKit`, `CoreImage`):
 
-| Inherited Upstream Proposal | Status | Portfolio Justification |
+| Feature Capability | Architecture & Native Implementation | Portfolio Justification |
 | :--- | :--- | :--- |
-| **Modular Watermark & Branding Engine** (Phase 6.5) | **Circumvented / Descheduled** | Corporate logo branding and watermark overlays cater to commercial marketing, not consumer evidence gathering. |
-| **Video PiP Playback Engine** (Phase 6.6: playing arbitrary MP4s inside PiP) | **Circumvented / Descheduled** | Embedding a file-based media player inside a capture overlay container creates code bloat, increases memory pressure, and diverges from honest reality recording. |
-| **Complex Geometric Polygons** (Hexagons, octagons, architectural vaults) | **Circumvented / Descheduled** | Elaborate broadcast stencils add Metal shader complexity with zero evidentiary value. Clean Circle vs. Rounded-Rectangle framing is scheduled in Phase 11. |
-| **HSV Color Wheel Sliders & Palette Steppers** (Phase 6.3) | **Streamlined (Phase 11)** | Standard macOS system color controls are sufficient; custom design studio color pickers are out of scope. |
+| **Basic Geometric PiP Shapes** | Vector `CGPath` masks (Circle, Rounded-Rect, Oval, Hexagon, Diamond, Heart, Star) with matching border stroke paths | Clean visual framing without heavy Metal shader complexity or external polygon engines. |
+| **Alternative Visual Sources** (Static Image & Video Loop) | Native `AVPlayerItemVideoOutput` and `CGImage` pipeline replacing live camera feed | Enables privacy-safe virtual avatars, static profile representations, and repeatable testing without camera activation. |
+| **Transparent Branding / Watermark Overlay** | Local alpha-channel PNG image composited via Core Image / AppKit layer across all PiP variants | Allows lightweight organizational attribution, badges, or decorative borders with zero cloud dependencies. |
+| **Standard System Color Controls** | Standard macOS `ColorPicker` and slider stroke controls | Native HIG consistency without maintaining custom HSV color wheels or palette steppers. |
 
 ---
 
@@ -84,6 +84,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | ✅ **Shipped** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | ✅ **Shipped** |
 | **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`MM:SS` / `HH:MM:SS`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | ✅ **Shipped** |
+| **Phase 13** | **Extended PiP Shapes, Alternate Visual Sources & Transparent Branding** | Presenter PiP & Branding (`v0.5.0`) | **1.** Expanded basic geometric shapes (Oval, Hexagon, Diamond, Heart, Star) with synchronized `CGPath` border strokes; **2.** Static image & looping video alternative visual sources substituting camera; **3.** Transparent PNG branding/frame overlay across all variants | 🔜 **Up Next (v0.5.0 Active)** |
 
 ---
 
@@ -176,3 +177,23 @@ The inherited upstream roadmap included extensive planning for commercial conten
 - **In-Flight Telemetry & Quick Toggles**:
   - Read-only capture telemetry: selected microphone device (active/disabled), system audio capture state, and active capture target.
   - In-flight overlay toggles: Quick toggle Facecam presenter PiP (`⌃⌥P`), keystroke overlay (`⌃⌥K`), and mouse click highlights.
+
+### Phase 13: Extended PiP Shapes, Alternate Visual Sources & Transparent Branding (v0.5.0) 🔜 Active
+**Objective**: Complete the presenter overlay suite with versatile geometric outlines, camera-free visual media sources (static images & looping video clips), and custom alpha-channel branding/frame overlays while maintaining strict zero-egress invariants and Apple native performance.
+
+- **Expanded Geometric PiP Outlines**:
+  - Add basic geometric shapes beyond Circle and Rounded Rectangle:
+    - **Oval / Capsule**: Smooth oblong framing ideal for presenter busts and vertical avatars.
+    - **Hexagon**: Symmetrical 6-sided polygon offering a modern, technical aesthetic.
+    - **Diamond / Rhombus**: Dynamic 4-point angular framing.
+    - **Heart & Star**: Playful presentation shapes providing custom flair.
+  - Implement shape framing via native vector `CGPath` masks on `CALayer.mask` / `WebcamMetalView` with mathematically aligned border stroke paths, ensuring custom `NSColor` and border width (0–12px) cleanly track the exact perimeter.
+- **Alternative Visual Sources (Camera Substitute / Virtual Presenter)**:
+  - Allow users to select an alternative visual source instead of an active hardware webcam:
+    - **Static Image Avatar**: PNG, JPEG, HEIC, or TIFF profile picture or character avatar displayed in the PiP window.
+    - **Video Clip Loop**: Local supported video file (`.mp4`, `.mov`, `.m4v`) played on a seamless loop via native `AVPlayerItemVideoOutput` / `AVAssetReader`.
+  - Fully compatible with all downstream PiP effects: shapes, aspect ratios, borders, drop shadows, and position dragging, enabling camera-free recording, avatar presentation, or repeatable test captures.
+- **Transparent Branding & Frame Overlay**:
+  - Allow selection of an alpha-channel transparent image (PNG) as a branding overlay or custom border frame.
+  - Composited directly over or around the presenter PiP layer, available across all modes (live camera, blur backdrop, virtual preset, cutout silhouette, or media source).
+  - Preserved in capture presets for streamlined reusable presentation setups.
