@@ -454,6 +454,27 @@ final class PrivacyAndOverlayTests {
         try checkEqual(overlay.relativeRect.origin.x, -40)
         try checkEqual(overlay.relativeRect.width, 300)
 
+        // Real image loading must cache image in memory and must NOT cause recursion
+        let tempImg = NSImage(size: NSSize(width: 100, height: 100))
+        tempImg.lockFocus()
+        NSColor.blue.setFill()
+        NSRect(x: 0, y: 0, width: 100, height: 100).fill()
+        tempImg.unlockFocus()
+        let tiff = try unwrap(tempImg.tiffRepresentation)
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test-backdrop-\(UUID().uuidString).png")
+        try tiff.write(to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        overlay.isEnabled = true
+        overlay.imageURL = tempURL
+        try checkEqual(overlay.imageURL, tempURL)
+        try checkNotNil(overlay.cachedImage, "Real image must be cached in memory")
+        try checkEqual(overlay.cachedImage?.size.width, 100.0)
+
+        // Clearing imageURL must clear cachedImage cleanly
+        overlay.imageURL = nil
+        try checkNil(overlay.cachedImage, "Clearing imageURL clears cached image")
+
         // Verify all snap positions map to valid normalized points (0...1)
         for pos in PresenterSnapPosition.allCases {
             let pt = pos.normalizedPoint

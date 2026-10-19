@@ -149,7 +149,7 @@ public struct PresenterLayoutModalView: View {
         ZStack(alignment: .topLeading) {
             // Backdrop Image or Placeholder
             Group {
-                if let url = vm.backdropImageURL, let img = NSImage(contentsOf: url) {
+                if let img = backdropOverlay.cachedImage ?? (vm.backdropImageURL.flatMap { NSImage(contentsOf: $0) }) {
                     Image(nsImage: img)
                         .resizable()
                         .aspectRatio(contentMode: .fill)

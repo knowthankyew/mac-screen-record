@@ -28,6 +28,8 @@ public enum PresenterSnapPosition: String, CaseIterable, Identifiable, Codable, 
 /// Floating transparent backdrop element placed strictly behind the PiP overlay on screen.
 /// Can be grouped (anchored to PiP) or freely placed with independent resizable bounds.
 public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendable {
+    @Published public private(set) var cachedImage: NSImage?
+
     @Published public var isEnabled: Bool = false {
         didSet {
             guard oldValue != isEnabled else { return }
@@ -84,7 +86,7 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
         self.currentPiPFrame = pipFrame
         self.pipPanel = pipWindow
 
-        guard isEnabled, imageURL != nil else {
+        guard isEnabled, cachedImage != nil else {
             hide()
             return
         }
@@ -93,8 +95,8 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
             self.window = makePanel()
         }
 
+        imageView?.image = cachedImage
         updateFrame()
-        reloadImage()
 
         if let panel = window {
             if let pipWin = pipWindow {
@@ -145,7 +147,7 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
     }
 
     private func updateVisibility() {
-        if isEnabled && imageURL != nil {
+        if isEnabled && cachedImage != nil {
             show(targetScreen: currentTargetScreen, pipFrame: currentPiPFrame, relativeTo: pipPanel)
         } else {
             hide()
@@ -154,14 +156,14 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
 
     private func reloadImage() {
         guard let url = imageURL, let img = NSImage(contentsOf: url) else {
+            cachedImage = nil
             imageView?.image = nil
-            hide()
+            updateVisibility()
             return
         }
+        cachedImage = img
         imageView?.image = img
-        if isEnabled {
-            updateVisibility()
-        }
+        updateVisibility()
     }
 
     private func makePanel() -> PresenterBackdropPanel {
