@@ -245,6 +245,9 @@ struct MacScreenRecordTestRunner {
         await run("PrivacyAndOverlayTests", "testPresetPresenterBackdropAndNormalizedLayoutPersistence") {
             try privacySuite.testPresetPresenterBackdropAndNormalizedLayoutPersistence()
         }
+        await run("PrivacyAndOverlayTests", "testPresenterBackdropDirectManipulationAndResizeGeometry") {
+            try privacySuite.testPresenterBackdropDirectManipulationAndResizeGeometry()
+        }
 
         let evidenceSuite = EvidenceSealTests()
         await run("EvidenceSealTests", "testStreamingHashKnownVectors") {

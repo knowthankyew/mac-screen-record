@@ -547,5 +547,172 @@ final class PrivacyAndOverlayTests {
         try checkEqual(decodedLegacy.effectivePipNormalizedPosition, CGPoint(x: 0.0, y: 1.0))
         try checkNil(decodedLegacy.backdropEnabled)
     }
+
+    func testPresenterBackdropDirectManipulationAndResizeGeometry() throws {
+        let scale: CGFloat = 0.5
+        let vFrame = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let orig = CGRect(x: 200, y: 200, width: 300, height: 240)
+
+        // 1. Production computeResizedRect: topLeft handle expansion
+        let topLeftRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .topLeft,
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: 40, height: -30), // right +40, up -30
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(topLeftRect.origin.x, 280.0)
+        try checkEqual(topLeftRect.width, 220.0)
+        try checkEqual(topLeftRect.height, 300.0)
+        try checkEqual(topLeftRect.origin.y, 200.0)
+        try checkEqual(topLeftRect.maxX, orig.maxX, "Right edge is anchored at orig.maxX")
+        try checkEqual(topLeftRect.minY, orig.minY, "Bottom edge is anchored at orig.minY")
+
+        // 2. Production computeResizedRect: bottomRight handle expansion
+        let bottomRightRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .bottomRight,
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: 40, height: 30), // right +40, down +30
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(bottomRightRect.origin.x, 200.0)
+        try checkEqual(bottomRightRect.width, 380.0)
+        try checkEqual(bottomRightRect.origin.y, 140.0)
+        try checkEqual(bottomRightRect.height, 300.0)
+        try checkEqual(bottomRightRect.minX, orig.minX, "Left edge is anchored at orig.minX")
+        try checkEqual(bottomRightRect.maxY, orig.maxY, "Top edge is anchored at orig.maxY")
+
+        // 3. Boundary clamping: Right handle cannot exceed visibleFrame.maxX
+        let nearRightEdge = CGRect(x: 1800, y: 200, width: 100, height: 100)
+        let clampedRightRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .topRight,
+            initialScreenRect: nearRightEdge,
+            canvasTranslation: CGSize(width: 300, height: 0),
+            scale: 1.0,
+            visibleFrame: vFrame
+        )
+        try checkEqual(clampedRightRect.maxX, vFrame.maxX, "Right edge clamped to visibleFrame.maxX")
+        try checkEqual(clampedRightRect.minX, nearRightEdge.minX, "Left edge remains anchored")
+
+        // 4. Boundary clamping: Left handle cannot exceed visibleFrame.minX
+        let nearLeftEdge = CGRect(x: 50, y: 200, width: 100, height: 100)
+        let clampedLeftRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .middleLeft,
+            initialScreenRect: nearLeftEdge,
+            canvasTranslation: CGSize(width: -200, height: 0),
+            scale: 1.0,
+            visibleFrame: vFrame
+        )
+        try checkEqual(clampedLeftRect.minX, vFrame.minX, "Left edge clamped to visibleFrame.minX")
+        try checkEqual(clampedLeftRect.maxX, nearLeftEdge.maxX, "Right edge remains anchored")
+
+        // 5. Boundary clamping: Top handle cannot exceed visibleFrame.maxY
+        let nearTopEdge = CGRect(x: 200, y: 950, width: 100, height: 100)
+        let clampedTopRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .topCenter,
+            initialScreenRect: nearTopEdge,
+            canvasTranslation: CGSize(width: 0, height: -200),
+            scale: 1.0,
+            visibleFrame: vFrame
+        )
+        try checkEqual(clampedTopRect.maxY, vFrame.maxY, "Top edge clamped to visibleFrame.maxY")
+        try checkEqual(clampedTopRect.minY, nearTopEdge.minY, "Bottom edge remains anchored")
+
+        // 6. Boundary clamping: Bottom handle cannot exceed visibleFrame.minY
+        let nearBottomEdge = CGRect(x: 200, y: 50, width: 100, height: 100)
+        let clampedBottomRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .bottomCenter,
+            initialScreenRect: nearBottomEdge,
+            canvasTranslation: CGSize(width: 0, height: 200),
+            scale: 1.0,
+            visibleFrame: vFrame
+        )
+        try checkEqual(clampedBottomRect.minY, vFrame.minY, "Bottom edge clamped to visibleFrame.minY")
+        try checkEqual(clampedBottomRect.maxY, nearBottomEdge.maxY, "Top edge remains anchored")
+
+        // 7. Handle collapse respects minSize (40) and anchors opposing edge
+        let collapsedLeftRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .middleLeft,
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: 500, height: 0),
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(collapsedLeftRect.width, PresenterBackdropGeometry.minimumSize)
+        try checkEqual(collapsedLeftRect.maxX, orig.maxX, "Right edge anchored on collapse")
+
+        let collapsedBottomRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: .bottomCenter,
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: 0, height: -500),
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(collapsedBottomRect.height, PresenterBackdropGeometry.minimumSize)
+        try checkEqual(collapsedBottomRect.maxY, orig.maxY, "Top edge anchored on collapse")
+
+        // 8. Production computeBodyDragRect clamping
+        let dragFarRight = PresenterBackdropGeometry.computeBodyDragRect(
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: 5000, height: 0),
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(dragFarRight.maxX, vFrame.maxX, "Body drag strictly clamped to visibleFrame.maxX")
+        try checkEqual(dragFarRight.width, orig.width, "Width invariant during drag")
+
+        let dragFarLeft = PresenterBackdropGeometry.computeBodyDragRect(
+            initialScreenRect: orig,
+            canvasTranslation: CGSize(width: -5000, height: 0),
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(dragFarLeft.minX, vFrame.minX, "Body drag strictly clamped to visibleFrame.minX")
+        try checkEqual(dragFarLeft.width, orig.width)
+
+        // 9. Production grouped and freeform geometry mapping
+        let overlay = PresenterBackdropOverlay()
+        overlay.isGrouped = true
+        overlay.relativeRect = CGRect(x: -30, y: -20, width: 260, height: 240)
+        let pipScreen = CGRect(x: 1500, y: 100, width: 220, height: 220)
+        let backdropGrouped = PresenterBackdropGeometry.groupedScreenRect(
+            pipScreenRect: pipScreen,
+            relativeRect: overlay.relativeRect
+        )
+        try checkEqual(backdropGrouped.origin.x, 1470.0)
+        try checkEqual(backdropGrouped.origin.y, 80.0)
+        try checkEqual(backdropGrouped.width, 260.0)
+        try checkEqual(backdropGrouped.height, 240.0)
+
+        overlay.freeformNormalizedRect = CGRect(x: 0.75, y: 0.05, width: 0.2, height: 0.2)
+        let backdropFreeform = PresenterBackdropGeometry.freeformScreenRect(
+            visibleFrame: vFrame,
+            freeformNormalizedRect: overlay.freeformNormalizedRect
+        )
+        try checkEqual(backdropFreeform.origin.x, 1440.0)
+        try checkEqual(backdropFreeform.origin.y, 54.0)
+        try checkEqual(backdropFreeform.width, 384.0)
+        try checkEqual(backdropFreeform.height, 216.0)
+
+        // 10. Stability when starting rect is partially outside visibleFrame on zero translation
+        let bleedingRect = CGRect(x: -10, y: -20, width: 300, height: 260)
+        let zeroResize = PresenterBackdropGeometry.computeResizedRect(
+            handle: .topRight,
+            initialScreenRect: bleedingRect,
+            canvasTranslation: .zero,
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(zeroResize, bleedingRect, "Zero translation must not jump or shrink bleeding rect")
+
+        let zeroBodyDrag = PresenterBackdropGeometry.computeBodyDragRect(
+            initialScreenRect: bleedingRect,
+            canvasTranslation: .zero,
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        try checkEqual(zeroBodyDrag, bleedingRect, "Zero translation body drag must not jump bleeding rect")
+    }
 }
 

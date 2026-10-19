@@ -125,18 +125,14 @@ public final class PresenterBackdropOverlay: ObservableObject, @unchecked Sendab
 
         let targetRect: NSRect
         if isGrouped {
-            targetRect = NSRect(
-                x: currentPiPFrame.minX + relativeRect.origin.x,
-                y: currentPiPFrame.minY + relativeRect.origin.y,
-                width: max(40, relativeRect.width),
-                height: max(40, relativeRect.height)
+            targetRect = PresenterBackdropGeometry.groupedScreenRect(
+                pipScreenRect: currentPiPFrame,
+                relativeRect: relativeRect
             )
         } else {
-            targetRect = NSRect(
-                x: vFrame.minX + freeformNormalizedRect.origin.x * vFrame.width,
-                y: vFrame.minY + freeformNormalizedRect.origin.y * vFrame.height,
-                width: max(40, freeformNormalizedRect.width * vFrame.width),
-                height: max(40, freeformNormalizedRect.height * vFrame.height)
+            targetRect = PresenterBackdropGeometry.freeformScreenRect(
+                visibleFrame: vFrame,
+                freeformNormalizedRect: freeformNormalizedRect
             )
         }
 
@@ -193,3 +189,159 @@ private final class PresenterBackdropPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 }
+
+// MARK: - 8 Resize Handles Definition
+
+public enum PresenterResizeHandle: String, CaseIterable, Identifiable, Sendable {
+    case topLeft, topCenter, topRight
+    case middleLeft, middleRight
+    case bottomLeft, bottomCenter, bottomRight
+
+    public var id: String { rawValue }
+
+    public func position(in rect: CGRect) -> CGPoint {
+        switch self {
+        case .topLeft:      return CGPoint(x: rect.minX, y: rect.minY)
+        case .topCenter:    return CGPoint(x: rect.midX, y: rect.minY)
+        case .topRight:     return CGPoint(x: rect.maxX, y: rect.minY)
+        case .middleLeft:   return CGPoint(x: rect.minX, y: rect.midY)
+        case .middleRight:  return CGPoint(x: rect.maxX, y: rect.midY)
+        case .bottomLeft:   return CGPoint(x: rect.minX, y: rect.maxY)
+        case .bottomCenter: return CGPoint(x: rect.midX, y: rect.maxY)
+        case .bottomRight:  return CGPoint(x: rect.maxX, y: rect.maxY)
+        }
+    }
+}
+
+public typealias ResizeHandle = PresenterResizeHandle
+
+// MARK: - Clamped Direct Manipulation Geometry
+
+public enum PresenterBackdropGeometry {
+    public static let minimumSize: CGFloat = 40.0
+
+    /// Computes the new screen rect resulting from dragging a resize handle.
+    /// Anchors the opposing edge(s) and strictly clamps the result within `visibleFrame` and `minSize`.
+    public static func computeResizedRect(
+        handle: PresenterResizeHandle,
+        initialScreenRect: CGRect,
+        canvasTranslation: CGSize,
+        scale: CGFloat,
+        visibleFrame: CGRect,
+        minSize: CGFloat = minimumSize
+    ) -> CGRect {
+        let bounds = visibleFrame.union(initialScreenRect)
+        let safeScale = max(0.001, scale)
+        let deltaScreenX = canvasTranslation.width / safeScale
+        let deltaScreenY = -canvasTranslation.height / safeScale
+
+        let origX = initialScreenRect.origin.x
+        let origY = initialScreenRect.origin.y
+        let origW = initialScreenRect.width
+        let origH = initialScreenRect.height
+        let origMaxX = origX + origW
+        let origMaxY = origY + origH
+
+        var newX = origX
+        var newW = origW
+        var newY = origY
+        var newH = origH
+
+        // Horizontal dimension & anchoring
+        switch handle {
+        case .topLeft, .middleLeft, .bottomLeft:
+            // Right edge anchored at origMaxX
+            let unclampedLeft = origX + deltaScreenX
+            let clampedLeft = max(bounds.minX, min(origMaxX - minSize, unclampedLeft))
+            newX = clampedLeft
+            newW = origMaxX - clampedLeft
+
+        case .topRight, .middleRight, .bottomRight:
+            // Left edge anchored at origX
+            let unclampedRight = origMaxX + deltaScreenX
+            let clampedRight = max(origX + minSize, min(bounds.maxX, unclampedRight))
+            newX = origX
+            newW = clampedRight - origX
+
+        case .topCenter, .bottomCenter:
+            newX = origX
+            newW = origW
+        }
+
+        // Vertical dimension & anchoring
+        switch handle {
+        case .topLeft, .topCenter, .topRight:
+            // Bottom edge anchored at origY
+            let unclampedTop = origMaxY + deltaScreenY
+            let clampedTop = max(origY + minSize, min(bounds.maxY, unclampedTop))
+            newY = origY
+            newH = clampedTop - origY
+
+        case .bottomLeft, .bottomCenter, .bottomRight:
+            // Top edge anchored at origMaxY
+            let unclampedBottom = origY + deltaScreenY
+            let clampedBottom = max(bounds.minY, min(origMaxY - minSize, unclampedBottom))
+            newY = clampedBottom
+            newH = origMaxY - clampedBottom
+
+        case .middleLeft, .middleRight:
+            newY = origY
+            newH = origH
+        }
+
+        return CGRect(x: newX, y: newY, width: newW, height: newH)
+    }
+
+    /// Computes the new screen rect resulting from dragging the backdrop body.
+    /// Strictly clamps the entire rect inside `visibleFrame` union `initialScreenRect`.
+    public static func computeBodyDragRect(
+        initialScreenRect: CGRect,
+        canvasTranslation: CGSize,
+        scale: CGFloat,
+        visibleFrame: CGRect
+    ) -> CGRect {
+        let bounds = visibleFrame.union(initialScreenRect)
+        let safeScale = max(0.001, scale)
+        let deltaScreenX = canvasTranslation.width / safeScale
+        let deltaScreenY = -canvasTranslation.height / safeScale
+
+        let minX = bounds.minX
+        let maxX = max(minX, bounds.maxX - initialScreenRect.width)
+        let minY = bounds.minY
+        let maxY = max(minY, bounds.maxY - initialScreenRect.height)
+
+        let newX = max(minX, min(maxX, initialScreenRect.minX + deltaScreenX))
+        let newY = max(minY, min(maxY, initialScreenRect.minY + deltaScreenY))
+
+        return CGRect(x: newX, y: newY, width: initialScreenRect.width, height: initialScreenRect.height)
+    }
+
+    /// Computes the absolute screen rect for a grouped backdrop anchored to the PiP camera window.
+    public static func groupedScreenRect(
+        pipScreenRect: CGRect,
+        relativeRect: CGRect,
+        minSize: CGFloat = minimumSize
+    ) -> CGRect {
+        CGRect(
+            x: pipScreenRect.minX + relativeRect.origin.x,
+            y: pipScreenRect.minY + relativeRect.origin.y,
+            width: max(minSize, relativeRect.width),
+            height: max(minSize, relativeRect.height)
+        )
+    }
+
+    /// Computes the absolute screen rect for a freeform backdrop positioned on the visible screen.
+    public static func freeformScreenRect(
+        visibleFrame: CGRect,
+        freeformNormalizedRect: CGRect,
+        minSize: CGFloat = minimumSize
+    ) -> CGRect {
+        CGRect(
+            x: visibleFrame.minX + freeformNormalizedRect.origin.x * visibleFrame.width,
+            y: visibleFrame.minY + freeformNormalizedRect.origin.y * visibleFrame.height,
+            width: max(minSize, freeformNormalizedRect.width * visibleFrame.width),
+            height: max(minSize, freeformNormalizedRect.height * visibleFrame.height)
+        )
+    }
+}
+

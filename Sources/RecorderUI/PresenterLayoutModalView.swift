@@ -11,11 +11,12 @@ public struct PresenterLayoutModalView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var hoveredHandle: ResizeHandle? = nil
-    @State private var activeDraggingHandle: ResizeHandle? = nil
+    @GestureState private var activeDraggingHandle: ResizeHandle? = nil
+    @GestureState private var isBackdropBodyDragging: Bool = false
+    @GestureState private var isPiPCameraDragging: Bool = false
     @State private var initialDragRect: CGRect = .zero
     @State private var dragStartPiPNormalized: CGPoint? = nil
-    @State private var dragStartBackdropRelativeRect: CGRect? = nil
-    @State private var dragStartBackdropFreeformRect: CGRect? = nil
+    @State private var dragStartBackdropScreenRect: CGRect? = nil
 
     public init(vm: RecordingViewModel) {
         self.vm = vm
@@ -42,6 +43,26 @@ public struct PresenterLayoutModalView: View {
         .frame(minWidth: 780, minHeight: 560)
         .background(Color(NSColor.windowBackgroundColor))
         .allowAppTerminationWhenModal()
+        .onChange(of: activeDraggingHandle) { handle in
+            if handle == nil {
+                initialDragRect = .zero
+            }
+        }
+        .onChange(of: isBackdropBodyDragging) { active in
+            if !active {
+                dragStartBackdropScreenRect = nil
+            }
+        }
+        .onChange(of: isPiPCameraDragging) { active in
+            if !active {
+                dragStartPiPNormalized = nil
+            }
+        }
+        .onDisappear {
+            initialDragRect = .zero
+            dragStartBackdropScreenRect = nil
+            dragStartPiPNormalized = nil
+        }
     }
 
     // MARK: - Header & Footer
@@ -132,6 +153,7 @@ public struct PresenterLayoutModalView: View {
                     pipCameraBox(canvasSize: CGSize(width: canvasW, height: canvasH), scale: scale)
                 }
                 .frame(width: canvasW, height: canvasH)
+                .coordinateSpace(name: "displayCanvas")
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
             }
@@ -175,17 +197,19 @@ public struct PresenterLayoutModalView: View {
             )
             .contentShape(Rectangle())
             .gesture(
-                DragGesture()
+                DragGesture(coordinateSpace: .named("displayCanvas"))
+                    .updating($isBackdropBodyDragging) { _, state, _ in
+                        state = true
+                    }
                     .onChanged { val in
-                        if dragStartBackdropRelativeRect == nil && dragStartBackdropFreeformRect == nil {
-                            dragStartBackdropRelativeRect = backdropOverlay.relativeRect
-                            dragStartBackdropFreeformRect = backdropOverlay.freeformNormalizedRect
+                        guard activeDraggingHandle == nil else { return }
+                        if dragStartBackdropScreenRect == nil {
+                            dragStartBackdropScreenRect = currentBackdropScreenRect
                         }
                         handleBackdropBodyDrag(translation: val.translation, scale: scale)
                     }
                     .onEnded { _ in
-                        dragStartBackdropRelativeRect = nil
-                        dragStartBackdropFreeformRect = nil
+                        dragStartBackdropScreenRect = nil
                     }
             )
 
@@ -201,24 +225,29 @@ public struct PresenterLayoutModalView: View {
     private func resizeHandleView(handle: ResizeHandle, boxFrame: CGRect, scale: CGFloat) -> some View {
         let pos = handle.position(in: CGRect(origin: .zero, size: boxFrame.size))
         let handleSize: CGFloat = 10
+        let hitSize: CGFloat = 20
 
         Circle()
             .fill(Color.white)
             .frame(width: handleSize, height: handleSize)
             .overlay(Circle().stroke(Color.accentColor, lineWidth: 2))
             .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-            .offset(x: pos.x - handleSize / 2, y: pos.y - handleSize / 2)
+            .frame(width: hitSize, height: hitSize)
+            .contentShape(Rectangle())
+            .offset(x: pos.x - hitSize / 2, y: pos.y - hitSize / 2)
             .highPriorityGesture(
-                DragGesture()
+                DragGesture(coordinateSpace: .named("displayCanvas"))
+                    .updating($activeDraggingHandle) { _, state, _ in
+                        state = handle
+                    }
                     .onChanged { val in
-                        if activeDraggingHandle == nil {
-                            activeDraggingHandle = handle
+                        if initialDragRect == .zero {
                             initialDragRect = currentBackdropScreenRect
                         }
                         handleResizeDrag(handle: handle, translation: val.translation, scale: scale)
                     }
                     .onEnded { _ in
-                        activeDraggingHandle = nil
+                        initialDragRect = .zero
                     }
             )
     }
@@ -259,8 +288,12 @@ public struct PresenterLayoutModalView: View {
         .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
         .offset(x: frame.minX, y: frame.minY)
         .gesture(
-            DragGesture()
+            DragGesture(coordinateSpace: .named("displayCanvas"))
+                .updating($isPiPCameraDragging) { _, state, _ in
+                    state = true
+                }
                 .onChanged { val in
+                    guard activeDraggingHandle == nil && !isBackdropBodyDragging else { return }
                     if dragStartPiPNormalized == nil {
                         dragStartPiPNormalized = webcam.pipNormalizedPosition
                     }
@@ -407,20 +440,14 @@ public struct PresenterLayoutModalView: View {
         let pipScreen = currentPiPScreenRect
 
         if vm.backdropIsGrouped {
-            let rel = backdropOverlay.relativeRect
-            return CGRect(
-                x: pipScreen.minX + rel.origin.x,
-                y: pipScreen.minY + rel.origin.y,
-                width: max(40, rel.width),
-                height: max(40, rel.height)
+            return PresenterBackdropGeometry.groupedScreenRect(
+                pipScreenRect: pipScreen,
+                relativeRect: backdropOverlay.relativeRect
             )
         } else {
-            let fn = backdropOverlay.freeformNormalizedRect
-            return CGRect(
-                x: vFrame.minX + fn.origin.x * vFrame.width,
-                y: vFrame.minY + fn.origin.y * vFrame.height,
-                width: max(40, fn.width * vFrame.width),
-                height: max(40, fn.height * vFrame.height)
+            return PresenterBackdropGeometry.freeformScreenRect(
+                visibleFrame: vFrame,
+                freeformNormalizedRect: backdropOverlay.freeformNormalizedRect
             )
         }
     }
@@ -493,89 +520,41 @@ public struct PresenterLayoutModalView: View {
     }
 
     private func handleBackdropBodyDrag(translation: CGSize, scale: CGFloat) {
-        let deltaScreenX = translation.width / scale
-        let deltaScreenY = -translation.height / scale
-
-        if vm.backdropIsGrouped {
-            guard let startRel = dragStartBackdropRelativeRect else { return }
-            var rel = startRel
-            rel.origin.x += deltaScreenX
-            rel.origin.y += deltaScreenY
-            backdropOverlay.relativeRect = rel
-        } else {
-            guard let startFree = dragStartBackdropFreeformRect else { return }
-            let vFrame = targetScreenVisibleFrame
-            var fn = startFree
-            fn.origin.x += deltaScreenX / max(1, vFrame.width)
-            fn.origin.y += deltaScreenY / max(1, vFrame.height)
-            backdropOverlay.freeformNormalizedRect = fn
-        }
-        backdropOverlay.updateFrame()
+        guard activeDraggingHandle == nil else { return }
+        guard let startScreenRect = dragStartBackdropScreenRect else { return }
+        let vFrame = targetScreenVisibleFrame
+        let targetRect = PresenterBackdropGeometry.computeBodyDragRect(
+            initialScreenRect: startScreenRect,
+            canvasTranslation: translation,
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        applyBackdropScreenRect(targetRect, visibleFrame: vFrame)
     }
 
     private func handleResizeDrag(handle: ResizeHandle, translation: CGSize, scale: CGFloat) {
-        let deltaScreenX = translation.width / scale
-        let deltaScreenY = -translation.height / scale // Canvas Y down = Screen Y up
-        let orig = initialDragRect
-        var newX = orig.origin.x
-        var newY = orig.origin.y
-        var newW = orig.width
-        var newH = orig.height
-        let minSize: CGFloat = 40
+        let vFrame = targetScreenVisibleFrame
+        let targetRect = PresenterBackdropGeometry.computeResizedRect(
+            handle: handle,
+            initialScreenRect: initialDragRect,
+            canvasTranslation: translation,
+            scale: scale,
+            visibleFrame: vFrame
+        )
+        applyBackdropScreenRect(targetRect, visibleFrame: vFrame)
+    }
 
-        switch handle {
-        case .topLeft:
-            newX = orig.origin.x + deltaScreenX
-            newW = orig.width - deltaScreenX
-            newH = orig.height + deltaScreenY
-        case .topCenter:
-            newH = orig.height + deltaScreenY
-        case .topRight:
-            newW = orig.width + deltaScreenX
-            newH = orig.height + deltaScreenY
-        case .middleLeft:
-            newX = orig.origin.x + deltaScreenX
-            newW = orig.width - deltaScreenX
-        case .middleRight:
-            newW = orig.width + deltaScreenX
-        case .bottomLeft:
-            newX = orig.origin.x + deltaScreenX
-            newW = orig.width - deltaScreenX
-            newY = orig.origin.y + deltaScreenY
-            newH = orig.height - deltaScreenY
-        case .bottomCenter:
-            newY = orig.origin.y + deltaScreenY
-            newH = orig.height - deltaScreenY
-        case .bottomRight:
-            newW = orig.width + deltaScreenX
-            newY = orig.origin.y + deltaScreenY
-            newH = orig.height - deltaScreenY
-        }
-
-        if newW < minSize {
-            if handle == .topLeft || handle == .middleLeft || handle == .bottomLeft {
-                newX = orig.maxX - minSize
-            }
-            newW = minSize
-        }
-        if newH < minSize {
-            if handle == .bottomLeft || handle == .bottomCenter || handle == .bottomRight {
-                newY = orig.maxY - minSize
-            }
-            newH = minSize
-        }
-
+    private func applyBackdropScreenRect(_ targetRect: CGRect, visibleFrame: CGRect) {
         if vm.backdropIsGrouped {
             let pipScreen = currentPiPScreenRect
-            let relX = newX - pipScreen.minX
-            let relY = newY - pipScreen.minY
-            backdropOverlay.relativeRect = CGRect(x: relX, y: relY, width: newW, height: newH)
+            let relX = targetRect.origin.x - pipScreen.minX
+            let relY = targetRect.origin.y - pipScreen.minY
+            backdropOverlay.relativeRect = CGRect(x: relX, y: relY, width: targetRect.width, height: targetRect.height)
         } else {
-            let vFrame = targetScreenVisibleFrame
-            let normX = (newX - vFrame.minX) / vFrame.width
-            let normY = (newY - vFrame.minY) / vFrame.height
-            let normW = newW / vFrame.width
-            let normH = newH / vFrame.height
+            let normX = (targetRect.origin.x - visibleFrame.minX) / visibleFrame.width
+            let normY = (targetRect.origin.y - visibleFrame.minY) / visibleFrame.height
+            let normW = targetRect.width / visibleFrame.width
+            let normH = targetRect.height / visibleFrame.height
             backdropOverlay.freeformNormalizedRect = CGRect(x: normX, y: normY, width: normW, height: normH)
         }
         backdropOverlay.updateFrame()
@@ -608,29 +587,6 @@ public struct PresenterLayoutModalView: View {
         backdropOverlay.freeformNormalizedRect = CGRect(x: 0.75, y: 0.05, width: 0.22, height: 0.22)
         webcam.reposition()
         backdropOverlay.updateFrame()
-    }
-}
-
-// MARK: - 8 Resize Handles Definition
-
-private enum ResizeHandle: String, CaseIterable, Identifiable {
-    case topLeft, topCenter, topRight
-    case middleLeft, middleRight
-    case bottomLeft, bottomCenter, bottomRight
-
-    var id: String { rawValue }
-
-    func position(in rect: CGRect) -> CGPoint {
-        switch self {
-        case .topLeft:      return CGPoint(x: rect.minX, y: rect.minY)
-        case .topCenter:    return CGPoint(x: rect.midX, y: rect.minY)
-        case .topRight:     return CGPoint(x: rect.maxX, y: rect.minY)
-        case .middleLeft:   return CGPoint(x: rect.minX, y: rect.midY)
-        case .middleRight:  return CGPoint(x: rect.maxX, y: rect.midY)
-        case .bottomLeft:   return CGPoint(x: rect.minX, y: rect.maxY)
-        case .bottomCenter: return CGPoint(x: rect.midX, y: rect.maxY)
-        case .bottomRight:  return CGPoint(x: rect.maxX, y: rect.maxY)
-        }
     }
 }
 
