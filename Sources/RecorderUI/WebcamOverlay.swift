@@ -196,6 +196,7 @@ public final class WebcamOverlayController: ObservableObject {
 
     private var window: WebcamPanel?
     private var metalView: WebcamMetalView?
+    private var overlayView: PassthroughView?
     private var currentDeviceID: String?
     private var borderShapeLayer: CAShapeLayer?
     private var maskShapeLayer: CAShapeLayer?
@@ -533,7 +534,13 @@ public final class WebcamOverlayController: ObservableObject {
         metal.autoresizingMask = [.width, .height]
         host.addSubview(metal)
 
+        let overlay = PassthroughView(frame: host.bounds)
+        overlay.autoresizingMask = [.width, .height]
+        overlay.wantsLayer = true
+        host.addSubview(overlay, positioned: .above, relativeTo: metal)
+
         self.metalView = metal
+        self.overlayView = overlay
         self.videoProcessor.renderView = metal
 
         updateHostStyling(host: host, size: currentDimensions)
@@ -554,14 +561,14 @@ public final class WebcamOverlayController: ObservableObject {
         maskShapeLayer?.frame = bounds
         maskShapeLayer?.path = shapePath
 
-        // Draw vector border stroke following exact perimeter
+        // Draw vector border stroke following exact perimeter on top of metalView
         if borderShapeLayer == nil {
             let border = CAShapeLayer()
             border.fillColor = nil
             border.lineJoin = .round
             border.lineCap = .round
             self.borderShapeLayer = border
-            host.layer?.addSublayer(border)
+            overlayView?.layer?.addSublayer(border)
         }
         borderShapeLayer?.frame = bounds
         let inset = (showBorder && borderWidth > 0) ? borderWidth / 2 : 0
@@ -622,9 +629,15 @@ public final class WebcamOverlayController: ObservableObject {
         if let host = panel.contentView {
             host.frame = NSRect(origin: .zero, size: target)
             metalView?.frame = host.bounds
+            overlayView?.frame = host.bounds
             updateHostStyling(host: host, size: target)
         }
     }
+}
+
+/// An NSView that ignores mouse clicks so dragging the window background continues to function.
+private final class PassthroughView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 /// NSPanel subclass so the window can become key for keyboard input but
