@@ -142,11 +142,21 @@ final class RecentRecordingsAndOpenWithTests {
         let openedMissing = vm.openVideoForTrimming(url: nonExistent)
         try checkFalse(openedMissing, "Non-existent file fails openVideoForTrimming")
         try checkNil(vm.activeTrimTarget, "No trim target set for non-existent file")
+        if case .error(let msg) = vm.status {
+            try checkTrue(msg.contains("file does not exist"), "Error message explains missing file")
+        } else {
+            throw TestFailure(message: "Expected .error status, got \(vm.status)", file: #filePath, line: #line)
+        }
 
         // 2. Unsupported extension
         let openedTxt = vm.openVideoForTrimming(url: txt)
         try checkFalse(openedTxt, "Unsupported extension fails openVideoForTrimming")
         try checkNil(vm.activeTrimTarget, "No trim target set for unsupported file")
+        if case .error(let msg) = vm.status {
+            try checkTrue(msg.contains("Unsupported video format"), "Error message explains unsupported format")
+        } else {
+            throw TestFailure(message: "Expected .error status, got \(vm.status)", file: #filePath, line: #line)
+        }
 
         // 3. Supported valid file
         let openedMP4 = vm.openVideoForTrimming(url: mp4)

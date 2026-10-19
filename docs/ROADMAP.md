@@ -54,7 +54,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Expanded global Carbon hotkeys (`⌃⌥⌘R` start, `⌃⌥⌘S` stop, `⌥Space` pause/resume with PTS rewriting, `⌃⌥P` Facecam toggle, `⌃⌥K` keystrokes toggle).
   - In-app hotkey customization table in Settings with key capture, modifier translation, Carbon handler suspension/resume, `UserDefaults` persistence, and "Reset Hotkeys to Defaults".
 - ✅ **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate (v0.3.0) — Phase 9**:
-  - 31 deterministic unit tests across 7 test suites (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
+  - 23 deterministic unit tests across 6 test suites at v0.3.0 (38 across 8 as of v0.4.0) (`MacScreenRecordTests`) running in sub-second time without TCC hardware permissions.
   - Static zero-egress scanner and claims linter (`Scripts/audit-claims.py`) checking zero network imports, hotkeys, and TCC table parity.
   - GitHub Actions CI workflow (`.github/workflows/ci.yml`), CycloneDX 1.5 JSON SBOM (`bom.json`), and SLSA build provenance attestation.
 - ✅ **Post-Capture & Library Lossless Trim (v0.3.0) — Phase 10**:

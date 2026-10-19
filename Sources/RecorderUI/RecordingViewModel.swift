@@ -107,6 +107,7 @@ public final class RecordingViewModel: ObservableObject {
     private let session: CaptureSession
     private var settingsCancellable: AnyCancellable?
     private var presetsCancellable: AnyCancellable?
+    private var recentsCancellable: AnyCancellable?
     private var permissionsCancellable: AnyCancellable?
     private var hotkeyCancellable: AnyCancellable?
     public weak var recorderWindow: NSWindow?
@@ -284,6 +285,12 @@ public final class RecordingViewModel: ObservableObject {
 
         // Forward preset store changes so observers of ViewModel are notified immediately.
         self.presetsCancellable = presets.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+
+        // Forward recents store changes so observers of ViewModel (such as menu commands) are notified immediately.
+        self.recentsCancellable = recentsStore.objectWillChange
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
             }
@@ -1128,21 +1135,29 @@ public final class RecordingViewModel: ObservableObject {
         let standardized = url.standardizedFileURL
         guard FileManager.default.fileExists(atPath: standardized.path) else {
             log.error("Cannot open video for trimming: file does not exist at \(standardized.path, privacy: .public)")
+            status = .error("Cannot open video: file does not exist at '\(standardized.lastPathComponent)'.")
+            bringWindowToFront()
             return false
         }
         guard LosslessTrimmer.isSupported(url: standardized) else {
             log.error("Cannot open video for trimming: unsupported video format for \(standardized.lastPathComponent, privacy: .public)")
+            status = .error("Unsupported video format (.\(standardized.pathExtension)). Lossless trimming supports .mp4, .mov, and .m4v.")
+            bringWindowToFront()
             return false
         }
 
         recentsStore.addRecent(url: standardized)
+        bringWindowToFront()
+        self.activeTrimTarget = TrimTarget(url: standardized, isPostCaptureReview: false, originalFile: nil)
+        return true
+    }
+
+    private func bringWindowToFront() {
         if let window = recorderWindow {
             window.deminiaturize(nil)
             window.makeKeyAndOrderFront(nil)
         }
         NSApp.activate(ignoringOtherApps: true)
-        self.activeTrimTarget = TrimTarget(url: standardized, isPostCaptureReview: false, originalFile: nil)
-        return true
     }
 
     /// Presents a standard system open panel allowing the user to select an .mp4, .mov, or .m4v video to trim.
