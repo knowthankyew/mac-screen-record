@@ -116,6 +116,14 @@ public final class RecordingViewModel: ObservableObject {
     private var activeKeystrokesEnabled: Bool?
     private var activeSecureInputSuppression: Bool?
 
+    /// Active session configuration accessors (immutable while capture is running).
+    public var sessionSource: CaptureSource? { activeCaptureSource }
+    public var sessionGeometry: CaptureGeometry? { activeCaptureGeometry }
+    public var sessionCodec: OutputCodec? { activeCaptureCodec }
+    public var sessionMicrophoneEnabled: Bool? { activeMicrophoneEnabled }
+    public var sessionSystemAudioEnabled: Bool? { activeSystemAudioEnabled }
+    public var sessionMicrophoneDeviceID: String? { activeMicrophoneDeviceID }
+
     @Published public var webcamEnabled: Bool = false
     @Published public var selectedWebcamDeviceID: String?
     @Published public var webcamCorner: WebcamCorner = .bottomRight {
@@ -309,6 +317,7 @@ public final class RecordingViewModel: ObservableObject {
                 guard let self else { return }
                 switch self.status {
                 case .recording, .paused:
+                    guard self.confirmHardBurn() else { return }
                     Task { @MainActor in await self.burnRecording() }
                 default: break
                 }
@@ -316,6 +325,20 @@ public final class RecordingViewModel: ObservableObject {
         ]
 
         hotkeys.install(bindings: settings.hotkeyBindings, handlers: handlers)
+    }
+
+    /// Prompts the user with a modal confirmation before executing a destructive Hard Burn.
+    /// Returns true if the user confirmed.
+    @MainActor
+    public func confirmHardBurn() -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Permanently discard this recording?"
+        alert.informativeText = "The recording will be deleted from disk immediately. This cannot be undone."
+        alert.alertStyle = .critical
+        alert.addButton(withTitle: "Hard Burn")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     public func toggleWebcam() async {

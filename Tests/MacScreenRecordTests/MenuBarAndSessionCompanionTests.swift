@@ -137,8 +137,8 @@ final class MenuBarAndSessionCompanionTests {
         try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks output file from disk")
     }
 
-    /// Verifies that calling cancel() when writer has failed safely removes output file from disk.
-    func testVideoEncoderCancelOnFailedWriterDeletesFile() async throws {
+    /// Verifies that calling cancel() after appending samples (including mismatched frames) safely removes output file from disk.
+    func testVideoEncoderCancelAfterAppendedSamplesDeletesFile() async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .resolvingSymlinksInPath()
             .appendingPathComponent("EncoderFailedCancelTest-\(UUID().uuidString)", isDirectory: true)

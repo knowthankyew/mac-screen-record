@@ -21,11 +21,6 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
 
     public override init() { super.init() }
 
-    deinit {
-        // MainActor deinit cleanup
-        tickerCancellable?.cancel()
-    }
-
     /// Wires the controller to the recording view model.
     /// Does NOT create any status bar item while idle — strictly zero tray bloat.
     public func install(vm: RecordingViewModel) {
@@ -102,6 +97,28 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
 
         let targetDesc: String = {
             guard let vm else { return "Screen" }
+            if let src = vm.sessionSource {
+                switch src {
+                case .display(let id, let region):
+                    if region != nil {
+                        return "Custom Region"
+                    }
+                    if let disp = vm.displays.first(where: { $0.id == id }) {
+                        return "Display (\(disp.width)×\(disp.height))"
+                    }
+                    return "Main Display"
+                case .window(let id):
+                    if let win = vm.windows.first(where: { $0.id == id }) {
+                        return "Window (\(win.title.isEmpty ? win.appName : win.title))"
+                    }
+                    return "Window"
+                case .application(let pid, _):
+                    if let app = vm.apps.first(where: { $0.id == pid }) {
+                        return "Application (\(app.applicationName))"
+                    }
+                    return "Application"
+                }
+            }
             switch vm.sourceKind {
             case .display:
                 if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
@@ -122,7 +139,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
                 return "Custom Region"
             }
         }()
-        let codecDesc = vm?.codec.displayName ?? "H.264"
+        let codecDesc = vm?.sessionCodec?.displayName ?? vm?.codec.displayName ?? "H.264"
 
         if isRecording {
             button.image = recordingIcon
@@ -218,9 +235,11 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
 
         // 4. Capture Telemetry Section
         let micInfo: String
-        if vm.captureMicrophone, let micID = vm.selectedMicID, let mic = vm.devices.microphones.first(where: { $0.id == micID }) {
+        let micActive = vm.sessionMicrophoneEnabled ?? (vm.captureMicrophone && vm.selectedMicID != nil)
+        let micID = vm.sessionMicrophoneDeviceID ?? vm.selectedMicID
+        if micActive, let micID, let mic = vm.devices.microphones.first(where: { $0.id == micID }) {
             micInfo = "🎤 Mic: \(mic.localizedName) (Active)"
-        } else if vm.captureMicrophone {
+        } else if micActive {
             micInfo = "🎤 Mic: Active"
         } else {
             micInfo = "🎤 Mic: Disabled"
@@ -229,33 +248,59 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         micItem.isEnabled = false
         menu.addItem(micItem)
 
-        let sysAudioInfo = "🔊 System Audio: \(vm.captureSystemAudio ? "Capturing" : "Off")"
+        let sysAudioActive = vm.sessionSystemAudioEnabled ?? vm.captureSystemAudio
+        let sysAudioInfo = "🔊 System Audio: \(sysAudioActive ? "Capturing" : "Off")"
         let sysAudioItem = NSMenuItem(title: sysAudioInfo, action: nil, keyEquivalent: "")
         sysAudioItem.isEnabled = false
         menu.addItem(sysAudioItem)
 
         let targetInfo: String
-        switch vm.sourceKind {
-        case .display:
-            if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
-                targetInfo = "🖥 Target: Display (\(disp.width)×\(disp.height))"
-            } else {
-                targetInfo = "🖥 Target: Main Display"
+        if let src = vm.sessionSource {
+            switch src {
+            case .display(let id, let region):
+                if region != nil {
+                    targetInfo = "📐 Target: Custom Region"
+                } else if let disp = vm.displays.first(where: { $0.id == id }) {
+                    targetInfo = "🖥 Target: Display (\(disp.width)×\(disp.height))"
+                } else {
+                    targetInfo = "🖥 Target: Main Display"
+                }
+            case .window(let id):
+                if let win = vm.windows.first(where: { $0.id == id }) {
+                    targetInfo = "🪟 Target: \(win.title.isEmpty ? win.appName : win.title)"
+                } else {
+                    targetInfo = "🪟 Target: Selected Window"
+                }
+            case .application(let pid, _):
+                if let app = vm.apps.first(where: { $0.id == pid }) {
+                    targetInfo = "📱 Target: \(app.applicationName)"
+                } else {
+                    targetInfo = "📱 Target: Application"
+                }
             }
-        case .window:
-            if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
-                targetInfo = "🪟 Target: \(win.title.isEmpty ? win.appName : win.title)"
-            } else {
-                targetInfo = "🪟 Target: Selected Window"
+        } else {
+            switch vm.sourceKind {
+            case .display:
+                if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
+                    targetInfo = "🖥 Target: Display (\(disp.width)×\(disp.height))"
+                } else {
+                    targetInfo = "🖥 Target: Main Display"
+                }
+            case .window:
+                if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
+                    targetInfo = "🪟 Target: \(win.title.isEmpty ? win.appName : win.title)"
+                } else {
+                    targetInfo = "🪟 Target: Selected Window"
+                }
+            case .app:
+                if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
+                    targetInfo = "📱 Target: \(app.applicationName)"
+                } else {
+                    targetInfo = "📱 Target: Application"
+                }
+            case .region:
+                targetInfo = "📐 Target: Custom Region"
             }
-        case .app:
-            if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
-                targetInfo = "📱 Target: \(app.applicationName)"
-            } else {
-                targetInfo = "📱 Target: Application"
-            }
-        case .region:
-            targetInfo = "📐 Target: Custom Region"
         }
         let targetItem = NSMenuItem(title: targetInfo, action: nil, keyEquivalent: "")
         targetItem.isEnabled = false
@@ -296,15 +341,8 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func stopRecording()        { Task { @MainActor in await vm?.stopRecording() } }
     @objc private func stopAndTrimRecording() { Task { @MainActor in await vm?.stopRecording(forceTrimReview: true) } }
     @objc private func burnRecording() {
-        let alert = NSAlert()
-        alert.messageText = "Permanently discard this recording?"
-        alert.informativeText = "The recording will be deleted from disk immediately. This cannot be undone."
-        alert.alertStyle = .critical
-        alert.addButton(withTitle: "Hard Burn")
-        alert.addButton(withTitle: "Cancel")
-        NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-        Task { @MainActor in await vm?.burnRecording() }
+        guard let vm, vm.confirmHardBurn() else { return }
+        Task { @MainActor in await vm.burnRecording() }
     }
     @objc private func toggleWebcam()         { Task { @MainActor in await vm?.toggleWebcam() } }
     @objc private func toggleKeystrokes()     { vm?.toggleKeystrokes() }
