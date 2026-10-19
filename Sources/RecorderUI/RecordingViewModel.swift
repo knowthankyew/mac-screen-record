@@ -124,6 +124,24 @@ public final class RecordingViewModel: ObservableObject {
     public var sessionSystemAudioEnabled: Bool? { activeSystemAudioEnabled }
     public var sessionMicrophoneDeviceID: String? { activeMicrophoneDeviceID }
 
+    private func resetActiveSessionMetadata() {
+        recordingStartDate = nil
+        machContinuousStart = nil
+        activeCaptureSource = nil
+        activeCaptureGeometry = nil
+        activeCaptureCodec = nil
+        activeMicrophoneEnabled = nil
+        activeSystemAudioEnabled = nil
+        activeMicrophoneDeviceID = nil
+        activeWebcamEnabled = nil
+        activeWebcamCorner = nil
+        activeWebcamSize = nil
+        activeWebcamBackgroundMode = nil
+        activeClickHighlightsEnabled = nil
+        activeKeystrokesEnabled = nil
+        activeSecureInputSuppression = nil
+    }
+
     @Published public var webcamEnabled: Bool = false
     @Published public var selectedWebcamDeviceID: String?
     @Published public var webcamCorner: WebcamCorner = .bottomRight {
@@ -785,22 +803,7 @@ public final class RecordingViewModel: ObservableObject {
             let keys = self.activeKeystrokesEnabled ?? false
             let secInput = (self.activeSecureInputSuppression ?? false) || self.keystrokes.isSecureEventInputActive
 
-            // Reset active recording metadata
-            self.recordingStartDate = nil
-            self.machContinuousStart = nil
-            self.activeCaptureSource = nil
-            self.activeCaptureGeometry = nil
-            self.activeCaptureCodec = nil
-            self.activeMicrophoneEnabled = nil
-            self.activeSystemAudioEnabled = nil
-            self.activeMicrophoneDeviceID = nil
-            self.activeWebcamEnabled = nil
-            self.activeWebcamCorner = nil
-            self.activeWebcamSize = nil
-            self.activeWebcamBackgroundMode = nil
-            self.activeClickHighlightsEnabled = nil
-            self.activeKeystrokesEnabled = nil
-            self.activeSecureInputSuppression = nil
+            self.resetActiveSessionMetadata()
 
             if generateSeal,
                let startDate,
@@ -867,21 +870,7 @@ public final class RecordingViewModel: ObservableObject {
         self.lastRecordingURL = nil
 
         // Reset active recording metadata immediately
-        self.recordingStartDate = nil
-        self.machContinuousStart = nil
-        self.activeCaptureSource = nil
-        self.activeCaptureGeometry = nil
-        self.activeCaptureCodec = nil
-        self.activeMicrophoneEnabled = nil
-        self.activeSystemAudioEnabled = nil
-        self.activeMicrophoneDeviceID = nil
-        self.activeWebcamEnabled = nil
-        self.activeWebcamCorner = nil
-        self.activeWebcamSize = nil
-        self.activeWebcamBackgroundMode = nil
-        self.activeClickHighlightsEnabled = nil
-        self.activeKeystrokesEnabled = nil
-        self.activeSecureInputSuppression = nil
+        self.resetActiveSessionMetadata()
 
         // Clear in-memory keystroke buffer and dismiss overlay window
         self.keystrokes.clear()
@@ -981,21 +970,7 @@ public final class RecordingViewModel: ObservableObject {
                 let secInput = (self.activeSecureInputSuppression ?? false) || self.keystrokes.isSecureEventInputActive
 
                 // Reset active recording metadata
-                self.recordingStartDate = nil
-                self.machContinuousStart = nil
-                self.activeCaptureSource = nil
-                self.activeCaptureGeometry = nil
-                self.activeCaptureCodec = nil
-                self.activeMicrophoneEnabled = nil
-                self.activeSystemAudioEnabled = nil
-                self.activeMicrophoneDeviceID = nil
-                self.activeWebcamEnabled = nil
-                self.activeWebcamCorner = nil
-                self.activeWebcamSize = nil
-                self.activeWebcamBackgroundMode = nil
-                self.activeClickHighlightsEnabled = nil
-                self.activeKeystrokesEnabled = nil
-                self.activeSecureInputSuppression = nil
+                self.resetActiveSessionMetadata()
 
                 if generateSeal,
                    let startDate,
