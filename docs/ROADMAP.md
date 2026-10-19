@@ -77,6 +77,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | ✅ **Shipped** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Up Next (Active)** |
+| **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`🔴 00:00:00`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | 📋 **Planned** |
 
 ---
 
@@ -119,7 +120,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 
 ---
 
-## 5. Phase 10+: Post-Capture Trim & Streamlined PiP Improvements
+## 5. Upcoming Milestones (Phases 10–12)
 
 ### Phase 10: Post-Capture & Posthumous Library Lossless Trim ✅ Shipped
 **Objective**: Eliminate dead air at the start and end of recordings without re-encoding or quality loss, both immediately after capture and posthumously from the Recordings Library or disk.
@@ -140,3 +141,32 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - Clean shape toggle in Overlays switching the `WebcamPanel` / `WebcamMetalView` mask between the classic **1:1 Circle** and a **Rounded Rectangle** (with `1:1` square and `16:9` / `4:3` aspect options).
 - **Standard System Border Controls**:
   - Native macOS `ColorPicker` and stroke width slider (`0px – 12px`) for the PiP border ring when `showBorder` is enabled.
+
+### Phase 12: Ephemeral Recording HUD & Dynamic Session Companion
+**Objective**: Deliver a lightweight, zero-bloat menu bar companion that only exists during active recording sessions, surfacing live capture duration, tactile pause/resume controls, distraction-free desktop capture, and amnesiac data purging.
+
+- **Zero-Bloat Ephemeral Lifecycle**:
+  - **No Idle Footprint**: Zero status bar presence when the application is idle. The `NSStatusItem` is created dynamically the moment capture starts (`.recording` / `.paused`) and is completely deallocated (`NSStatusBar.system.removeStatusItem`) upon session completion, cancellation, or error reset.
+  - **Notch-Safe Real Estate**: Preserves critical menu bar width on modern MacBook displays (M-series camera notches), strictly respecting macOS Human Interface Guidelines.
+- **Live Status Bar Timer & State Indicator**:
+  - Real-time elapsed recording duration rendered directly in the macOS menu bar:
+    - **Active**: Pulsing red indicator with monotonically tracked elapsed time (`🔴 00:02:45`).
+    - **Paused**: Orange pause glyph with frozen presentation timestamp duration (`⏸️ 00:02:45 Paused`).
+  - Tooltip displaying active capture target (display resolution or application window title) and hardware encoding profile.
+- **First-Class Pause / Resume Controls**:
+  - Prominent, context-aware toggle in the dropdown: **"Pause Recording (⌥Space)"** / **"Resume Recording (⌥Space)"**.
+  - Synchronous coordination with `CaptureSession` presentation timestamp (PTS) rewriting to guarantee seamless, artifact-free pauses without audio/video drift.
+- **Distraction-Free Desktop Capture**:
+  - Optional setting to automatically minimize or hide the main Mac Screen Record window upon capture start.
+  - Because the ephemeral menu bar HUD provides live duration feedback, pause controls, and termination actions, the main recorder window never clutters screen captures or full-desktop evidence recordings.
+  - Window automatically restores (or brings up post-capture trim review) upon capture termination.
+- **Session Finalization & Amnesiac "Hard Burn"**:
+  - **Stop Recording (`⌃⌥⌘S`)**: Cleanly stops capture, updates the local library, and writes the cryptographic Evidence Seal manifest (`.evidence.json`).
+  - **Trim Before Saving**: Instant post-capture review routing directly into the lossless frame-accurate trimmer (`VideoTrimModalView`), allowing start/end dead-air pruning without altering global app defaults.
+  - **Hard Burn / Amnesiac Discard (`⌃⌥⌘⌫`)**: Conforms to the `knowthankyew` portfolio privacy standard:
+    - Immediately invokes `AVAssetWriter.cancelWriting()`.
+    - Directly unlinks partial video artifacts from disk (bypassing `~/.Trash` to eliminate residual storage leaks).
+    - Aborts pending Evidence Seal checksum workers and clears volatile in-memory keystroke buffers and audio level monitors.
+- **In-Flight Telemetry & Quick Toggles**:
+  - Real-time audio telemetry status: microphone level indicator, active mic mute/unmute status, and system audio loopback verification.
+  - In-flight overlay toggles: Quick toggle Facecam presenter PiP (`⌃⌥P`), keystroke overlay (`⌃⌥K`), and mouse click highlights.

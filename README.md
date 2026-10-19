@@ -405,6 +405,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for the full technical specification and relea
 ### Planned:
 
 - 🔜 [Phase 11](docs/ROADMAP.md#phase-11-streamlined-facecam--pip-improvements) — Streamlined Facecam & PiP Improvements (blurred custom image backdrop, Circle vs. Rounded-Rectangle toggle, system border controls)
+- 📋 [Phase 12](docs/ROADMAP.md#phase-12-ephemeral-recording-hud--dynamic-session-companion) — Ephemeral Recording HUD & Dynamic Session Companion (transient status bar item with live elapsed duration `🔴 00:00:00`, first-class Pause/Resume `⌥Space`, distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn)
 
 Want a feature on this list to move from 🔜 to ✅? Open an issue or a PR.
 
