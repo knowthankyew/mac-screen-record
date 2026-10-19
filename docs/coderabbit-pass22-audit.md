@@ -72,6 +72,15 @@ In Pass 22, CodeRabbit analyzed the full cumulative diff between `main` and `ori
    - **Finding**: Line 57 described Phase 9 as having 31 tests across 7 suites, which did not distinguish between the shipped v0.3.0 milestone and the expanded v0.4.0 suite.
    - **Resolution**: Updated description to `23 deterministic unit tests across 6 test suites at v0.3.0 (38 across 8 as of v0.4.0)`.
 
+5. **`Sources/RecorderUI/RecordingViewModel.swift:1137` (Log Privacy & Sanitization)**:
+   - **Finding**: `log.error` in `openVideoForTrimming` interpolated `standardized.path` with `privacy: .public`, which could record the user's home folder path (`/Users/<username>/...`) in unified logging.
+   - **Resolution**: Changed to `standardized.lastPathComponent, privacy: .public`, matching all other log statements and adhering strictly to the local privacy invariant.
+
+6. **UI Discoverability & Tooltip Response Enhancement**:
+   - Replaced bare, borderless header icons with `.bordered` native button components featuring enlarged SF Symbols (`14pt .medium`) alongside explicit text labels ("Facecam", "Library", "Refresh").
+   - Registered `NSInitialToolTipDelay = 150` in `AppDelegate` and `MainView.init` to eliminate sluggish hover latency and render help tooltips nearly instantaneously (150ms).
+   - Added rotation animation feedback to the Refresh button.
+
 ---
 
 ## Verification & Parity Audit
@@ -84,3 +93,4 @@ In Pass 22, CodeRabbit analyzed the full cumulative diff between `main` and `ori
   - Entitlements audit and Carbon hotkey handler lifecycle.
   - CycloneDX 1.5 JSON SBOM schema validation.
 - **Release Packaging**: `bash Scripts/build-app.sh release` produced signed `.app` bundle with embedded CycloneDX SBOM and verified zero-egress properties.
+- **CodeRabbit Final Review**: **CLEAN (0 findings)** across all 30 modified/added files against `origin/main`.
