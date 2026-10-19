@@ -72,6 +72,10 @@ public final class RecordingViewModel: ObservableObject {
     @Published public var activeTrimTarget: TrimTarget? = nil
     @Published public var overlayError: String? = nil
 
+    internal func setStatusForTesting(_ s: Status) {
+        self.status = s
+    }
+
     private var outputFolder: URL
     public let devices: DeviceManager
     public let levels: AudioLevelMonitor
@@ -296,6 +300,14 @@ public final class RecordingViewModel: ObservableObject {
             .toggleKeystrokes: { [weak self] in
                 guard let self else { return }
                 self.toggleKeystrokes()
+            },
+            .burnRecording: { [weak self] in
+                guard let self else { return }
+                switch self.status {
+                case .recording, .paused:
+                    Task { @MainActor in await self.burnRecording() }
+                default: break
+                }
             }
         ]
 
@@ -702,6 +714,9 @@ public final class RecordingViewModel: ObservableObject {
             self.activeKeystrokesEnabled = keystrokesEnabled
             self.activeSecureInputSuppression = keystrokes.isSecureEventInputActive
             status = .recording(startedAt: startDate)
+            if self.settings.hideWindowDuringRecording {
+                self.hideWindowForCapture()
+            }
         } catch let captureError as CaptureSession.CaptureError {
             status = .error(captureError.errorDescription ?? "Recording failed.")
         } catch {
@@ -713,7 +728,7 @@ public final class RecordingViewModel: ObservableObject {
         }
     }
 
-    public func stopRecording() async {
+    public func stopRecording(forceTrimReview: Bool = false) async {
         status = .stopping
         do {
             let url = try await session.stop()
@@ -721,7 +736,7 @@ public final class RecordingViewModel: ObservableObject {
             let endDate = Date()
             self.lastRecordingURL = url
             status = .finished(url)
-            if settings.trimBeforeSave && LosslessTrimmer.isSupported(url: url) {
+            if (forceTrimReview || settings.trimBeforeSave) && LosslessTrimmer.isSupported(url: url) {
                 self.activeTrimTarget = TrimTarget(url: url, isPostCaptureReview: true, originalFile: nil)
             }
 
@@ -801,8 +816,61 @@ public final class RecordingViewModel: ObservableObject {
             } else {
                 await library.reload()
             }
+            restoreWindowIfNeeded()
         } catch {
+            restoreWindowIfNeeded()
             status = .error(error.localizedDescription)
+        }
+    }
+
+    /// Destructively aborts the in-progress session, wipes uncommitted video files from disk,
+    /// flushes volatile memory buffers, and restores an idle state without writing an Evidence Seal.
+    public func burnRecording() async {
+        let isActive: Bool = {
+            switch status {
+            case .recording, .paused, .stopping: return true
+            default: return false
+            }
+        }()
+        guard isActive else { return }
+
+        status = .idle
+
+        // Reset active recording metadata immediately
+        self.recordingStartDate = nil
+        self.machContinuousStart = nil
+        self.activeCaptureSource = nil
+        self.activeCaptureGeometry = nil
+        self.activeCaptureCodec = nil
+        self.activeMicrophoneEnabled = nil
+        self.activeSystemAudioEnabled = nil
+        self.activeMicrophoneDeviceID = nil
+        self.activeWebcamEnabled = nil
+        self.activeWebcamCorner = nil
+        self.activeWebcamSize = nil
+        self.activeWebcamBackgroundMode = nil
+        self.activeClickHighlightsEnabled = nil
+        self.activeKeystrokesEnabled = nil
+        self.activeSecureInputSuppression = nil
+
+        await session.burn()
+        restoreWindowIfNeeded()
+        log.info("Recording burned: session terminated and uncommitted file wiped directly")
+    }
+
+    private func hideWindowForCapture() {
+        guard settings.hideWindowDuringRecording, let window = recorderWindow else { return }
+        window.miniaturize(nil)
+    }
+
+    public func restoreWindowIfNeeded() {
+        guard settings.hideWindowDuringRecording else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        if let window = recorderWindow {
+            window.deminiaturize(nil)
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            NotificationCenter.default.post(name: .recorderWindowShouldBecomeKey, object: nil)
         }
     }
 

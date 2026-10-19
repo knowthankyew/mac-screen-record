@@ -39,6 +39,9 @@ final class HotkeyTests {
         let keystrokes = try unwrap(defaults[.toggleKeystrokes])
         try checkEqual(keystrokes.displayString, "⌃⌥K", "Toggle Keystroke overlay canonical shortcut")
 
+        let burn = try unwrap(defaults[.burnRecording])
+        try checkEqual(burn.displayString, "⌃⌥⌘⌫", "Burn recording canonical shortcut")
+
         // Test display strings with various modifier combinations
         let combo1 = HotkeyBinding(keyCode: kVK_ANSI_A, modifiers: cmdKey | shiftKey)
         try checkEqual(combo1.displayString, "⇧⌘A")

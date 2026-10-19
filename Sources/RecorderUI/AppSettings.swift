@@ -18,9 +18,14 @@ public final class AppSettings: ObservableObject {
         static let generateEvidenceSeal = "FMSR.defaults.generateEvidenceSeal"
         static let hotkeyBindings = "FMSR.defaults.hotkeyBindings"
         static let trimBeforeSave = "FMSR.defaults.trimBeforeSave"
+        static let hideWindowDuringRecording = "FMSR.defaults.hideWindowDuringRecording"
     }
 
     private let defaults: UserDefaults
+
+    @Published public var hideWindowDuringRecording: Bool {
+        didSet { defaults.set(hideWindowDuringRecording, forKey: Keys.hideWindowDuringRecording) }
+    }
 
     @Published public var defaultCodec: OutputCodec {
         didSet { defaults.set(defaultCodec.rawValue, forKey: Keys.codec) }
@@ -62,6 +67,7 @@ public final class AppSettings: ObservableObject {
         self.defaultCaptureSystemAudio = d.object(forKey: Keys.systemAudio) as? Bool ?? true
         self.generateEvidenceSeal = d.object(forKey: Keys.generateEvidenceSeal) as? Bool ?? true
         self.trimBeforeSave = d.object(forKey: Keys.trimBeforeSave) as? Bool ?? false
+        self.hideWindowDuringRecording = d.object(forKey: Keys.hideWindowDuringRecording) as? Bool ?? false
 
         if let data = d.data(forKey: Keys.hotkeyBindings),
            let decoded = try? JSONDecoder().decode([HotkeyAction: HotkeyBinding].self, from: data) {

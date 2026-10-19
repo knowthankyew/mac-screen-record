@@ -219,6 +219,33 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
         }
     }
 
+    /// Destructively aborts the current session and purges uncommitted media files.
+    /// Cancels AVAssetWriter and immediately removes temporary files from disk without moving to Trash.
+    public func burn() async {
+        let canBurn: Bool = stateLock.withLock {
+            switch _state {
+            case .recording, .paused, .failed, .stopping:
+                _state = .idle
+                return true
+            default:
+                return false
+            }
+        }
+        guard canBurn else { return }
+
+        do {
+            try await stream?.stopCapture()
+        } catch {
+            log.error("burn stopCapture failed: \(error.localizedDescription, privacy: .public)")
+        }
+        micCapture?.stop()
+        micCapture = nil
+        encoder?.cancel()
+        encoder = nil
+        stream = nil
+        state = .idle
+    }
+
     // MARK: - SCStreamOutput
 
     public func stream(

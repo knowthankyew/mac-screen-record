@@ -35,6 +35,10 @@ public struct SettingsView: View {
                 Text("Opens the trim modal immediately after stopping a recording to cut start/end dead air.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Toggle("Minimize recorder window during capture", isOn: $settings.hideWindowDuringRecording)
+                Text("Automatically minimizes the main window when recording starts to prevent desktop clutter.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Output") {
@@ -86,7 +90,7 @@ public struct SettingsView: View {
                     .font(.caption)
                 }
 
-                Text("Global Carbon hotkeys operate system-wide with zero accessibility permissions. Defaults: Start: ⌃⌥⌘R, Stop: ⌃⌥⌘S, Pause/Resume: ⌥Space, Facecam: ⌃⌥P, Keystrokes: ⌃⌥K.")
+                Text("Global Carbon hotkeys operate system-wide with zero accessibility permissions. Defaults: Start: ⌃⌥⌘R, Stop: ⌃⌥⌘S, Pause/Resume: ⌥Space, Facecam: ⌃⌥P, Keystrokes: ⌃⌥K, Hard Burn: ⌃⌥⌘⌫.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

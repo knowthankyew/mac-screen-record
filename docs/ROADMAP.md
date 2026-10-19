@@ -77,7 +77,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 | **Phase 9** | **Automated Supply Chain, Unit Tests & Zero-Egress CI Gate** | Portfolio Governance | GitHub Actions CI runner (`.github/workflows/ci.yml`), `MacScreenRecordTests` unit test suite (`swift run MacScreenRecordTests`), static zero-egress scanner (`Scripts/audit-claims.py`), and CycloneDX 1.5 SBOM + SLSA build provenance attestation | ✅ **Shipped** |
 | **Phase 10** | **Post-Capture & Library Lossless Trim** | Post-Capture Workflow | Immediate post-recording trim-before-save modal **plus** posthumous lossless trimming of any existing/loaded recording from supported container formats (`.mp4`, `.mov`, `.m4v`) via `AVAssetExportPresetPassthrough` | ✅ **Shipped** |
 | **Phase 11** | **Streamlined Facecam & PiP Improvements** | Presenter PiP Polish | **1.** Blurred custom image backdrop (`CIGaussianBlur` behind cutout on user-selected images); **2.** Circle vs. Rounded-Rectangle shape/aspect toggle; **3.** Standard system border color/width controls | 🔜 **Up Next (Active)** |
-| **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`🔴 00:00:00`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | 📋 **Planned** |
+| **Phase 12** | **Ephemeral Recording HUD & Dynamic Session Companion** | Capture UX & Governance | Zero-bloat transient status bar item with live elapsed duration (`🔴 00:00:00`), first-class Pause/Resume controls (`⌥Space`), distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn purge | ✅ **Shipped** |
 
 ---
 
@@ -142,7 +142,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
 - **Standard System Border Controls**:
   - Native macOS `ColorPicker` and stroke width slider (`0px – 12px`) for the PiP border ring when `showBorder` is enabled.
 
-### Phase 12: Ephemeral Recording HUD & Dynamic Session Companion
+### Phase 12: Ephemeral Recording HUD & Dynamic Session Companion ✅ Shipped
 **Objective**: Deliver a lightweight, zero-bloat menu bar companion that only exists during active recording sessions, surfacing live capture duration, tactile pause/resume controls, distraction-free desktop capture, and amnesiac data purging.
 
 - **Zero-Bloat Ephemeral Lifecycle**:

@@ -9,6 +9,7 @@ public enum HotkeyAction: String, CaseIterable, Identifiable, Codable, Sendable 
     case togglePause
     case toggleFacecam
     case toggleKeystrokes
+    case burnRecording
 
     public var id: String { rawValue }
 
@@ -19,6 +20,7 @@ public enum HotkeyAction: String, CaseIterable, Identifiable, Codable, Sendable 
         case .togglePause:      return "Pause / Resume Recording"
         case .toggleFacecam:    return "Toggle Facecam (PiP)"
         case .toggleKeystrokes: return "Toggle Keystroke Overlay"
+        case .burnRecording:    return "Hard Burn (Discard Recording)"
         }
     }
 }
@@ -107,6 +109,8 @@ public struct HotkeyBinding: Codable, Equatable, Hashable, Sendable {
             return HotkeyBinding(keyCode: kVK_ANSI_P, modifiers: controlKey | optionKey) // ⌃⌥P
         case .toggleKeystrokes:
             return HotkeyBinding(keyCode: kVK_ANSI_K, modifiers: controlKey | optionKey) // ⌃⌥K
+        case .burnRecording:
+            return HotkeyBinding(keyCode: kVK_Delete, modifiers: hyper) // ⌃⌥⌘⌫
         }
     }
 

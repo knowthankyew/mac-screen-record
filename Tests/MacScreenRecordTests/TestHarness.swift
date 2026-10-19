@@ -274,12 +274,34 @@ struct MacScreenRecordTestRunner {
             }
         }
 
+        let companionSuite = MenuBarAndSessionCompanionTests()
+        await run("MenuBarAndSessionCompanionTests", "testMenuBarEphemeralLifecycle") {
+            try await companionSuite.withLifecycle {
+                try companionSuite.testMenuBarEphemeralLifecycle()
+            }
+        }
+        await run("MenuBarAndSessionCompanionTests", "testDurationFormatting") {
+            try await companionSuite.withLifecycle {
+                try companionSuite.testDurationFormatting()
+            }
+        }
+        await run("MenuBarAndSessionCompanionTests", "testHideWindowDuringRecordingSetting") {
+            try await companionSuite.withLifecycle {
+                try companionSuite.testHideWindowDuringRecordingSetting()
+            }
+        }
+        await run("MenuBarAndSessionCompanionTests", "testBurnRecordingStateReset") {
+            try await companionSuite.withLifecycle {
+                try await companionSuite.testBurnRecordingStateReset()
+            }
+        }
+
         print("")
         if failed > 0 {
             print("✗ Unit Test Suite FAILED (\(failed) failed, \(passed) passed)")
             Foundation.exit(1)
         } else {
-            print("✓ All \(passed) unit tests passed across 6 test suites.")
+            print("✓ All \(passed) unit tests passed across 7 test suites.")
         }
     }
 }
