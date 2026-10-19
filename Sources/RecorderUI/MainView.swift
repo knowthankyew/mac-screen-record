@@ -9,9 +9,13 @@ public struct MainView: View {
     @State private var showDeleteArtifactsSheet = false
     @State private var moveToTrash = true
     @State private var highlightOverlays = false
+    @State private var isRefreshing = false
 
     public init(vm: RecordingViewModel) {
         self.vm = vm
+        UserDefaults.standard.register(defaults: [
+            "NSInitialToolTipDelay": 150
+        ])
     }
 
     public var body: some View {
@@ -186,35 +190,66 @@ public struct MainView: View {
                 }
             }
             Spacer()
+            headerActions
+        }
+        .padding(16)
+    }
+
+    // MARK: - Header Actions
+
+    private var headerActions: some View {
+        HStack(spacing: 8) {
             Button {
                 vm.triggerFacecamToggleAction()
             } label: {
-                Image(systemName: vm.webcamEnabled ? "person.crop.square.fill" : "person.crop.square")
-                    .font(.system(size: 15))
+                Label {
+                    Text("Facecam")
+                        .font(.system(size: 12, weight: .medium))
+                } icon: {
+                    Image(systemName: vm.webcamEnabled ? "person.crop.square.fill" : "person.crop.square")
+                        .font(.system(size: 14, weight: .medium))
+                }
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(vm.webcamEnabled ? Color.accentColor : Color.secondary)
-            .help(vm.webcamEnabled ? "Turn off Facecam PiP" : "Turn on Facecam PiP (uses default Facecam profile)")
+            .buttonStyle(.bordered)
+            .tint(vm.webcamEnabled ? Color.accentColor : nil)
+            .help(vm.webcamEnabled ? "Turn off Facecam PiP (⌃⌥P)" : "Turn on Facecam PiP (⌃⌥P)")
 
             Button {
                 vm.showLibrary = true
             } label: {
-                Image(systemName: "film.stack")
+                Label {
+                    Text("Library")
+                        .font(.system(size: 12, weight: .medium))
+                } icon: {
+                    Image(systemName: "film.stack")
+                        .font(.system(size: 14, weight: .medium))
+                }
             }
-            .buttonStyle(.borderless)
-            .help("Browse past recordings")
+            .buttonStyle(.bordered)
+            .help("Browse, trim, and manage past recordings (⌘L)")
+
             Button {
                 Task {
+                    isRefreshing = true
                     vm.devices.refresh()
                     await vm.loadAvailableContent()
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    isRefreshing = false
                 }
             } label: {
-                Image(systemName: "arrow.clockwise")
+                Label {
+                    Text("Refresh")
+                        .font(.system(size: 12, weight: .medium))
+                } icon: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+                        .rotationEffect(.degrees(isRefreshing ? 360 : 0))
+                        .animation(isRefreshing ? .linear(duration: 0.5).repeatForever(autoreverses: false) : .default, value: isRefreshing)
+                }
             }
-            .buttonStyle(.borderless)
-            .help("Refresh screens, windows, apps, and devices")
+            .buttonStyle(.bordered)
+            .help("Scan for newly connected displays, windows, applications, and audio devices")
         }
-        .padding(16)
     }
 
     // MARK: - Sections
@@ -704,7 +739,7 @@ public struct SavedRecordingLinkView: View {
                     .underline(isHovered, color: .green)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .frame(maxWidth: 320, alignment: .leading)
+                    .frame(maxWidth: 240, alignment: .leading)
 
                 Image(systemName: "arrow.up.forward.square")
                     .font(.system(size: 11, weight: .semibold))

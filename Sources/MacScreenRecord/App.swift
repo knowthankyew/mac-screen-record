@@ -67,6 +67,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingOpenURL: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Shorten the default tooltip delay so help tooltips appear promptly on hover.
+        UserDefaults.standard.register(defaults: [
+            "NSInitialToolTipDelay": 150
+        ])
+
         // Keep the app as a regular app *and* show a menu-bar item, so users
         // can quick-toggle from the bar without closing the main window.
         NSApp.setActivationPolicy(.regular)
