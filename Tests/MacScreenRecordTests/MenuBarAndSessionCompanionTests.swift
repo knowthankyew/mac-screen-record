@@ -162,6 +162,22 @@ final class MenuBarAndSessionCompanionTests {
         try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() cleans up file regardless of writer state")
     }
 
+    /// Verifies that updateFinishedRecording updates view model status and lastRecordingURL,
+    /// enabling the prominent green link in the UI header.
+    func testSavedRecordingStateUpdateAndReveal() throws {
+        let settings = AppSettings(defaults: isolatedDefaults)
+        let vm = RecordingViewModel(settings: settings)
+
+        let testURL = URL(fileURLWithPath: "/tmp/Sample_Recording_trimmed.mp4")
+        vm.updateFinishedRecording(testURL)
+
+        try checkEqual(vm.status, .finished(testURL), "status is updated to .finished with trimmed URL")
+        try checkEqual(vm.lastRecordingURL, testURL, "lastRecordingURL is updated with trimmed URL")
+
+        let linkView = SavedRecordingLinkView(url: testURL, onReveal: {})
+        try checkEqual(linkView.url, testURL, "SavedRecordingLinkView accepts and holds target URL")
+    }
+
     // MARK: - Helpers
 
     private func makeSyntheticSampleBuffer(width: Int = 160, height: Int = 120, pts: CMTime = .zero) -> CMSampleBuffer? {

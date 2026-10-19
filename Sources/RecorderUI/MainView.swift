@@ -69,7 +69,14 @@ public struct MainView: View {
             deleteArtifactsSheet
         }
         .sheet(item: $vm.activeTrimTarget) { target in
-            VideoTrimModalView(target: target, library: vm.library, settings: vm.settings)
+            VideoTrimModalView(
+                target: target,
+                library: vm.library,
+                settings: vm.settings,
+                onTrimSaved: { savedURL in
+                    vm.updateFinishedRecording(savedURL)
+                }
+            )
         }
     }
 
@@ -164,6 +171,10 @@ public struct MainView: View {
                         .foregroundStyle(.red)
                 } else if case .paused = vm.status {
                     Text("Paused").font(.caption).foregroundStyle(.orange)
+                } else if case .finished(let url) = vm.status {
+                    SavedRecordingLinkView(url: url) {
+                        vm.revealLastRecording()
+                    }
                 } else {
                     Text(statusLine).font(.caption).foregroundStyle(.secondary)
                 }
@@ -630,6 +641,129 @@ private struct WindowAccessor: NSViewRepresentable {
 
     func updateNSView(_ nsView: WindowAccessorView, context: Context) {
         nsView.callback = callback
+    }
+}
+
+/// An interactive green link representing a newly completed or trimmed recording,
+/// featuring an animated "capture click" style circular ripple callout that draws attention
+/// to the saved artifact when it is first added to the window.
+public struct SavedRecordingLinkView: View {
+    public let url: URL
+    public let onReveal: () -> Void
+
+    @State private var isHovered = false
+    @State private var rippleScale: CGFloat = 0.5
+    @State private var rippleOpacity: Double = 0.0
+    @State private var secondRippleScale: CGFloat = 0.4
+    @State private var secondRippleOpacity: Double = 0.0
+    @State private var glowOpacity: Double = 0.0
+
+    public init(url: URL, onReveal: @escaping () -> Void) {
+        self.url = url
+        self.onReveal = onReveal
+    }
+
+    public var body: some View {
+        Button {
+            triggerCalloutAnimation()
+            onReveal()
+        } label: {
+            HStack(spacing: 5) {
+                ZStack {
+                    // Secondary echoing ripple ring
+                    Circle()
+                        .stroke(Color.green.opacity(0.65), lineWidth: 2)
+                        .background(Circle().fill(Color.green.opacity(0.18)))
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(secondRippleScale)
+                        .opacity(secondRippleOpacity)
+
+                    // Primary "capture click" ripple ring (0.5x -> 2.4x scale expansion with ease-out fade)
+                    Circle()
+                        .stroke(Color.green.opacity(0.9), lineWidth: 2.5)
+                        .background(Circle().fill(Color.green.opacity(0.35)))
+                        .frame(width: 16, height: 16)
+                        .scaleEffect(rippleScale)
+                        .opacity(rippleOpacity)
+
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.green)
+                }
+                .frame(width: 18, height: 18)
+
+                Text(url.lastPathComponent)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.green)
+                    .underline(isHovered, color: .green)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 320, alignment: .leading)
+
+                Image(systemName: "arrow.up.forward.square")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.green.opacity(0.85))
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.green.opacity(isHovered ? 0.15 : glowOpacity))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+        .onDisappear {
+            if isHovered {
+                NSCursor.pop()
+                isHovered = false
+            }
+        }
+        .help("Saved to \(url.path)\nClick to reveal in Finder")
+        .accessibilityLabel("Saved recording: \(url.lastPathComponent), click to reveal in Finder")
+        .onAppear {
+            triggerCalloutAnimation()
+        }
+        .onChange(of: url) { _ in
+            triggerCalloutAnimation()
+        }
+    }
+
+    private func triggerCalloutAnimation() {
+        // Reset to initial compact state
+        rippleScale = 0.5
+        rippleOpacity = 1.0
+        secondRippleScale = 0.4
+        secondRippleOpacity = 0.0
+        glowOpacity = 0.30
+
+        // Primary ripple explosion (mirroring ClickHighlightOverlay)
+        withAnimation(.easeOut(duration: 0.6)) {
+            rippleScale = 2.4
+            rippleOpacity = 0.0
+        }
+
+        // Secondary echoing ripple
+        withAnimation(.easeOut(duration: 0.65).delay(0.12)) {
+            secondRippleScale = 2.0
+            secondRippleOpacity = 0.75
+        }
+        withAnimation(.easeOut(duration: 0.55).delay(0.28)) {
+            secondRippleOpacity = 0.0
+        }
+
+        // Subtle background pill fade
+        withAnimation(.easeOut(duration: 0.85)) {
+            glowOpacity = 0.0
+        }
     }
 }
 

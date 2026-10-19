@@ -13,6 +13,7 @@ public struct VideoTrimModalView: View {
     public let target: RecordingViewModel.TrimTarget
     public let library: RecordingsLibrary
     public let settings: AppSettings
+    public var onTrimSaved: ((URL) -> Void)?
     public var onDismiss: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
@@ -37,11 +38,13 @@ public struct VideoTrimModalView: View {
         target: RecordingViewModel.TrimTarget,
         library: RecordingsLibrary,
         settings: AppSettings,
+        onTrimSaved: ((URL) -> Void)? = nil,
         onDismiss: (() -> Void)? = nil
     ) {
         self.target = target
         self.library = library
         self.settings = settings
+        self.onTrimSaved = onTrimSaved
         self.onDismiss = onDismiss
     }
 
@@ -384,8 +387,9 @@ public struct VideoTrimModalView: View {
 
         Task {
             do {
+                let savedURL: URL
                 if let originalFile = target.originalFile {
-                    try await library.trimRecording(
+                    savedURL = try await library.trimRecording(
                         file: originalFile,
                         startTime: startTime,
                         endTime: endTime,
@@ -400,7 +404,7 @@ public struct VideoTrimModalView: View {
                         sizeBytes: Int64((try? target.url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0),
                         duration: duration
                     )
-                    try await library.trimRecording(
+                    savedURL = try await library.trimRecording(
                         file: recFile,
                         startTime: startTime,
                         endTime: endTime,
@@ -408,7 +412,7 @@ public struct VideoTrimModalView: View {
                     )
                 } else {
                     // External file from outside library folder
-                    try await library.trimExternalFile(
+                    savedURL = try await library.trimExternalFile(
                         at: target.url,
                         startTime: startTime,
                         endTime: endTime
@@ -417,6 +421,7 @@ public struct VideoTrimModalView: View {
 
                 await MainActor.run {
                     isExporting = false
+                    onTrimSaved?(savedURL)
                     dismiss()
                 }
             } catch {

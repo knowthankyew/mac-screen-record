@@ -1042,6 +1042,12 @@ public final class RecordingViewModel: ObservableObject {
         }
     }
 
+    /// Updates the view model's active recording state to reflect a newly saved or trimmed recording.
+    public func updateFinishedRecording(_ url: URL) {
+        self.lastRecordingURL = url
+        self.status = .finished(url)
+    }
+
     /// Opens the lossless trim modal for the most recently completed recording.
     public func trimLastRecording() {
         guard let url = lastRecordingURL, LosslessTrimmer.isSupported(url: url) else { return }
