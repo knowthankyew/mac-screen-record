@@ -150,9 +150,9 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - **Notch-Safe Real Estate**: Preserves critical menu bar width on modern MacBook displays (M-series camera notches), strictly respecting macOS Human Interface Guidelines.
 - **Live Status Bar Timer & State Indicator**:
   - Real-time elapsed recording duration rendered directly in the macOS menu bar:
-    - **Active**: Pulsing red indicator with monotonically tracked elapsed time (`🔴 00:02:45`).
-    - **Paused**: Orange pause glyph with frozen presentation timestamp duration (`⏸️ 00:02:45 Paused`).
-  - Tooltip displaying active capture target (display resolution or application window title) and hardware encoding profile.
+    - **Active**: Red recording indicator with monotonically tracked elapsed time formatted as `MM:SS` (or `HH:MM:SS` past one hour, e.g. `02:45` or `01:02:45`).
+    - **Paused**: Pause glyph with frozen presentation timestamp duration (e.g. `02:00 (Paused)`).
+  - Tooltip displaying active capture target (display resolution or application window title), hardware encoding profile, and elapsed time.
 - **First-Class Pause / Resume Controls**:
   - Prominent, context-aware toggle in the dropdown: **"Pause Recording (⌥Space)"** / **"Resume Recording (⌥Space)"**.
   - Synchronous coordination with `CaptureSession` presentation timestamp (PTS) rewriting to guarantee seamless, artifact-free pauses without audio/video drift.
@@ -166,7 +166,7 @@ The inherited upstream roadmap included extensive planning for commercial conten
   - **Hard Burn / Amnesiac Discard (`⌃⌥⌘⌫`)**: Conforms to the `knowthankyew` portfolio privacy standard:
     - Immediately invokes `AVAssetWriter.cancelWriting()`.
     - Directly unlinks partial video artifacts from disk (bypassing `~/.Trash` to eliminate residual storage leaks).
-    - Aborts pending Evidence Seal checksum workers and clears volatile in-memory keystroke buffers and audio level monitors.
+    - Aborts pending Evidence Seal checksum workers, wipes volatile in-memory keystroke buffers, and resets audio level monitors.
 - **In-Flight Telemetry & Quick Toggles**:
   - Real-time audio telemetry status: microphone level indicator, active mic mute/unmute status, and system audio loopback verification.
   - In-flight overlay toggles: Quick toggle Facecam presenter PiP (`⌃⌥P`), keystroke overlay (`⌃⌥K`), and mouse click highlights.

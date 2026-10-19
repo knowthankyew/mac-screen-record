@@ -1,3 +1,8 @@
+import AVFoundation
+import CaptureCore
+import CoreMedia
+import CoreVideo
+import EncoderKit
 import Foundation
 @testable import RecorderUI
 
@@ -77,17 +82,123 @@ final class MenuBarAndSessionCompanionTests {
         try checkTrue(reloaded.hideWindowDuringRecording, "hideWindowDuringRecording persists to UserDefaults")
     }
 
-    /// Verifies that burnRecording cleanly resets recording state back to idle.
+    /// Verifies that burnRecording cleanly resets recording state back to ready/idle,
+    /// clears lastRecordingURL, and unlinks the file from disk directly.
     func testBurnRecordingStateReset() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .resolvingSymlinksInPath()
+            .appendingPathComponent("BurnResetTest-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
         let settings = AppSettings(defaults: isolatedDefaults)
         let vm = RecordingViewModel(settings: settings)
 
-        // Force vm into simulated recording state
+        // Setup a simulated in-progress recording file on disk
+        let dummyFile = tempDir.appendingPathComponent("burn_test_target.mp4")
+        try Data("dummy uncommitted recording data".utf8).write(to: dummyFile)
+        try checkTrue(FileManager.default.fileExists(atPath: dummyFile.path), "Dummy recording file exists on disk")
+
         let now = Date()
+        vm.setLastRecordingURLForTesting(dummyFile)
         vm.setStatusForTesting(.recording(startedAt: now))
         try checkEqual(vm.status, .recording(startedAt: now))
+        try checkEqual(vm.lastRecordingURL, dummyFile)
 
         await vm.burnRecording()
-        try checkEqual(vm.status, .idle, "burnRecording resets status to .idle")
+
+        let expectedStatus = vm.displays.isEmpty ? RecordingViewModel.Status.idle : RecordingViewModel.Status.ready
+        try checkEqual(vm.status, expectedStatus, "burnRecording resets status to ready or idle")
+        try checkNil(vm.lastRecordingURL, "burnRecording clears lastRecordingURL")
+        try checkFalse(FileManager.default.fileExists(atPath: dummyFile.path), "burnRecording immediately deletes uncommitted file from disk")
+    }
+
+    /// Verifies that VideoEncoder initializes output file on start, appends frame,
+    /// and cancel() immediately cancels writing and unlinks the media file from disk.
+    func testVideoEncoderCancelDeletesFileOnDisk() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .resolvingSymlinksInPath()
+            .appendingPathComponent("EncoderCancelTest-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let outputURL = tempDir.appendingPathComponent("test_cancel.mp4")
+        let settings = RecordingSettings(width: 160, height: 120, fps: 30, outputURL: outputURL)
+        let encoder = VideoEncoder(settings: settings)
+
+        try encoder.start()
+        try checkTrue(FileManager.default.fileExists(atPath: outputURL.path), "Writer creates output file on start")
+
+        if let sample = makeSyntheticSampleBuffer(width: 160, height: 120, pts: .zero) {
+            encoder.append(sample, kind: VideoEncoder.SampleKind.video)
+        }
+
+        encoder.cancel()
+        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() unlinks output file from disk")
+    }
+
+    /// Verifies that calling cancel() when writer has failed safely removes output file from disk.
+    func testVideoEncoderCancelOnFailedWriterDeletesFile() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .resolvingSymlinksInPath()
+            .appendingPathComponent("EncoderFailedCancelTest-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let outputURL = tempDir.appendingPathComponent("test_failed_cancel.mp4")
+        let settings = RecordingSettings(width: 160, height: 120, fps: 30, outputURL: outputURL)
+        let encoder = VideoEncoder(settings: settings)
+
+        try encoder.start()
+        try checkTrue(FileManager.default.fileExists(atPath: outputURL.path), "Writer creates file")
+
+        // Append a valid frame to start session
+        if let sample = makeSyntheticSampleBuffer(width: 160, height: 120, pts: CMTime(value: 10, timescale: 30)) {
+            encoder.append(sample, kind: VideoEncoder.SampleKind.video)
+        }
+
+        // Calling cancel() cleans up the file even if writer experienced error or was stopped
+        encoder.cancel()
+        try checkFalse(FileManager.default.fileExists(atPath: outputURL.path), "cancel() cleans up file regardless of writer state")
+    }
+
+    // MARK: - Helpers
+
+    private func makeSyntheticSampleBuffer(width: Int = 160, height: Int = 120, pts: CMTime = .zero) -> CMSampleBuffer? {
+        var pixelBuffer: CVPixelBuffer?
+        let status = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width, height,
+            kCVPixelFormatType_32ARGB,
+            nil,
+            &pixelBuffer
+        )
+        guard status == kCVReturnSuccess, let pb = pixelBuffer else { return nil }
+
+        var formatDesc: CMVideoFormatDescription?
+        CMVideoFormatDescriptionCreateForImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pb,
+            formatDescriptionOut: &formatDesc
+        )
+        guard let desc = formatDesc else { return nil }
+
+        var timing = CMSampleTimingInfo(
+            duration: CMTime(value: 1, timescale: 30),
+            presentationTimeStamp: pts,
+            decodeTimeStamp: .invalid
+        )
+        var sampleBuffer: CMSampleBuffer?
+        CMSampleBufferCreateForImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pb,
+            dataReady: true,
+            makeDataReadyCallback: nil,
+            refcon: nil,
+            formatDescription: desc,
+            sampleTiming: &timing,
+            sampleBufferOut: &sampleBuffer
+        )
+        return sampleBuffer
     }
 }

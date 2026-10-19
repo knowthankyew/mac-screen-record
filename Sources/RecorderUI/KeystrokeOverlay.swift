@@ -49,6 +49,14 @@ public final class KeystrokeOverlayController: ObservableObject {
         isVisible = false
     }
 
+    /// Clears volatile in-memory keystroke buffers and immediately dismisses the overlay window.
+    public func clear() {
+        hideWorkItem?.cancel()
+        hideWorkItem = nil
+        window?.setText("")
+        window?.orderOut(nil)
+    }
+
     // MARK: - Monitors
 
     private func installMonitors() {

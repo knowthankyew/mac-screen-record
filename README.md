@@ -401,7 +401,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for the full technical specification and relea
 - ✅ [Phase 8](docs/ROADMAP.md#phase-8-universal-keyboard-control--workflow-polish--shipped) — Universal Keyboard Control & Workflow Polish (rebindable shortcuts, pause/resume hotkey, toggle hotkeys)
 - ✅ [Phase 9](docs/ROADMAP.md#phase-9-automated-supply-chain-unit-tests--zero-egress-ci-gate--shipped) — Automated Supply Chain, Unit Tests (`MacScreenRecordTests`) & Zero-Egress GitHub Actions CI Gate (`.github/workflows/ci.yml`)
 - ✅ [Phase 10](docs/ROADMAP.md#phase-10-post-capture--posthumous-library-lossless-trim--shipped) — Post-Capture & Posthumous Library Lossless Trim (trim before save + lossless trim of loaded/library `.mp4`/`.mov`/`.m4v` files)
-- ✅ [Phase 12](docs/ROADMAP.md#phase-12-ephemeral-recording-hud--dynamic-session-companion--shipped) — Ephemeral Recording HUD & Dynamic Session Companion (transient status bar item with live elapsed duration `🔴 00:00:00`, first-class Pause/Resume `⌥Space`, distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn)
+- ✅ [Phase 12](docs/ROADMAP.md#phase-12-ephemeral-recording-hud--dynamic-session-companion--shipped) — Ephemeral Recording HUD & Dynamic Session Companion (transient status bar item with live elapsed duration formatted as `MM:SS` / `HH:MM:SS`, first-class Pause/Resume `⌥Space`, distraction-free auto-minimize, in-flight overlay toggles, and amnesiac Hard Burn)
 
 ### Planned:
 

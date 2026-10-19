@@ -76,6 +76,10 @@ public final class RecordingViewModel: ObservableObject {
         self.status = s
     }
 
+    internal func setLastRecordingURLForTesting(_ url: URL?) {
+        self.lastRecordingURL = url
+    }
+
     private var outputFolder: URL
     public let devices: DeviceManager
     public let levels: AudioLevelMonitor
@@ -824,7 +828,7 @@ public final class RecordingViewModel: ObservableObject {
     }
 
     /// Destructively aborts the in-progress session, wipes uncommitted video files from disk,
-    /// flushes volatile memory buffers, and restores an idle state without writing an Evidence Seal.
+    /// flushes volatile memory buffers, and restores an idle or ready state without writing an Evidence Seal.
     public func burnRecording() async {
         let isActive: Bool = {
             switch status {
@@ -834,7 +838,10 @@ public final class RecordingViewModel: ObservableObject {
         }()
         guard isActive else { return }
 
-        status = .idle
+        status = .stopping
+
+        let targetURL = self.lastRecordingURL
+        self.lastRecordingURL = nil
 
         // Reset active recording metadata immediately
         self.recordingStartDate = nil
@@ -853,7 +860,25 @@ public final class RecordingViewModel: ObservableObject {
         self.activeKeystrokesEnabled = nil
         self.activeSecureInputSuppression = nil
 
+        // Clear in-memory keystroke buffer and dismiss overlay window
+        self.keystrokes.clear()
+
+        // Cancel any pending seal tasks and delete any artifacts if known
+        if let targetURL {
+            library.deleteArtifacts(at: targetURL, moveToTrash: false)
+        }
+
         await session.burn()
+
+        if let targetURL {
+            try? FileManager.default.removeItem(at: targetURL)
+            let evidenceURL = EvidenceSeal.manifestURL(for: targetURL)
+            try? FileManager.default.removeItem(at: evidenceURL)
+            let legacyEvidenceURL = EvidenceSeal.legacyManifestURL(for: targetURL)
+            try? FileManager.default.removeItem(at: legacyEvidenceURL)
+        }
+
+        status = displays.isEmpty ? .idle : .ready
         restoreWindowIfNeeded()
         log.info("Recording burned: session terminated and uncommitted file wiped directly")
     }

@@ -295,6 +295,16 @@ struct MacScreenRecordTestRunner {
                 try await companionSuite.testBurnRecordingStateReset()
             }
         }
+        await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelDeletesFileOnDisk") {
+            try await companionSuite.withLifecycle {
+                try await companionSuite.testVideoEncoderCancelDeletesFileOnDisk()
+            }
+        }
+        await run("MenuBarAndSessionCompanionTests", "testVideoEncoderCancelOnFailedWriterDeletesFile") {
+            try await companionSuite.withLifecycle {
+                try await companionSuite.testVideoEncoderCancelOnFailedWriterDeletesFile()
+            }
+        }
 
         print("")
         if failed > 0 {

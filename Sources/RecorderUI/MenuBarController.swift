@@ -100,16 +100,40 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         }
         let timeString = formatTime(seconds: elapsed)
 
+        let targetDesc: String = {
+            guard let vm else { return "Screen" }
+            switch vm.sourceKind {
+            case .display:
+                if let disp = vm.displays.first(where: { $0.id == vm.selectedDisplayID }) {
+                    return "Display (\(disp.width)×\(disp.height))"
+                }
+                return "Main Display"
+            case .window:
+                if let win = vm.windows.first(where: { $0.id == vm.selectedWindowID }) {
+                    return "Window (\(win.title.isEmpty ? win.appName : win.title))"
+                }
+                return "Window"
+            case .app:
+                if let app = vm.apps.first(where: { $0.id == vm.selectedAppPID }) {
+                    return "Application (\(app.applicationName))"
+                }
+                return "Application"
+            case .region:
+                return "Custom Region"
+            }
+        }()
+        let codecDesc = vm?.codec.displayName ?? "H.264"
+
         if isRecording {
             button.image = recordingIcon
             button.image?.isTemplate = false
             button.title = " \(timeString)"
-            button.toolTip = "Recording in progress (\(timeString)) — Click for options"
+            button.toolTip = "Recording \(targetDesc) [\(codecDesc)] • \(timeString) — Click for options"
         } else {
             button.image = pausedIcon
             button.image?.isTemplate = false
             button.title = " \(timeString) (Paused)"
-            button.toolTip = "Recording paused (\(timeString)) — Click for options"
+            button.toolTip = "Recording paused: \(targetDesc) [\(codecDesc)] • \(timeString) — Click for options"
         }
     }
 
@@ -135,6 +159,12 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         menu.delegate = self
         populateMenu(menu)
         return menu
+    }
+
+    private func shortcut(_ action: HotkeyAction) -> String {
+        guard let vm else { return "" }
+        let b = vm.settings.hotkeyBindings[action] ?? HotkeyBinding.defaultBinding(for: action)
+        return "  " + b.displayString
     }
 
     private func populateMenu(_ menu: NSMenu) {
@@ -164,7 +194,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // 2. Pause / Resume Controls
-        let pauseTitle = isPaused ? "Resume Recording  ⌥Space" : "Pause Recording  ⌥Space"
+        let pauseTitle = (isPaused ? "Resume Recording" : "Pause Recording") + shortcut(.togglePause)
         let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(togglePause), keyEquivalent: "")
         pauseItem.target = self
         menu.addItem(pauseItem)
@@ -172,7 +202,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // 3. Termination Actions
-        let stopItem = NSMenuItem(title: "Stop Recording  ⌃⌥⌘S", action: #selector(stopRecording), keyEquivalent: "")
+        let stopItem = NSMenuItem(title: "Stop Recording" + shortcut(.stopRecording), action: #selector(stopRecording), keyEquivalent: "")
         stopItem.target = self
         menu.addItem(stopItem)
 
@@ -180,7 +210,7 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         trimItem.target = self
         menu.addItem(trimItem)
 
-        let burnItem = NSMenuItem(title: "Hard Burn (Discard)  ⌃⌥⌘⌫", action: #selector(burnRecording), keyEquivalent: "")
+        let burnItem = NSMenuItem(title: "Hard Burn (Discard)" + shortcut(.burnRecording), action: #selector(burnRecording), keyEquivalent: "")
         burnItem.target = self
         menu.addItem(burnItem)
 
@@ -234,12 +264,12 @@ public final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         // 5. In-Flight Overlay Toggles
-        let webcamTitle = vm.webcamEnabled ? "Hide Facecam (PiP)  ⌃⌥P" : "Show Facecam (PiP)  ⌃⌥P"
+        let webcamTitle = (vm.webcamEnabled ? "Hide Facecam (PiP)" : "Show Facecam (PiP)") + shortcut(.toggleFacecam)
         let webcamItem = NSMenuItem(title: webcamTitle, action: #selector(toggleWebcam), keyEquivalent: "")
         webcamItem.target = self
         menu.addItem(webcamItem)
 
-        let keystrokesTitle = vm.keystrokesEnabled ? "Hide Keystroke Overlay  ⌃⌥K" : "Show Keystroke Overlay  ⌃⌥K"
+        let keystrokesTitle = (vm.keystrokesEnabled ? "Hide Keystroke Overlay" : "Show Keystroke Overlay") + shortcut(.toggleKeystrokes)
         let keystrokesItem = NSMenuItem(title: keystrokesTitle, action: #selector(toggleKeystrokes), keyEquivalent: "")
         keystrokesItem.target = self
         menu.addItem(keystrokesItem)

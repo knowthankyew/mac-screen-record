@@ -75,6 +75,13 @@ public final class RecordingsLibrary: ObservableObject {
         }
     }
 
+    /// Cancels and removes any active background seal task for the given recording URL.
+    public func cancelSealTask(for url: URL) {
+        let key = url.standardizedFileURL
+        inFlightSeals[key]?.cancel()
+        inFlightSeals.removeValue(forKey: key)
+    }
+
     /// Point the library at a new folder (e.g. when the user changes the
     /// output destination in Settings) and reload the file list.
     public func relocate(to newFolder: URL) {

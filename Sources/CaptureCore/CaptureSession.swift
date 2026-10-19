@@ -224,8 +224,8 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
     public func burn() async {
         let canBurn: Bool = stateLock.withLock {
             switch _state {
-            case .recording, .paused, .failed, .stopping:
-                _state = .idle
+            case .recording, .paused, .failed:
+                _state = .stopping
                 return true
             default:
                 return false
@@ -233,16 +233,21 @@ public final class CaptureSession: NSObject, SCStreamOutput, SCStreamDelegate, @
         }
         guard canBurn else { return }
 
+        let stream = self.stream
+        let encoder = self.encoder
+        let mic = self.micCapture
+        self.stream = nil
+        self.encoder = nil
+        self.micCapture = nil
+
         do {
             try await stream?.stopCapture()
         } catch {
             log.error("burn stopCapture failed: \(error.localizedDescription, privacy: .public)")
         }
-        micCapture?.stop()
-        micCapture = nil
+        mic?.stop()
+        await levels.reset()
         encoder?.cancel()
-        encoder = nil
-        stream = nil
         state = .idle
     }
 
