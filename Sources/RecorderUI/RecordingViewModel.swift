@@ -895,13 +895,17 @@ public final class RecordingViewModel: ObservableObject {
         log.info("Recording burned: session terminated and uncommitted file wiped directly")
     }
 
+    private var didMinimizeForCapture = false
+
     private func hideWindowForCapture() {
         guard settings.hideWindowDuringRecording, let window = recorderWindow else { return }
         window.miniaturize(nil)
+        didMinimizeForCapture = true
     }
 
     public func restoreWindowIfNeeded() {
-        guard settings.hideWindowDuringRecording else { return }
+        guard didMinimizeForCapture else { return }
+        didMinimizeForCapture = false
         NSApp.activate(ignoringOtherApps: true)
         if let window = recorderWindow {
             window.deminiaturize(nil)
