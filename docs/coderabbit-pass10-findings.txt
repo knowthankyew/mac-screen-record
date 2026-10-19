@@ -1,0 +1,62 @@
+Most recent local review with findings: 2 stored findings
+Review directory: /Users/cl0rkster/Dev/mac-screen-record
+Base branch: origin/main
+
+────────────────────────────────────────────────────────────────────────
+  minor [Maintainability & Code Quality]
+  → docs/ROADMAP.md:170-172
+
+  Remove telemetry claims that the menu does not implement.
+
+  Line 171 claims a "microphone level indicator" and "active mic mute/unmute
+  status". MenuBarController.populateMenu shows only disabled text items.
+  These items show the mic device with "Active" or "Disabled", and system
+  audio with "Capturing" or "Off". The menu has no level meter and no mute
+  control.
+
+  This roadmap is the project's claims document, and
+  Scripts/audit-claims.py checks claim parity against it. Change the text
+  to describe the actual behavior.
+
+
+  📝 Proposed fix
+
+  -  - Real-time audio telemetry status: microphone level indicator, active mic mute/unmute status, and system audio loopback verification.
+  +  - Read-only capture telemetry: selected microphone device (active/disabled), system audio capture state, and active capture target.
+
+
+────────────────────────────────────────────────────────────────────────
+  minor [Functional Correctness]
+  → Sources/RecorderUI/RecordingViewModel.swift:833-839
+
+  Do not accept .stopping in burnRecording().
+
+  burnRecording() treats .stopping as an active state.
+  CaptureSession.burn() treats it differently. Its guard accepts only
+  .recording, .paused, and .failed. So session.burn() returns early
+  when stop() or the salvage task already owns the session.
+
+  In that case, the view model still deletes targetURL and its evidence
+  manifests while encoder.finish() is finalizing the same file. When
+  stopRecording() resumes, it sets status = .finished(url) for a file
+  that no longer exists. It can also start an Evidence Seal task that fails
+  on the missing file. In the salvage path, the code reports "Partial video
+  saved" for a deleted file.
+
+  This state is reachable through a race. The menu Stop action and the burn
+  hotkey each spawn a Task. The second task can run after status has
+  become .stopping. Two quick burn-hotkey presses also reach this branch.
+
+  Remove .stopping from the accepted states. Burn then acts only when the
+  session can actually be torn down.
+
+
+  🐛 Proposed fix
+
+           let isActive: Bool = {
+               switch status {
+  -            case .recording, .paused, .stopping: return true
+  +            case .recording, .paused: return true
+               default: return false
+               }
+           }()
