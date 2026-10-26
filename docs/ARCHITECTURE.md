@@ -1,5 +1,6 @@
 <!-- diagram-meta
-  last-validated: 2026-10-19
+  last-validated: 2026-10-26
+  validated-commit: 4e1b03d
   covers: [Sources/**, Package.swift, Resources/**, Scripts/**]
   generated-by: manual
 -->
