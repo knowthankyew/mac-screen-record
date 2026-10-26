@@ -264,6 +264,43 @@ def check_sbom_and_privacy_claims(root: Path, version: str, errors: list[str]) -
                 fail(errors, f"{rel_bom} property '{prop_name}' expected '{prop_val}', got '{props.get(prop_name)}'")
 
 
+PROHIBITED_WORDS = [
+    re.compile(r"\bbulletproof\b", re.IGNORECASE),
+    re.compile(r"\bconclusive\b", re.IGNORECASE),
+    re.compile(r"\bdefinitive\b", re.IGNORECASE),
+    re.compile(r"\binfinitely scalable\b", re.IGNORECASE),
+]
+
+
+def check_vocabulary_guardrails(root: Path, errors: list[str]) -> None:
+    docs_to_scan = [
+        "docs/ARCHITECTURE.md",
+        "README.md",
+        "ROADMAP.md",
+        "docs/ROADMAP.md",
+        "docs/RELEASE_NOTES.md",
+        "RELEASE_NOTES.md",
+    ]
+    for rel_path in docs_to_scan:
+        target = root / rel_path
+        if not target.is_file():
+            continue
+        text = read_text_checked(root, rel_path, errors)
+        if text is None:
+            continue
+        for idx, line in enumerate(text.splitlines(), 1):
+            lower = line.lower()
+            if "prohibit" in lower or "forbidden" in lower or "guardrail" in lower:
+                continue
+            for pattern in PROHIBITED_WORDS:
+                if pattern.search(line):
+                    fail(
+                        errors,
+                        f"Vocabulary violation in {rel_path}:{idx}: "
+                        f"Prohibited term matching '{pattern.pattern}' found: '{line.strip()}'",
+                    )
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     errors: list[str] = []
@@ -273,6 +310,7 @@ def main() -> int:
     check_hotkey_and_secure_input_parity(root, errors)
     check_entitlements_and_tcc_justifications(root, errors)
     check_sbom_and_privacy_claims(root, version, errors)
+    check_vocabulary_guardrails(root, errors)
 
     if errors:
         print("✗ Claims Audit FAILED with the following violations:", file=sys.stderr)

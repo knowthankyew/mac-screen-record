@@ -40,24 +40,24 @@ flowchart TD
 
     subgraph AppArchitecture["Mac Screen Record Modules (Sources/)"]
         subgraph Capture["CaptureCore"]
-            StreamMgr["StreamManager<br/><code>CaptureCore/ScreenCaptureManager.swift</code>"]
-            PiPCompositor["Presenter PiP Engine<br/><code>CaptureCore/WebcamCompositor.swift</code>"]
-            OverlayMgr["Metal Overlay Engine<br/><code>CaptureCore/MetalOverlayView.swift</code>"]
+            StreamMgr["StreamManager<br/><code>Sources/CaptureCore/CaptureSession.swift</code>"]
+            PiPCompositor["Presenter PiP Engine<br/><code>Sources/RecorderUI/WebcamVideoProcessor.swift</code>"]
+            OverlayMgr["Metal Overlay Engine<br/><code>Sources/RecorderUI/WebcamMetalView.swift</code>"]
         end
 
         subgraph Devices["DeviceKit"]
-            DeviceEnum["DeviceEnumerator<br/><code>DeviceKit/DeviceEnumerator.swift</code>"]
+            DeviceEnum["DeviceManager<br/><code>Sources/DeviceKit/DeviceManager.swift</code>"]
         end
 
         subgraph Encoding["EncoderKit"]
-            HwEncoder["HardwareVideoEncoder<br/><code>EncoderKit/VideoEncoder.swift</code>"]
-            FileWriter["AssetWriterMuxer<br/><code>EncoderKit/RecordingWriter.swift</code>"]
+            HwEncoder["HardwareVideoEncoder<br/><code>Sources/EncoderKit/VideoEncoder.swift</code>"]
+            FileWriter["AssetWriterMuxer<br/><code>Sources/EncoderKit/VideoEncoder.swift</code>"]
         end
 
         subgraph Presentation["RecorderUI"]
             SwiftUIBar["Floating Recorder Control Bar"]
             KeystrokeView["Keystroke Overlay<br/><i>(Masks on IsSecureEventInputEnabled)</i>"]
-            PrivacyClaims["PrivacyClaimsProvider<br/><code>RecorderUI/PrivacyClaims.swift</code>"]
+            PrivacyClaims["PrivacyClaimsProvider<br/><code>Sources/RecorderUI/PrivacyClaims.swift</code>"]
         end
     end
 
